@@ -3,6 +3,7 @@ import React from 'react';
 import {
   Card,
   Text,
+  tokens,
 } from '@fluentui/react-components';
 
 type Props = {
@@ -26,6 +27,13 @@ export const Results: React.FC<Props> = ({
   intervalStart,
   chargingSpeed,
 }) => {
+  const bg = tokens.colorNeutralBackground2;
+  const border = tokens.colorNeutralStroke1;
+  const highlightBg = tokens.colorBrandBackground2;
+  const highlightBorder = tokens.colorBrandStroke1;
+  const text = tokens.colorNeutralForeground1;
+  const subText = tokens.colorNeutralForeground3;
+  const brand = tokens.colorBrandForeground1;
   if (!intervalPrices.length || !intervalStart) {
     return (
       <Card>
@@ -69,11 +77,12 @@ export const Results: React.FC<Props> = ({
             flexDirection: 'row',
             gap: 32,
             alignItems: 'center',
-            background: '#f4f6fa',
+            background: bg,
             borderRadius: 8,
             padding: '16px 24px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
-            border: '1px solid #e5e5e5',
+            boxShadow: tokens.shadow2,
+            border: `1px solid ${border}`,
+            color: text,
           }}
         >
           <div>
@@ -139,7 +148,7 @@ export const Results: React.FC<Props> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 0,
-            borderLeft: '3px solid #e5e5e5',
+            borderLeft: `3px solid ${border}`,
             marginLeft: 24,
             marginTop: 8,
           }}
@@ -165,20 +174,23 @@ export const Results: React.FC<Props> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: isActive ? '#cce5ff' : 'transparent',
-                  borderLeft: isActive ? '3px solid #0078d4' : '3px solid #e5e5e5',
+                  background: isActive ? highlightBg : 'transparent',
+                  borderLeft: isActive
+                    ? `3px solid ${highlightBorder}`
+                    : `3px solid ${border}`,
                   padding: '4px 0 4px 12px',
                   fontWeight: isActive ? 600 : 400,
                   fontSize: 15,
                   minHeight: 32,
                   position: 'relative',
+                  color: text,
                 }}
               >
-                <span style={{ width: 90, color: '#555', fontSize: 13 }}>{label}</span>
+                <span style={{ width: 90, color: subText, fontSize: 13 }}>{label}</span>
                 <span style={{ marginLeft: 16, minWidth: 90 }}>
                   {p} DKK/kWh
                 </span>
-                <span style={{ marginLeft: 16, minWidth: 110, color: '#888', fontSize: 13 }}>
+                <span style={{ marginLeft: 16, minWidth: 110, color: subText, fontSize: 13 }}>
                   {chargingSpeed !== undefined
                     ? `Total: ${total} DKK @ ${chargingSpeed.toFixed(1)} kW`
                     : ''}
@@ -187,7 +199,7 @@ export const Results: React.FC<Props> = ({
                   <span
                     style={{
                       marginLeft: 12,
-                      color: '#0078d4',
+                      color: brand,
                       fontSize: 12,
                       fontWeight: 600,
                     }}

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import {
   FluentProvider,
   Title3,
-  webLightTheme,
+  webDarkTheme,
 } from '@fluentui/react-components';
 
 import { InputForm } from './components/InputForm';
@@ -146,19 +146,25 @@ const App: React.FC = () => {
   };
 
   return (
-    <FluentProvider theme={webLightTheme}>
+    <FluentProvider theme={webDarkTheme}>
       <div
         style={{
           minHeight: '100vh',
-          background: '#f6f8fa',
           display: 'flex',
           flexDirection: 'column',
           width: '100vw',
         }}
       >
-        <Title3 as="h1" style={{ margin: '24px 0 24px 32px' }}>
-          EV Charging Optimizer
-        </Title3>
+        <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0 24px 32px', gap: 16 }}>
+          <img
+            src="/ev-charging-logo.svg"
+            alt="EV Charging Logo"
+            style={{ width: 48, height: 48, borderRadius: 12, background: '#F3F6FB' }}
+          />
+          <Title3 as="h1" style={{ margin: 0 }}>
+            EV Charging Optimizer
+          </Title3>
+        </div>
         <div
           style={{
             flex: 1,

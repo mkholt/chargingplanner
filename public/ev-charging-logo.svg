@@ -1,0 +1,15 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none"
+	xmlns="http://www.w3.org/2000/svg">
+	<rect x="8" y="8" width="112" height="112" rx="24" fill="#F3F6FB"/>
+	<!-- Battery body -->
+	<rect x="32" y="44" width="56" height="40" rx="8" fill="#0078D4"/>
+	<!-- Battery terminal -->
+	<rect x="88" y="56" width="8" height="16" rx="2" fill="#0078D4"/>
+	<!-- Battery level -->
+	<rect x="36" y="48" width="40" height="32" rx="5" fill="#CFF09E"/>
+	<!-- Clock face (overlay, right side of battery) -->
+	<circle cx="84" cy="64" r="16" fill="#fff" stroke="#0078D4" stroke-width="2"/>
+	<!-- Clock hands -->
+	<rect x="83" y="56" width="2" height="10" rx="1" fill="#0078D4"/>
+	<rect x="84" y="64" width="8" height="2" rx="1" fill="#0078D4" transform="rotate(30 84 64)"/>
+</svg>
