@@ -56,18 +56,11 @@ const App: React.FC = () => {
       return;
     }
     // Merge price arrays if interval spans two days
-    let prices: number[] = [];
     let intervalStartDate: Date | null = null;
     if (allPrices.length === 2) {
-      const firstDayHours = 24 - earliestDate.getHours();
-      prices = [
-        ...allPrices[0].hours.slice(earliestDate.getHours()),
-        ...allPrices[1].hours.slice(0, intervalHours - firstDayHours),
-      ];
       intervalStartDate = new Date(earliestDate);
       intervalStartDate.setMinutes(0, 0, 0);
     } else {
-      prices = allPrices[0].hours.slice(earliestDate.getHours(), earliestDate.getHours() + intervalHours);
       intervalStartDate = new Date(earliestDate);
       intervalStartDate.setMinutes(0, 0, 0);
     }
@@ -80,7 +73,6 @@ const App: React.FC = () => {
     // Find the first available price hour >= now
     let timelinePrices: number[] = [];
     let timelineStart: Date | null = null;
-    let timelineEarliestIdx = 0;
     let timelineAllPrices: number[] = [];
     let timelineAllStart: Date | null = null;
 
@@ -131,7 +123,7 @@ const App: React.FC = () => {
     });
 
     // Adjust result indices to be relative to the full timeline
-    let adjustedResult = calcResult
+    const adjustedResult = calcResult
       ? {
           ...calcResult,
           startHour: calcResult.startHour + chargingStartIdx,
