@@ -7,15 +7,14 @@ import {
   Option,
 } from '@fluentui/react-components';
 
-import { getAvailableDates } from '../utils/mockPrices';
-
 type Props = {
   onSubmit: (input: {
     startPercent: number;
     endPercent: number;
     batterySize: number;
     chargingSpeed: number;
-    date: string;
+    earliest: string; // ISO string
+    latest: string;   // ISO string
   }) => void;
 };
 
@@ -28,20 +27,23 @@ const chargingSpeeds = [
 
 export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const now = new Date();
-  const availableDates = getAvailableDates(now);
+  const tomorrow7am = new Date(now);
+  tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
+  tomorrow7am.setHours(7, 0, 0, 0);
 
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
   const [batterySize, setBatterySize] = useState(60);
   const [chargingSpeed, setChargingSpeed] = useState(11);
-  const [date, setDate] = useState(availableDates[0]);
+  const [earliest, setEarliest] = useState(now.toISOString().slice(0, 16));
+  const [latest, setLatest] = useState(tomorrow7am.toISOString().slice(0, 16));
 
   return (
     <form
       style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 400 }}
       onSubmit={e => {
         e.preventDefault();
-        onSubmit({ startPercent, endPercent, batterySize, chargingSpeed, date });
+        onSubmit({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
       }}
     >
       <Input
@@ -78,16 +80,18 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           </Option>
         ))}
       </Dropdown>
-      <Dropdown
-        value={date}
-        onOptionSelect={(_ev, data) => setDate(String(data.optionValue))}
-      >
-        {availableDates.map(d => (
-          <Option key={d} value={d}>
-            {d}
-          </Option>
-        ))}
-      </Dropdown>
+      <Input
+        type="datetime-local"
+        value={earliest}
+        onChange={(_ev, data) => setEarliest(data.value)}
+        contentBefore="Earliest start"
+      />
+      <Input
+        type="datetime-local"
+        value={latest}
+        onChange={(_ev, data) => setLatest(data.value)}
+        contentBefore="Latest end"
+      />
       <Button appearance="primary" type="submit">
         Calculate
       </Button>
