@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 import {
-  Button,
   Dropdown,
   Input,
   Option,
@@ -44,13 +43,21 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const [latest, setLatest] = useState(tomorrow7am.toISOString().slice(0, 16));
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
+  // Auto-calculate on input change with debounce
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      onSubmit({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
+    }, 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startPercent, endPercent, batterySize, chargingSpeed, earliest, latest]);
+
   return (
     <div>
       <form
         style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 400 }}
         onSubmit={e => {
           e.preventDefault();
-          onSubmit({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
         }}
       >
         <Input
@@ -99,9 +106,7 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           onChange={(_ev, data) => setLatest(data.value)}
           contentBefore="Latest end"
         />
-        <Button appearance="primary" type="submit">
-          Calculate
-        </Button>
+        {/* Calculate button removed for auto-calc */}
       </form>
       <CarManager
         selectedCarId={selectedCarId}
