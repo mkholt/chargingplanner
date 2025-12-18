@@ -1,5 +1,10 @@
 import { useCallback, useState } from 'react';
 
+import {
+  mergeCars as mergeCarData,
+  type MergeResult,
+} from '../utils/carSyncCodec';
+
 export type Car = {
   id: string;
   name: string;
@@ -7,7 +12,13 @@ export type Car = {
   maxPower: number;
 };
 
+export type { MergeResult };
+
 const LS_KEY = "ev-cars";
+
+function generateId(): string {
+  return Math.random().toString(36).slice(2);
+}
 
 function loadCars(): Car[] {
   try {
@@ -29,7 +40,7 @@ export function useCars() {
   const addCar = useCallback((car: Omit<Car, 'id'>) => {
     const newCar: Car = {
       ...car,
-      id: Math.random().toString(36).slice(2),
+      id: generateId(),
     };
     setCars(prev => {
       const updated = [...prev, newCar];
@@ -47,5 +58,18 @@ export function useCars() {
     });
   }, []);
 
-  return { cars, addCar, deleteCar };
+  const mergeCars = useCallback((imported: Omit<Car, 'id'>[]): MergeResult => {
+    let result: MergeResult = { added: [], skipped: [], total: 0 };
+
+    setCars(prev => {
+      result = mergeCarData(prev, imported, generateId);
+      const updated = [...prev, ...result.added];
+      saveCars(updated);
+      return updated;
+    });
+
+    return result;
+  }, []);
+
+  return { cars, addCar, deleteCar, mergeCars };
 }

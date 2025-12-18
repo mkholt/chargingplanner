@@ -21,7 +21,8 @@ import {
   Delete24Regular,
 } from '@fluentui/react-icons';
 
-import type { Car } from '../hooks/useCars';
+import type { Car, MergeResult } from '../hooks/useCars';
+import { SyncPanel } from './sync/SyncPanel';
 
 const powerOptions = [
   { label: "2.3 kW (Level 1)", value: 2.3 },
@@ -39,6 +40,7 @@ type Props = {
   onSelect: (car: Car) => void;
   onAdd: (car: Omit<Car, 'id'>) => void;
   onDelete: (id: string) => void;
+  onMergeCars: (cars: Omit<Car, 'id'>[]) => MergeResult;
 };
 
 export const CarManager: React.FC<Props> = ({
@@ -49,6 +51,7 @@ export const CarManager: React.FC<Props> = ({
   onSelect,
   onAdd,
   onDelete,
+  onMergeCars,
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
@@ -233,6 +236,9 @@ export const CarManager: React.FC<Props> = ({
                   Add Car
                 </Button>
               )}
+
+              {/* Sync panel */}
+              <SyncPanel cars={cars} onImport={onMergeCars} />
             </div>
           </DialogContent>
           <DialogActions>

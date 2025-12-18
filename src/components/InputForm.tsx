@@ -14,6 +14,7 @@ import { BatteryCharge24Regular } from '@fluentui/react-icons';
 import { type Car, useCars } from '../hooks/useCars';
 import { CarManager } from './CarManager';
 import { CarSelector } from './CarSelector';
+import { SyncLinkHandler } from './sync/SyncLinkHandler';
 
 type Props = {
   onSubmit: (input: {
@@ -108,7 +109,7 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const [carManagerOpen, setCarManagerOpen] = useState(false);
 
   // Car management
-  const { cars, addCar, deleteCar } = useCars();
+  const { cars, addCar, deleteCar, mergeCars } = useCars();
 
   // Auto-select first car if none selected
   useEffect(() => {
@@ -267,6 +268,11 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
         onSelect={handleCarSelect}
         onAdd={addCar}
         onDelete={deleteCar}
+        onMergeCars={mergeCars}
+      />
+      <SyncLinkHandler
+        existingCars={cars}
+        onImport={mergeCars}
       />
     </div>
   );
