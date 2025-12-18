@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   Button,
   Card,
+  Combobox,
   Dialog,
   DialogActions,
   DialogBody,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
+  Option,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -24,10 +26,18 @@ export type Car = {
   id: string;
   name: string;
   batterySize: number;
-  chargingSpeed: number;
+  maxPower: number;
 };
 
 const LS_KEY = "ev-cars";
+
+const powerOptions = [
+  { label: "2.3 kW (Level 1)", value: 2.3 },
+  { label: "3.7 kW (1-phase)", value: 3.7 },
+  { label: "7.4 kW (1-phase)", value: 7.4 },
+  { label: "11 kW (3-phase)", value: 11 },
+  { label: "22 kW (3-phase)", value: 22 },
+];
 
 function loadCars(): Car[] {
   try {
@@ -52,7 +62,7 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
   const [cars, setCars] = useState<Car[]>(() => loadCars());
   const [name, setName] = useState("");
   const [batterySize, setBatterySize] = useState<number>(60);
-  const [chargingSpeed, setChargingSpeed] = useState<number>(11);
+  const [maxPower, setMaxPower] = useState<number>(11);
   const [showAdd, setShowAdd] = useState(false);
 
   // Auto-select first car if none selected
@@ -63,19 +73,19 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
   }, [cars, selectedCarId, onSelect]);
 
   function handleAdd() {
-    if (!name.trim() || batterySize <= 0 || chargingSpeed <= 0) return;
+    if (!name.trim() || batterySize <= 0 || maxPower <= 0) return;
     const newCar: Car = {
       id: Math.random().toString(36).slice(2),
       name: name.trim(),
       batterySize,
-      chargingSpeed,
+      maxPower,
     };
     const updated = [...cars, newCar];
     setCars(updated);
     saveCars(updated);
     setName("");
     setBatterySize(60);
-    setChargingSpeed(11);
+    setMaxPower(11);
   }
 
   function handleDelete(id: string) {
@@ -99,6 +109,28 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
         />
       </div>
       <div style={{ margin: "12px 0", display: "flex", gap: 16, flexWrap: "wrap" }}>
+        {cars.length === 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+              padding: "24px 16px",
+              width: "100%",
+              color: tokens.colorNeutralForeground3,
+            }}
+          >
+            <Text size={300}>No saved cars yet. Save your car's specs for quick access.</Text>
+            <Button
+              appearance="primary"
+              icon={<Add24Regular />}
+              onClick={() => setShowAdd(true)}
+            >
+              Add Your Car
+            </Button>
+          </div>
+        )}
         {cars.map((car) => {
           const isSelected = selectedCarId === car.id;
           return (
@@ -149,7 +181,7 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
               Battery: <b>{car.batterySize} kWh</b>
             </div>
             <div style={{ fontSize: 14, color: tokens.colorNeutralForeground2 }}>
-              Max speed: <b>{car.chargingSpeed} kW</b>
+              Max Power: <b>{car.maxPower} kW</b>
             </div>
             </Card>
           );
@@ -165,28 +197,60 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
             <DialogBody>
               <DialogTitle>Add New Car</DialogTitle>
               <DialogContent>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-                  <Input
-                    placeholder="Car name"
-                    value={name}
-                    onChange={(_e, d) => setName(d.value)}
-                  />
-                  <Input
-                    type="number"
-                    min={10}
-                    max={150}
-                    value={String(batterySize)}
-                    onChange={(_e, d) => setBatterySize(Number(d.value))}
-                    contentBefore="Battery (kWh)"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    max={350}
-                    value={String(chargingSpeed)}
-                    onChange={(_e, d) => setChargingSpeed(Number(d.value))}
-                    contentBefore="Max kW"
-                  />
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
+                  <div>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+                      Car Name
+                    </Text>
+                    <Input
+                      placeholder="e.g. My Tesla Model 3"
+                      value={name}
+                      onChange={(_e, d) => setName(d.value)}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+                      Battery Size (kWh)
+                    </Text>
+                    <Input
+                      type="number"
+                      min={10}
+                      max={150}
+                      value={String(batterySize)}
+                      onChange={(_e, d) => setBatterySize(Number(d.value))}
+                      placeholder="e.g. 60"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+                      Max Power (kW)
+                    </Text>
+                    <Combobox
+                      freeform
+                      placeholder="Select or type power"
+                      value={String(maxPower)}
+                      onOptionSelect={(_e, data) => {
+                        if (data.optionValue) {
+                          setMaxPower(Number(data.optionValue));
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (!isNaN(val) && val > 0) {
+                          setMaxPower(val);
+                        }
+                      }}
+                      style={{ width: "100%" }}
+                    >
+                      {powerOptions.map((opt) => (
+                        <Option key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                        </Option>
+                      ))}
+                    </Combobox>
+                  </div>
                 </div>
               </DialogContent>
               <DialogActions>

@@ -25,11 +25,12 @@ type Props = {
   }) => void;
 };
 
-const chargingSpeeds = [
-  { label: "3.7 kW (AC)", value: 3.7 },
-  { label: "7.4 kW (AC)", value: 7.4 },
-  { label: "11 kW (AC)", value: 11 },
-  { label: "22 kW (AC)", value: 22 },
+const chargingPowers = [
+  { label: "2.3 kW (Level 1)", value: 2.3 },
+  { label: "3.7 kW (1-phase)", value: 3.7 },
+  { label: "7.4 kW (1-phase)", value: 7.4 },
+  { label: "11 kW (3-phase)", value: 11 },
+  { label: "22 kW (3-phase)", value: 22 },
 ];
 
 export const InputForm: React.FC<Props> = ({ onSubmit }) => {
@@ -69,65 +70,95 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           <Text weight="semibold" size={400}>Charging Settings</Text>
         </div>
         <form
-          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
           onSubmit={e => {
             e.preventDefault();
           }}
         >
-        <Input
-          type="number"
-          min={0}
-          max={100}
-          value={String(startPercent)}
-          onChange={(_ev, data) => setStartPercent(Number(data.value))}
-          contentBefore="Start %"
-        />
-        <Input
-          type="number"
-          min={0}
-          max={100}
-          value={String(endPercent)}
-          onChange={(_ev, data) => setEndPercent(Number(data.value))}
-          contentBefore="End %"
-        />
-        <Input
-          type="number"
-          min={10}
-          max={150}
-          value={String(batterySize)}
-          onChange={(_ev, data) => setBatterySize(Number(data.value))}
-          contentBefore="Battery size (kWh)"
-        />
-        <Dropdown
-          value={chargingSpeeds.find(s => s.value === chargingSpeed)?.label}
-          onOptionSelect={(_ev, data) => setChargingSpeed(Number(data.optionValue))}
-        >
-          {chargingSpeeds.map(speed => (
-            <Option key={speed.value} value={String(speed.value)}>
-              {speed.label}
-            </Option>
-          ))}
-        </Dropdown>
-        <Input
-          type="datetime-local"
-          value={earliest}
-          onChange={(_ev, data) => setEarliest(data.value)}
-          contentBefore="Earliest start"
-        />
-        <Input
-          type="datetime-local"
-          value={latest}
-          onChange={(_ev, data) => setLatest(data.value)}
-          contentBefore="Latest end"
-        />
-        {/* Calculate button removed for auto-calc */}
-      </form>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+              Start %
+            </Text>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={String(startPercent)}
+              onChange={(_ev, data) => setStartPercent(Number(data.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+              End %
+            </Text>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={String(endPercent)}
+              onChange={(_ev, data) => setEndPercent(Number(data.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+              Battery Size (kWh)
+            </Text>
+            <Input
+              type="number"
+              min={10}
+              max={150}
+              value={String(batterySize)}
+              onChange={(_ev, data) => setBatterySize(Number(data.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+              Charging Power
+            </Text>
+            <Dropdown
+              value={chargingPowers.find(p => p.value === chargingSpeed)?.label}
+              onOptionSelect={(_ev, data) => setChargingSpeed(Number(data.optionValue))}
+              style={{ width: "100%" }}
+            >
+              {chargingPowers.map(power => (
+                <Option key={power.value} value={String(power.value)}>
+                  {power.label}
+                </Option>
+              ))}
+            </Dropdown>
+          </div>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+              Earliest Start
+            </Text>
+            <Input
+              type="datetime-local"
+              value={earliest}
+              onChange={(_ev, data) => setEarliest(data.value)}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
+              Latest End
+            </Text>
+            <Input
+              type="datetime-local"
+              value={latest}
+              onChange={(_ev, data) => setLatest(data.value)}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </form>
       <CarManager
         selectedCarId={selectedCarId}
         onSelect={(car: Car) => {
           setSelectedCarId(car.id);
           setBatterySize(car.batterySize);
-          setChargingSpeed(car.chargingSpeed);
+          setChargingSpeed(car.maxPower);
         }}
       />
       </div>
