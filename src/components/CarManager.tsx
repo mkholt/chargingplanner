@@ -135,15 +135,15 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
                 icon={<Delete24Regular />}
                 aria-label="Delete car"
               />
-              <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 2 }}>
-                {car.name}
-              </div>
-              <div style={{ fontSize: 14, color: tokens.colorNeutralForeground3 }}>
-                Battery: <b>{car.batterySize} kWh</b>
-              </div>
-              <div style={{ fontSize: 14, color: tokens.colorNeutralForeground3 }}>
-                Max speed: <b>{car.chargingSpeed} kW</b>
-              </div>
+            <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 2, color: tokens.colorNeutralForeground1 }}>
+              {car.name}
+            </div>
+            <div style={{ fontSize: 14, color: tokens.colorNeutralForeground2 }}>
+              Battery: <b>{car.batterySize} kWh</b>
+            </div>
+            <div style={{ fontSize: 14, color: tokens.colorNeutralForeground2 }}>
+              Max speed: <b>{car.chargingSpeed} kW</b>
+            </div>
             </Card>
           );
         })}

@@ -34,6 +34,7 @@ export const Results: React.FC<Props> = ({
   const text = tokens.colorNeutralForeground1;
   const subText = tokens.colorNeutralForeground3;
   const brand = tokens.colorBrandForeground1;
+  const secondary = tokens.colorNeutralForeground2;
   if (!intervalPrices.length || !intervalStart) {
     return (
       <Card>
@@ -86,7 +87,7 @@ export const Results: React.FC<Props> = ({
           }}
         >
           <div>
-            <Text size={300} style={{ color: '#555' }}>
+            <Text size={300} style={{ color: secondary }}>
               Start time
             </Text>
             <div>
@@ -105,7 +106,7 @@ export const Results: React.FC<Props> = ({
             </div>
           </div>
           <div>
-            <Text size={300} style={{ color: '#555' }}>
+            <Text size={300} style={{ color: secondary }}>
               End time
             </Text>
             <div>
@@ -124,7 +125,7 @@ export const Results: React.FC<Props> = ({
             </div>
           </div>
           <div>
-            <Text size={300} style={{ color: '#555' }}>
+            <Text size={300} style={{ color: secondary }}>
               Duration
             </Text>
             <div>
@@ -132,11 +133,11 @@ export const Results: React.FC<Props> = ({
             </div>
           </div>
           <div>
-            <Text size={300} style={{ color: '#555' }}>
+            <Text size={300} style={{ color: secondary }}>
               Total Cost
             </Text>
             <div>
-              <b style={{ fontSize: 20, color: '#0078d4' }}>{result.totalCost} DKK</b>
+              <b style={{ fontSize: 20, color: brand }}>{result.totalCost} DKK</b>
             </div>
           </div>
         </div>

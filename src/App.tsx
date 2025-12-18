@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   FluentProvider,
   Title3,
+  tokens,
   webDarkTheme,
 } from '@fluentui/react-components';
 
@@ -151,7 +152,12 @@ const App: React.FC = () => {
           <img
             src="/ev-charging-logo.svg"
             alt="EV Charging Logo"
-            style={{ width: 48, height: 48, borderRadius: 12, background: '#F3F6FB' }}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              background: tokens.colorNeutralBackground2
+            }}
           />
           <Title3 as="h1" style={{ margin: 0 }}>
             EV Charging Optimizer
