@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   Dropdown,
@@ -11,10 +11,9 @@ import {
 } from '@fluentui/react-components';
 import { BatteryCharge24Regular } from '@fluentui/react-icons';
 
-import {
-  type Car,
-  CarManager,
-} from './CarManager';
+import { type Car, useCars } from '../hooks/useCars';
+import { CarManager } from './CarManager';
+import { CarSelector } from './CarSelector';
 
 type Props = {
   onSubmit: (input: {
@@ -106,6 +105,26 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const [earliest, setEarliest] = useState(now.toISOString().slice(0, 16));
   const [latest, setLatest] = useState(tomorrow7am.toISOString().slice(0, 16));
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  const [carManagerOpen, setCarManagerOpen] = useState(false);
+
+  // Car management
+  const { cars, addCar, deleteCar } = useCars();
+
+  // Auto-select first car if none selected
+  useEffect(() => {
+    if (cars.length > 0 && !selectedCarId) {
+      const firstCar = cars[0];
+      setSelectedCarId(firstCar.id);
+      setBatterySize(firstCar.batterySize);
+      setChargingSpeed(firstCar.maxPower);
+    }
+  }, [cars, selectedCarId]);
+
+  const handleCarSelect = (car: Car) => {
+    setSelectedCarId(car.id);
+    setBatterySize(car.batterySize);
+    setChargingSpeed(car.maxPower);
+  };
 
   // Auto-calculate on input change with debounce
   React.useEffect(() => {
@@ -129,6 +148,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           <BatteryCharge24Regular />
           <Text weight="semibold" size={400}>Charging Settings</Text>
         </div>
+        <CarSelector
+          cars={cars}
+          selectedCarId={selectedCarId}
+          onSelect={handleCarSelect}
+          onManageClick={() => setCarManagerOpen(true)}
+        />
         <form
           style={{ display: "flex", flexDirection: "column", gap: 16 }}
           onSubmit={e => {
@@ -233,15 +258,16 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             />
           </div>
         </form>
-      <CarManager
-        selectedCarId={selectedCarId}
-        onSelect={(car: Car) => {
-          setSelectedCarId(car.id);
-          setBatterySize(car.batterySize);
-          setChargingSpeed(car.maxPower);
-        }}
-      />
       </div>
+      <CarManager
+        open={carManagerOpen}
+        onOpenChange={setCarManagerOpen}
+        cars={cars}
+        selectedCarId={selectedCarId}
+        onSelect={handleCarSelect}
+        onAdd={addCar}
+        onDelete={deleteCar}
+      />
     </div>
   );
 };
