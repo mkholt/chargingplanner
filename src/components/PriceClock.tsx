@@ -25,16 +25,16 @@ type HourData = {
 
 function getPriceColor(price: number, min: number, max: number): string {
   const range = max - min;
-  if (range === 0) return tokens.colorPaletteYellowBackground2;
+  if (range === 0) return tokens.colorPaletteYellowBorder1;
 
   const normalized = (price - min) / range;
 
   if (normalized < 0.33) {
-    return tokens.colorPaletteGreenBackground2;
+    return tokens.colorPaletteGreenBorder1;
   } else if (normalized < 0.66) {
-    return tokens.colorPaletteYellowBackground2;
+    return tokens.colorPaletteYellowBorder1;
   } else {
-    return tokens.colorPaletteRedBackground2;
+    return tokens.colorPaletteRedBorder1;
   }
 }
 
@@ -311,7 +311,7 @@ export const PriceClock: React.FC<Props> = ({
             style={{
               width: 14,
               height: 14,
-              background: tokens.colorPaletteGreenBackground2,
+              background: tokens.colorPaletteGreenBorder1,
               borderRadius: 3,
             }}
           />
@@ -322,7 +322,7 @@ export const PriceClock: React.FC<Props> = ({
             style={{
               width: 14,
               height: 14,
-              background: tokens.colorPaletteYellowBackground2,
+              background: tokens.colorPaletteYellowBorder1,
               borderRadius: 3,
             }}
           />
@@ -333,7 +333,7 @@ export const PriceClock: React.FC<Props> = ({
             style={{
               width: 14,
               height: 14,
-              background: tokens.colorPaletteRedBackground2,
+              background: tokens.colorPaletteRedBorder1,
               borderRadius: 3,
             }}
           />
