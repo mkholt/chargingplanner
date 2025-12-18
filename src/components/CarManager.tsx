@@ -3,6 +3,13 @@ import React, { useState } from 'react';
 import {
   Button,
   Card,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  DialogTrigger,
   Input,
   Text,
   tokens,
@@ -47,6 +54,13 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
   const [batterySize, setBatterySize] = useState<number>(60);
   const [chargingSpeed, setChargingSpeed] = useState<number>(11);
   const [showAdd, setShowAdd] = useState(false);
+
+  // Auto-select first car if none selected
+  React.useEffect(() => {
+    if (cars.length > 0 && !selectedCarId) {
+      onSelect(cars[0]);
+    }
+  }, [cars, selectedCarId, onSelect]);
 
   function handleAdd() {
     if (!name.trim() || batterySize <= 0 || chargingSpeed <= 0) return;
@@ -141,45 +155,50 @@ export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
           );
         })}
       </div>
-      {showAdd && (
-        <form
-          style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}
-          onSubmit={e => {
+      <Dialog open={showAdd} onOpenChange={(_e, data) => setShowAdd(data.open)}>
+        <DialogSurface>
+          <form onSubmit={e => {
             e.preventDefault();
             handleAdd();
             setShowAdd(false);
-          }}
-        >
-          <Input
-            placeholder="Car name"
-            value={name}
-            onChange={(_e, d) => setName(d.value)}
-            style={{ minWidth: 120 }}
-          />
-          <Input
-            type="number"
-            min={10}
-            max={150}
-            value={String(batterySize)}
-            onChange={(_e, d) => setBatterySize(Number(d.value))}
-            contentBefore="Battery (kWh)"
-            style={{ width: 120 }}
-          />
-          <Input
-            type="number"
-            min={1}
-            max={350}
-            value={String(chargingSpeed)}
-            onChange={(_e, d) => setChargingSpeed(Number(d.value))}
-            contentBefore="Max kW"
-            style={{ width: 100 }}
-          />
-          <Button type="submit" appearance="primary">Add Car</Button>
-          <Button type="button" appearance="subtle" onClick={() => setShowAdd(false)}>
-            Cancel
-          </Button>
-        </form>
-      )}
+          }}>
+            <DialogBody>
+              <DialogTitle>Add New Car</DialogTitle>
+              <DialogContent>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+                  <Input
+                    placeholder="Car name"
+                    value={name}
+                    onChange={(_e, d) => setName(d.value)}
+                  />
+                  <Input
+                    type="number"
+                    min={10}
+                    max={150}
+                    value={String(batterySize)}
+                    onChange={(_e, d) => setBatterySize(Number(d.value))}
+                    contentBefore="Battery (kWh)"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    max={350}
+                    value={String(chargingSpeed)}
+                    onChange={(_e, d) => setChargingSpeed(Number(d.value))}
+                    contentBefore="Max kW"
+                  />
+                </div>
+              </DialogContent>
+              <DialogActions>
+                <DialogTrigger disableButtonEnhancement>
+                  <Button appearance="secondary">Cancel</Button>
+                </DialogTrigger>
+                <Button type="submit" appearance="primary">Add Car</Button>
+              </DialogActions>
+            </DialogBody>
+          </form>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };
