@@ -4,7 +4,10 @@ import {
   Dropdown,
   Input,
   Option,
+  Text,
+  tokens,
 } from '@fluentui/react-components';
+import { BatteryCharge24Regular } from '@fluentui/react-icons';
 
 import {
   type Car,
@@ -53,12 +56,24 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
 
   return (
     <div>
-      <form
-        style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 400 }}
-        onSubmit={e => {
-          e.preventDefault();
+      <div
+        style={{
+          background: tokens.colorNeutralBackground2,
+          borderRadius: 8,
+          padding: 16,
+          border: `1px solid ${tokens.colorNeutralStroke1}`,
         }}
       >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <BatteryCharge24Regular />
+          <Text weight="semibold" size={400}>Charging Settings</Text>
+        </div>
+        <form
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          onSubmit={e => {
+            e.preventDefault();
+          }}
+        >
         <Input
           type="number"
           min={0}
@@ -115,6 +130,7 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           setChargingSpeed(car.chargingSpeed);
         }}
       />
+      </div>
     </div>
   );
 };

@@ -142,8 +142,13 @@ export const PriceClock: React.FC<Props> = ({
   const gap = 1; // Small gap between segments
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 16 }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 16, width: '100%' }}>
+      <svg
+        width="100%"
+        height="auto"
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ maxWidth: size, aspectRatio: '1 / 1' }}
+      >
         {/* Hour labels around the clock */}
         {[0, 3, 6, 9, 12, 15, 18, 21].map((hour) => {
           const angle = hour * segmentAngle;
@@ -297,50 +302,53 @@ export const PriceClock: React.FC<Props> = ({
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
           alignItems: 'center',
-          gap: 16,
-          marginTop: 16,
-          padding: '8px 16px',
+          gap: '8px 16px',
+          marginTop: 12,
+          padding: '8px 12px',
           background: tokens.colorNeutralBackground3,
           borderRadius: 8,
-          fontSize: 12,
+          fontSize: 11,
+          maxWidth: '100%',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div
             style={{
-              width: 14,
-              height: 14,
+              width: 12,
+              height: 12,
               background: tokens.colorPaletteGreenBorder1,
-              borderRadius: 3,
+              borderRadius: 2,
             }}
           />
           <span>Cheap</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div
             style={{
-              width: 14,
-              height: 14,
+              width: 12,
+              height: 12,
               background: tokens.colorPaletteYellowBorder1,
-              borderRadius: 3,
+              borderRadius: 2,
             }}
           />
           <span>Medium</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div
             style={{
-              width: 14,
-              height: 14,
+              width: 12,
+              height: 12,
               background: tokens.colorPaletteRedBorder1,
-              borderRadius: 3,
+              borderRadius: 2,
             }}
           />
           <span>Expensive</span>
         </div>
-        <div style={{ marginLeft: 8, color: tokens.colorNeutralForeground3 }}>
-          {minPrice.toFixed(2)} - {maxPrice.toFixed(2)} DKK/kWh
+        <div style={{ color: tokens.colorNeutralForeground3 }}>
+          {minPrice.toFixed(2)}-{maxPrice.toFixed(2)} DKK
         </div>
       </div>
     </div>

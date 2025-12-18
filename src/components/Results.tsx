@@ -22,7 +22,6 @@ type Props = {
 
 export const Results: React.FC<Props> = ({
   result,
-  date,
   intervalPrices,
   intervalStart,
   chargingSpeed,
@@ -63,79 +62,78 @@ export const Results: React.FC<Props> = ({
   if (highlightEnd < 0 || highlightEnd > filteredPrices.length) highlightEnd = filteredPrices.length;
 
   return (
-    <Card>
-      <Text weight="semibold" size={500}>
-        Charging Plan ({date})
+    <Card style={{
+      padding: 16,
+      background: tokens.colorNeutralBackground2,
+      border: `1px solid ${tokens.colorNeutralStroke1}`,
+    }}>
+      <Text weight="semibold" size={400} style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
+        Charging Plan
       </Text>
       {result && (
         <div
           style={{
-            marginTop: 16,
-            marginBottom: 16,
-            display: 'flex',
-            flexDirection: 'row',
-            gap: 32,
-            alignItems: 'center',
+            marginTop: 12,
+            marginBottom: 12,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+            gap: 12,
             background: bg,
             borderRadius: 8,
-            padding: '16px 24px',
+            padding: '12px 16px',
             boxShadow: tokens.shadow2,
             border: `1px solid ${border}`,
             color: text,
           }}
         >
           <div>
-            <Text size={300} style={{ color: secondary }}>
-              Start time
+            <Text size={200} style={{ color: secondary }}>
+              Start
             </Text>
-            <div>
-              <b>
-                {(() => {
-                  const startDate = new Date(filteredStart);
-                  startDate.setHours(startDate.getHours() + highlightStart, 0, 0, 0);
-                  return startDate.toLocaleString(undefined, {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: '2-digit',
-                  });
-                })()}
-              </b>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              {(() => {
+                const startDate = new Date(filteredStart);
+                startDate.setHours(startDate.getHours() + highlightStart, 0, 0, 0);
+                return startDate.toLocaleString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  day: 'numeric',
+                  month: 'short',
+                });
+              })()}
             </div>
           </div>
           <div>
-            <Text size={300} style={{ color: secondary }}>
-              End time
+            <Text size={200} style={{ color: secondary }}>
+              End
             </Text>
-            <div>
-              <b>
-                {(() => {
-                  const endDate = new Date(filteredStart);
-                  endDate.setHours(endDate.getHours() + highlightEnd, 0, 0, 0);
-                  return endDate.toLocaleString(undefined, {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: '2-digit',
-                  });
-                })()}
-              </b>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              {(() => {
+                const endDate = new Date(filteredStart);
+                endDate.setHours(endDate.getHours() + highlightEnd, 0, 0, 0);
+                return endDate.toLocaleString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  day: 'numeric',
+                  month: 'short',
+                });
+              })()}
             </div>
           </div>
           <div>
-            <Text size={300} style={{ color: secondary }}>
+            <Text size={200} style={{ color: secondary }}>
               Duration
             </Text>
-            <div>
-              <b>{result.duration} hours</b>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              {result.duration}h
             </div>
           </div>
           <div>
-            <Text size={300} style={{ color: secondary }}>
-              Total Cost
+            <Text size={200} style={{ color: secondary }}>
+              Cost
             </Text>
-            <div>
-              <b style={{ fontSize: 20, color: brand }}>{result.totalCost} DKK</b>
+            <div style={{ fontSize: 16, fontWeight: 700, color: brand }}>
+              {result.totalCost} DKK
             </div>
           </div>
         </div>

@@ -149,18 +149,18 @@ const App: React.FC = () => {
             width: '100vw',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0 24px 32px', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', margin: '16px', gap: 12 }}>
             <img
               src="/ev-charging-logo.svg"
               alt="EV Charging Logo"
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
+                width: 40,
+                height: 40,
+                borderRadius: 10,
                 background: tokens.colorNeutralBackground2
               }}
             />
-            <Title3 as="h1" style={{ margin: 0 }}>
+            <Title3 as="h1" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)' }}>
               EV Charging Optimizer
             </Title3>
           </div>
@@ -169,17 +169,18 @@ const App: React.FC = () => {
               flex: 1,
               display: 'flex',
               flexDirection: 'row',
-              gap: 32,
+              flexWrap: 'wrap',
+              gap: 16,
               width: '100%',
               alignItems: 'flex-start',
-              padding: '0 32px 32px 32px',
+              padding: '0 16px 16px 16px',
               boxSizing: 'border-box',
             }}
           >
-            <div style={{ flex: 1, maxWidth: 420 }}>
+            <div style={{ flex: '1 1 320px' }}>
               <InputForm onSubmit={handleSubmit} />
             </div>
-            <div style={{ flex: 2 }}>
+            <div style={{ flex: '2 1 400px' }}>
               <Results
                 result={result}
                 date={selectedDate}
