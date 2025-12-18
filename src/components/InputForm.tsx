@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import {
   Dropdown,
   Input,
+  makeStyles,
   Option,
+  Slider,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -33,7 +35,41 @@ const chargingPowers = [
   { label: "22 kW (3-phase)", value: 22 },
 ];
 
+const useSliderStyles = makeStyles({
+  red: {
+    '& .fui-Slider__rail::before': {
+      backgroundColor: tokens.colorPaletteRedBorder1,
+    },
+    '& .fui-Slider__thumb': {
+      backgroundColor: tokens.colorPaletteRedBorder1,
+    },
+  },
+  yellow: {
+    '& .fui-Slider__rail::before': {
+      backgroundColor: tokens.colorPaletteYellowBorder1,
+    },
+    '& .fui-Slider__thumb': {
+      backgroundColor: tokens.colorPaletteYellowBorder1,
+    },
+  },
+  green: {
+    '& .fui-Slider__rail::before': {
+      backgroundColor: tokens.colorPaletteGreenBorder1,
+    },
+    '& .fui-Slider__thumb': {
+      backgroundColor: tokens.colorPaletteGreenBorder1,
+    },
+  },
+});
+
+function getSliderClass(value: number, styles: ReturnType<typeof useSliderStyles>): string {
+  if (value < 20) return styles.red;
+  if (value > 80) return styles.yellow;
+  return styles.green;
+}
+
 export const InputForm: React.FC<Props> = ({ onSubmit }) => {
+  const sliderStyles = useSliderStyles();
   const now = new Date();
   const tomorrow7am = new Date(now);
   tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
@@ -41,6 +77,30 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
 
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
+
+  // Sticky snap at 80% for end percent
+  const lastRawEndPercent = useRef(80);
+  const handleEndPercentChange = (newValue: number) => {
+    const SNAP_POINT = 80;
+    const SNAP_RANGE = 4; // How close before it snaps
+    const BREAK_FREE_THRESHOLD = 6; // How far to drag to break free
+
+    lastRawEndPercent.current = newValue;
+
+    // If currently at snap point, require more force to break free
+    if (endPercent === SNAP_POINT) {
+      if (Math.abs(newValue - SNAP_POINT) < BREAK_FREE_THRESHOLD) {
+        return; // Stay snapped
+      }
+    }
+
+    // Snap to 80 if within range
+    if (Math.abs(newValue - SNAP_POINT) <= SNAP_RANGE) {
+      setEndPercent(SNAP_POINT);
+    } else {
+      setEndPercent(newValue);
+    }
+  };
   const [batterySize, setBatterySize] = useState(60);
   const [chargingSpeed, setChargingSpeed] = useState(11);
   const [earliest, setEarliest] = useState(now.toISOString().slice(0, 16));
@@ -79,27 +139,47 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
               Start %
             </Text>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={String(startPercent)}
-              onChange={(_ev, data) => setStartPercent(Number(data.value))}
-              style={{ width: "100%" }}
-            />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Slider
+                min={0}
+                max={100}
+                value={startPercent}
+                onChange={(_ev, data) => setStartPercent(data.value)}
+                className={getSliderClass(startPercent, sliderStyles)}
+                style={{ flex: 1 }}
+              />
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={String(startPercent)}
+                onChange={(_ev, data) => setStartPercent(Number(data.value))}
+                style={{ width: 70 }}
+              />
+            </div>
           </div>
           <div>
             <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
               End %
             </Text>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={String(endPercent)}
-              onChange={(_ev, data) => setEndPercent(Number(data.value))}
-              style={{ width: "100%" }}
-            />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Slider
+                min={0}
+                max={100}
+                value={endPercent}
+                onChange={(_ev, data) => handleEndPercentChange(data.value)}
+                className={getSliderClass(endPercent, sliderStyles)}
+                style={{ flex: 1 }}
+              />
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={String(endPercent)}
+                onChange={(_ev, data) => setEndPercent(Number(data.value))}
+                style={{ width: 70 }}
+              />
+            </div>
           </div>
           <div>
             <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
