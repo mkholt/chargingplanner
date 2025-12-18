@@ -68,6 +68,16 @@ function getSliderClass(value: number, styles: ReturnType<typeof useSliderStyles
   return styles.green;
 }
 
+// Format date as local datetime-local value (YYYY-MM-DDTHH:MM)
+function toLocalDateTimeString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const sliderStyles = useSliderStyles();
   const now = new Date();
@@ -103,8 +113,8 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   };
   const [batterySize, setBatterySize] = useState(60);
   const [chargingSpeed, setChargingSpeed] = useState(11);
-  const [earliest, setEarliest] = useState(now.toISOString().slice(0, 16));
-  const [latest, setLatest] = useState(tomorrow7am.toISOString().slice(0, 16));
+  const [earliest, setEarliest] = useState(toLocalDateTimeString(now));
+  const [latest, setLatest] = useState(toLocalDateTimeString(tomorrow7am));
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const [carManagerOpen, setCarManagerOpen] = useState(false);
 

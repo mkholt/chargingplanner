@@ -105,7 +105,7 @@ const App: React.FC = () => {
       );
     const chargingEndIdx =
       Math.max(
-        Math.floor((latestDate.getTime() - timelineStart.getTime()) / (60 * 60 * 1000)) + 1,
+        Math.floor((latestDate.getTime() - timelineStart.getTime()) / (60 * 60 * 1000)),
         chargingStartIdx
       );
 
