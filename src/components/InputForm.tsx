@@ -49,8 +49,7 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
       onSubmit({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
     }, 300);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startPercent, endPercent, batterySize, chargingSpeed, earliest, latest]);
+  }, [onSubmit, startPercent, endPercent, batterySize, chargingSpeed, earliest, latest]);
 
   return (
     <div>

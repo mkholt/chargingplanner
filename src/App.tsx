@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import {
   FluentProvider,
@@ -7,11 +7,16 @@ import {
   webDarkTheme,
 } from '@fluentui/react-components';
 
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { InputForm } from './components/InputForm';
 import { Results } from './components/Results';
 import type { ChargingResult } from './utils/chargingCalculator';
 import { findOptimalChargingWindow } from './utils/chargingCalculator';
 import { getPricesForDate } from './utils/mockPrices';
+
+function getLocalDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 const App: React.FC = () => {
   const [result, setResult] = useState<ChargingResult | null>(null);
@@ -20,7 +25,7 @@ const App: React.FC = () => {
   const [intervalStart, setIntervalStart] = useState<Date | null>(null);
   const [chargingSpeed, setChargingSpeed] = useState<number | undefined>(undefined);
 
-  const handleSubmit = (input: {
+  const handleSubmit = useCallback((input: {
     startPercent: number;
     endPercent: number;
     batterySize: number;
@@ -36,7 +41,7 @@ const App: React.FC = () => {
 
     // Get all price data for the relevant days
     const allPrices: { date: string; hours: number[] }[] = [];
-    for (const p of [getPricesForDate(earliestDate.toISOString().slice(0, 10)), getPricesForDate(latestDate.toISOString().slice(0, 10))]) {
+    for (const p of [getPricesForDate(getLocalDateString(earliestDate)), getPricesForDate(getLocalDateString(latestDate))]) {
       if (p) allPrices.push({ date: '', hours: p });
     }
     if (allPrices.length === 0) {
@@ -56,15 +61,9 @@ const App: React.FC = () => {
       setIntervalStart(null);
       return;
     }
-    // Merge price arrays if interval spans two days
-    let intervalStartDate: Date | null = null;
-    if (allPrices.length === 2) {
-      intervalStartDate = new Date(earliestDate);
-      intervalStartDate.setMinutes(0, 0, 0);
-    } else {
-      intervalStartDate = new Date(earliestDate);
-      intervalStartDate.setMinutes(0, 0, 0);
-    }
+    // Set interval start date
+    const intervalStartDate = new Date(earliestDate);
+    intervalStartDate.setMinutes(0, 0, 0);
 
     // For timeline: show all prices from "now" to the end of available price data
     const now = new Date();
@@ -78,12 +77,13 @@ const App: React.FC = () => {
     let timelineAllStart: Date | null = null;
 
     // Gather all future prices from now to the end of available data
-    const today = now.toISOString().slice(0, 10);
-    const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+    const today = getLocalDateString(now);
+    const tomorrowDate = new Date(now.getTime() + 86400000);
+    const tomorrow = getLocalDateString(tomorrowDate);
     const todayPrices = getPricesForDate(today) || [];
     const tomorrowPrices = getPricesForDate(tomorrow) || [];
     timelineAllPrices = [...todayPrices, ...tomorrowPrices];
-    timelineAllStart = new Date(today);
+    timelineAllStart = new Date(now);
     timelineAllStart.setHours(0, 0, 0, 0);
 
     // Find the index in timelineAllPrices that matches the current hour
@@ -136,59 +136,61 @@ const App: React.FC = () => {
     setSelectedDate(
       `${earliestDate.toLocaleString()} - ${latestDate.toLocaleString()}`
     );
-  };
+  }, []);
 
   return (
     <FluentProvider theme={webDarkTheme}>
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100vw',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0 24px 32px', gap: 16 }}>
-          <img
-            src="/ev-charging-logo.svg"
-            alt="EV Charging Logo"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: tokens.colorNeutralBackground2
-            }}
-          />
-          <Title3 as="h1" style={{ margin: 0 }}>
-            EV Charging Optimizer
-          </Title3>
-        </div>
+      <ErrorBoundary>
         <div
           style={{
-            flex: 1,
+            minHeight: '100vh',
             display: 'flex',
-            flexDirection: 'row',
-            gap: 32,
-            width: '100%',
-            alignItems: 'flex-start',
-            padding: '0 32px 32px 32px',
-            boxSizing: 'border-box',
+            flexDirection: 'column',
+            width: '100vw',
           }}
         >
-          <div style={{ flex: 1, maxWidth: 420 }}>
-            <InputForm onSubmit={handleSubmit} />
-          </div>
-          <div style={{ flex: 2 }}>
-            <Results
-              result={result}
-              date={selectedDate}
-              intervalPrices={intervalPrices}
-              intervalStart={intervalStart}
-              chargingSpeed={chargingSpeed}
+          <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0 24px 32px', gap: 16 }}>
+            <img
+              src="/ev-charging-logo.svg"
+              alt="EV Charging Logo"
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: tokens.colorNeutralBackground2
+              }}
             />
+            <Title3 as="h1" style={{ margin: 0 }}>
+              EV Charging Optimizer
+            </Title3>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 32,
+              width: '100%',
+              alignItems: 'flex-start',
+              padding: '0 32px 32px 32px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ flex: 1, maxWidth: 420 }}>
+              <InputForm onSubmit={handleSubmit} />
+            </div>
+            <div style={{ flex: 2 }}>
+              <Results
+                result={result}
+                date={selectedDate}
+                intervalPrices={intervalPrices}
+                intervalStart={intervalStart}
+                chargingSpeed={chargingSpeed}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </ErrorBoundary>
     </FluentProvider>
   );
 };

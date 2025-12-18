@@ -1,7 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-} from 'react';
+import React, { useState } from 'react';
 
 import {
   Button,
@@ -45,15 +42,11 @@ type Props = {
 };
 
 export const CarManager: React.FC<Props> = ({ onSelect, selectedCarId }) => {
-  const [cars, setCars] = useState<Car[]>([]);
+  const [cars, setCars] = useState<Car[]>(() => loadCars());
   const [name, setName] = useState("");
   const [batterySize, setBatterySize] = useState<number>(60);
   const [chargingSpeed, setChargingSpeed] = useState<number>(11);
   const [showAdd, setShowAdd] = useState(false);
-
-  useEffect(() => {
-    setCars(loadCars());
-  }, []);
 
   function handleAdd() {
     if (!name.trim() || batterySize <= 0 || chargingSpeed <= 0) return;
