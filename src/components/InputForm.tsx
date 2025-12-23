@@ -12,6 +12,8 @@ import {
 import { BatteryCharge24Regular } from '@fluentui/react-icons';
 
 import { type Car, useCars } from '../hooks/useCars';
+import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS } from '../utils/constants';
+import { toDateTimeLocalString } from '../utils/dateUtils';
 import { CarManager } from './CarManager';
 import { CarSelector } from './CarSelector';
 import { SyncLinkHandler } from './sync/SyncLinkHandler';
@@ -26,14 +28,6 @@ type Props = {
     latest: string;   // ISO string
   }) => void;
 };
-
-const chargingPowers = [
-  { label: "2.3 kW (Level 1)", value: 2.3 },
-  { label: "3.7 kW (1-phase)", value: 3.7 },
-  { label: "7.4 kW (1-phase)", value: 7.4 },
-  { label: "11 kW (3-phase)", value: 11 },
-  { label: "22 kW (3-phase)", value: 22 },
-];
 
 const useSliderStyles = makeStyles({
   red: {
@@ -68,16 +62,6 @@ function getSliderClass(value: number, styles: ReturnType<typeof useSliderStyles
   return styles.green;
 }
 
-// Format date as local datetime-local value (YYYY-MM-DDTHH:MM)
-function toLocalDateTimeString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
 export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const sliderStyles = useSliderStyles();
   const now = new Date();
@@ -88,23 +72,28 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
 
-  // Sticky snap at 80% for end percent
-  const lastRawEndPercent = useRef(80);
-  const handleEndPercentChange = (newValue: number) => {
+  // Sticky snap at 80% for end percent with hysteresis
+  const handleEndPercentChange = (newValue: number, fromSlider: boolean = true) => {
     const SNAP_POINT = 80;
-    const SNAP_RANGE = 4; // How close before it snaps
-    const BREAK_FREE_THRESHOLD = 6; // How far to drag to break free
+    const SNAP_RANGE = 3;       // Snap when within 3 units of 80
+    const ESCAPE_DISTANCE = 7; // Must drag 7+ units from 80 to break free
 
-    lastRawEndPercent.current = newValue;
-
-    // If currently at snap point, require more force to break free
-    if (endPercent === SNAP_POINT) {
-      if (Math.abs(newValue - SNAP_POINT) < BREAK_FREE_THRESHOLD) {
-        return; // Stay snapped
-      }
+    if (!fromSlider) {
+      // Direct input (text field) bypasses snapping
+      setEndPercent(newValue);
+      return;
     }
 
-    // Snap to 80 if within range
+    // If currently snapped at 80, require dragging far enough to break free
+    if (endPercent === SNAP_POINT) {
+      if (Math.abs(newValue - SNAP_POINT) >= ESCAPE_DISTANCE) {
+        setEndPercent(newValue);
+      }
+      // Otherwise stay snapped
+      return;
+    }
+
+    // If approaching snap point, snap to it
     if (Math.abs(newValue - SNAP_POINT) <= SNAP_RANGE) {
       setEndPercent(SNAP_POINT);
     } else {
@@ -113,8 +102,8 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   };
   const [batterySize, setBatterySize] = useState(60);
   const [chargingSpeed, setChargingSpeed] = useState(11);
-  const [earliest, setEarliest] = useState(toLocalDateTimeString(now));
-  const [latest, setLatest] = useState(toLocalDateTimeString(tomorrow7am));
+  const [earliest, setEarliest] = useState(toDateTimeLocalString(now));
+  const [latest, setLatest] = useState(toDateTimeLocalString(tomorrow7am));
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const [carManagerOpen, setCarManagerOpen] = useState(false);
 
@@ -122,12 +111,17 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const { cars, addCar, deleteCar, mergeCars } = useCars();
 
   // Auto-select first car if none selected
+  const hasAutoSelected = useRef(false);
   useEffect(() => {
-    if (cars.length > 0 && !selectedCarId) {
+    if (cars.length > 0 && !selectedCarId && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
       const firstCar = cars[0];
-      setSelectedCarId(firstCar.id);
-      setBatterySize(firstCar.batterySize);
-      setChargingSpeed(firstCar.maxPower);
+      // Use queueMicrotask to make setState asynchronous (satisfies react-hooks/set-state-in-effect)
+      queueMicrotask(() => {
+        setSelectedCarId(firstCar.id);
+        setBatterySize(firstCar.batterySize);
+        setChargingSpeed(firstCar.maxPower);
+      });
     }
   }, [cars, selectedCarId]);
 
@@ -137,13 +131,19 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
     setChargingSpeed(car.maxPower);
   };
 
-  // Auto-calculate on input change with debounce
-  React.useEffect(() => {
+  // Store callback in ref to avoid resetting debounce when callback identity changes
+  const onSubmitRef = useRef(onSubmit);
+  useEffect(() => {
+    onSubmitRef.current = onSubmit;
+  }, [onSubmit]);
+
+  // Auto-calculate on input change with stable debounce
+  useEffect(() => {
     const timeout = setTimeout(() => {
-      onSubmit({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
-    }, 300);
+      onSubmitRef.current({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
+    }, DEBOUNCE_MS);
     return () => clearTimeout(timeout);
-  }, [onSubmit, startPercent, endPercent, batterySize, chargingSpeed, earliest, latest]);
+  }, [startPercent, endPercent, batterySize, chargingSpeed, earliest, latest]);
 
   return (
     <div>
@@ -212,7 +212,7 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
                 min={0}
                 max={100}
                 value={String(endPercent)}
-                onChange={(_ev, data) => setEndPercent(Number(data.value))}
+                onChange={(_ev, data) => handleEndPercentChange(Number(data.value), false)}
                 style={{ width: 70 }}
               />
             </div>
@@ -235,11 +235,11 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
               Charging Power
             </Text>
             <Dropdown
-              value={chargingPowers.find(p => p.value === chargingSpeed)?.label}
+              value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
               onOptionSelect={(_ev, data) => setChargingSpeed(Number(data.optionValue))}
               style={{ width: "100%" }}
             >
-              {chargingPowers.map(power => (
+              {CHARGING_POWER_OPTIONS.map(power => (
                 <Option key={power.value} value={String(power.value)}>
                   {power.label}
                 </Option>

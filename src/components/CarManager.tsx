@@ -22,15 +22,8 @@ import {
 } from '@fluentui/react-icons';
 
 import type { Car, MergeResult } from '../hooks/useCars';
+import { CHARGING_POWER_OPTIONS } from '../utils/constants';
 import { SyncPanel } from './sync/SyncPanel';
-
-const powerOptions = [
-  { label: "2.3 kW (Level 1)", value: 2.3 },
-  { label: "3.7 kW (1-phase)", value: 3.7 },
-  { label: "7.4 kW (1-phase)", value: 7.4 },
-  { label: "11 kW (3-phase)", value: 11 },
-  { label: "22 kW (3-phase)", value: 22 },
-];
 
 type Props = {
   open: boolean;
@@ -209,7 +202,7 @@ export const CarManager: React.FC<Props> = ({
                         }}
                         style={{ width: "100%" }}
                       >
-                        {powerOptions.map((opt) => (
+                        {CHARGING_POWER_OPTIONS.map((opt) => (
                           <Option key={opt.value} value={String(opt.value)}>
                             {opt.label}
                           </Option>

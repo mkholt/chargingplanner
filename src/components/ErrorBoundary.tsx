@@ -8,8 +8,16 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
-type Props = { children: ReactNode };
-type State = { hasError: boolean; error?: Error };
+type Props = {
+  children: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+};
+
+type State = {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: ErrorInfo;
+};
 
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
@@ -20,6 +28,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+    this.setState({ errorInfo });
+    this.props.onError?.(error, errorInfo);
   }
 
   render() {
@@ -32,7 +42,26 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text style={{ marginBottom: 16, display: 'block', color: tokens.colorNeutralForeground2 }}>
             {this.state.error?.message}
           </Text>
-          <Button appearance="primary" onClick={() => this.setState({ hasError: false })}>
+          {this.state.error?.stack && (
+            <details style={{ marginBottom: 16 }}>
+              <summary style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, marginBottom: 8 }}>
+                Technical details
+              </summary>
+              <pre style={{
+                fontSize: 12,
+                overflow: 'auto',
+                maxHeight: 200,
+                background: tokens.colorNeutralBackground3,
+                padding: 8,
+                borderRadius: 4,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}>
+                {this.state.error.stack}
+              </pre>
+            </details>
+          )}
+          <Button appearance="primary" onClick={() => this.setState({ hasError: false, errorInfo: undefined })}>
             Try again
           </Button>
         </Card>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import {
   Button,
@@ -20,24 +20,24 @@ type Props = {
   onImport: (cars: Omit<Car, 'id'>[]) => MergeResult;
 };
 
+/** Check URL hash for sync data and clear it */
+function getInitialCarsFromUrl(): Omit<Car, 'id'>[] | null {
+  const hash = window.location.hash;
+  if (!hash.startsWith('#sync=')) return null;
+
+  const parsed = parseShareableUrl(window.location.href);
+  if (parsed && parsed.length > 0) {
+    // Clear the hash from URL without triggering a reload
+    window.history.replaceState(null, '', window.location.pathname);
+    return parsed;
+  }
+  return null;
+}
+
 export const SyncLinkHandler: React.FC<Props> = ({ existingCars, onImport }) => {
-  const [carsToImport, setCarsToImport] = useState<Omit<Car, 'id'>[] | null>(null);
+  // Use lazy initialization to read URL on first render
+  const [carsToImport, setCarsToImport] = useState<Omit<Car, 'id'>[] | null>(getInitialCarsFromUrl);
   const [importResult, setImportResult] = useState<MergeResult | null>(null);
-
-  // Check URL hash on mount
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash.startsWith('#sync=')) return;
-
-    const url = window.location.href;
-    const parsed = parseShareableUrl(url);
-
-    if (parsed && parsed.length > 0) {
-      setCarsToImport(parsed);
-      // Clear the hash from URL without triggering a reload
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  }, []);
 
   const handleConfirmImport = () => {
     if (!carsToImport) return;

@@ -5,7 +5,7 @@ import {
 } from '@fluentui/react-components';
 import { CalendarClock24Regular } from '@fluentui/react-icons';
 
-import { PriceClock } from './PriceClock';
+import { PriceTimeline } from './PriceTimeline';
 
 type Props = {
   result: {
@@ -142,7 +142,7 @@ export const Results: React.FC<Props> = ({
           </div>
         </div>
       )}
-      <PriceClock
+      <PriceTimeline
         prices={filteredPrices}
         startDate={filteredStart}
         chargingStart={highlightStart}

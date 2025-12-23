@@ -1,12 +1,11 @@
+import { MS_PER_DAY } from './constants';
+import { getLocalDateString } from './dateUtils';
+
 // Mock hourly electricity prices for "today" and "tomorrow" (DKK/kWh)
 export type PriceData = {
   date: string; // YYYY-MM-DD
   hours: number[]; // 24 values, one per hour
 };
-
-function getLocalDateString(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 const todayPrices = [
   0.32, 0.30, 0.28, 0.27, 0.26, 0.25, 0.24, 0.25,
@@ -23,7 +22,7 @@ const tomorrowPrices = [
 function getMockPrices(): PriceData[] {
   const now = new Date();
   const today = getLocalDateString(now);
-  const tomorrow = getLocalDateString(new Date(now.getTime() + 86400000));
+  const tomorrow = getLocalDateString(new Date(now.getTime() + MS_PER_DAY));
   return [
     { date: today, hours: todayPrices },
     { date: tomorrow, hours: tomorrowPrices }
@@ -33,7 +32,7 @@ function getMockPrices(): PriceData[] {
 // Utility to get available dates based on current time (Copenhagen time)
 export function getAvailableDates(now: Date): string[] {
   const today = getLocalDateString(now);
-  const tomorrow = getLocalDateString(new Date(now.getTime() + 86400000));
+  const tomorrow = getLocalDateString(new Date(now.getTime() + MS_PER_DAY));
   // Prices for tomorrow are available after 13:00
   if (now.getHours() >= 13) {
     return [today, tomorrow];
