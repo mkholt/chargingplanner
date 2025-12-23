@@ -1,13 +1,17 @@
 import React, { useCallback, useState } from 'react';
 
 import {
+  Button,
   FluentProvider,
   Title3,
+  Tooltip,
   tokens,
   webDarkTheme,
 } from '@fluentui/react-components';
+import { Settings20Regular } from '@fluentui/react-icons';
 
-import { ErrorBoundary, InputForm, Results } from '@/components';
+import { ErrorBoundary, InputForm, PriceSettingsDialog, Results } from '@/components';
+import { usePriceSettings } from '@/hooks';
 import {
   buildTimeline,
   findOptimalChargingWindow,
@@ -21,6 +25,15 @@ const App: React.FC = () => {
   const [intervalPrices, setIntervalPrices] = useState<number[]>([]);
   const [intervalStart, setIntervalStart] = useState<Date | null>(null);
   const [chargingSpeed, setChargingSpeed] = useState<number | undefined>(undefined);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const {
+    resolved: priceSettings,
+    setPostalCode,
+    setCompanyId,
+    setProductId,
+    clearAll: clearPriceSettings,
+  } = usePriceSettings();
 
   const handleSubmit = useCallback((input: {
     startPercent: number;
@@ -110,9 +123,17 @@ const App: React.FC = () => {
                 background: tokens.colorNeutralBackground2
               }}
             />
-            <Title3 as="h1" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)' }}>
+            <Title3 as="h1" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
               EV Charging Optimizer
             </Title3>
+            <Tooltip content="Price settings" relationship="label">
+              <Button
+                appearance="subtle"
+                icon={<Settings20Regular />}
+                onClick={() => setSettingsOpen(true)}
+                aria-label="Price settings"
+              />
+            </Tooltip>
           </div>
           <div
             style={{
@@ -141,6 +162,15 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+        <PriceSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          resolved={priceSettings}
+          onPostalCodeChange={setPostalCode}
+          onCompanyChange={setCompanyId}
+          onProductChange={setProductId}
+          onClearAll={clearPriceSettings}
+        />
       </ErrorBoundary>
     </FluentProvider>
   );
