@@ -9,7 +9,15 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { BatteryCharge24Regular } from '@fluentui/react-icons';
+import {
+  Battery024Regular,
+  Battery1024Regular,
+  BatteryCharge24Regular,
+  Clock24Regular,
+  ClockAlarm24Regular,
+  Flash24Regular,
+  VehicleCarProfileLtr24Regular,
+} from '@fluentui/react-icons';
 
 import { type Car, useCars } from '../hooks/useCars';
 import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS } from '../utils/constants';
@@ -172,9 +180,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           }}
         >
           <div>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
-              Start %
-            </Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Battery024Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Start %
+              </Text>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Slider
                 min={0}
@@ -195,9 +206,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             </div>
           </div>
           <div>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
-              End %
-            </Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Battery1024Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                End %
+              </Text>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Slider
                 min={0}
@@ -218,9 +232,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             </div>
           </div>
           <div>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
-              Battery Size (kWh)
-            </Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <VehicleCarProfileLtr24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Battery Size (kWh)
+              </Text>
+            </div>
             <Input
               type="number"
               min={10}
@@ -231,9 +248,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             />
           </div>
           <div>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
-              Charging Power
-            </Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Flash24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Charging Power
+              </Text>
+            </div>
             <Dropdown
               value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
               onOptionSelect={(_ev, data) => setChargingSpeed(Number(data.optionValue))}
@@ -247,9 +267,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             </Dropdown>
           </div>
           <div>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
-              Earliest Start
-            </Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Clock24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Earliest Start
+              </Text>
+            </div>
             <Input
               type="datetime-local"
               value={earliest}
@@ -258,9 +281,12 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             />
           </div>
           <div>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 4, display: "block" }}>
-              Latest End
-            </Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <ClockAlarm24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Latest End
+              </Text>
+            </div>
             <Input
               type="datetime-local"
               value={latest}
