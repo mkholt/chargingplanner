@@ -8,7 +8,7 @@ import {
 } from '@fluentui/react-components';
 import { Delete24Regular } from '@fluentui/react-icons';
 
-import type { Car } from '../../hooks/useCars';
+import type { Car } from '@/hooks';
 
 type Props = {
   car: Car;

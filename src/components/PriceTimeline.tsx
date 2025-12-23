@@ -5,11 +5,14 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
-import { PriceLegend } from './timeline/PriceLegend';
-import { getDayLabel, getPriceColor } from './timeline/priceColors';
-import { SelectedHourDetail } from './timeline/SelectedHourDetail';
-import { TimelineBar } from './timeline/TimelineBar';
-import type { HourData } from './timeline/types';
+import {
+  getDayLabel,
+  getPriceColor,
+  type HourData,
+  PriceLegend,
+  SelectedHourDetail,
+  TimelineBar,
+} from '@/components/timeline';
 
 type Props = {
   prices: number[];

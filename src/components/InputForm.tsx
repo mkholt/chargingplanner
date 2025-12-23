@@ -15,15 +15,12 @@ import {
   VehicleCarProfileLtr24Regular,
 } from '@fluentui/react-icons';
 
-import { type Car, useCars } from '../hooks/useCars';
-import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS } from '../utils/constants';
-import { toDateTimeLocalString } from '../utils/dateUtils';
-import { CarManager } from './CarManager';
-import { CarSelector } from './CarSelector';
-import { BatteryPercentageSlider } from './form/BatteryPercentageSlider';
-import { TimeWindowSelector } from './form/TimeWindowSelector';
-import { SyncLinkHandler } from './sync/SyncLinkHandler';
-import { LabeledFormField } from './ui/LabeledFormField';
+import { CarManager, CarSelector } from '@/components';
+import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
+import { SyncLinkHandler } from '@/components/sync';
+import { LabeledFormField } from '@/components/ui';
+import { type Car, useCars } from '@/hooks';
+import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
 
 type Props = {
   onSubmit: (input: {

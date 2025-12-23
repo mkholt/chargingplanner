@@ -13,11 +13,13 @@ import {
   ClipboardPaste20Regular,
 } from '@fluentui/react-icons';
 
-import type { Car, MergeResult } from '../../hooks/useCars';
-import { parseAnyFormat } from '../../utils/carSyncCodec';
-import { CarImportPreviewDialog } from './CarImportPreviewDialog';
-import { CarImportResultDialog } from './CarImportResultDialog';
-import { QRCodeScanner } from './QRCodeScanner';
+import {
+  CarImportPreviewDialog,
+  CarImportResultDialog,
+  QRCodeScanner,
+} from '@/components/sync';
+import type { Car, MergeResult } from '@/hooks';
+import { parseAnyFormat } from '@/utils';
 
 type Props = {
   existingCars: Car[];

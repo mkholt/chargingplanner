@@ -12,7 +12,7 @@ import {
   VehicleCar20Regular,
 } from '@fluentui/react-icons';
 
-import type { Car } from '../hooks/useCars';
+import type { Car } from '@/hooks';
 
 type Props = {
   cars: Car[];

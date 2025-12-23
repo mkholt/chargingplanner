@@ -12,7 +12,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
-import type { MergeResult } from '../../hooks/useCars';
+import type { MergeResult } from '@/hooks';
 
 type Props = {
   open: boolean;

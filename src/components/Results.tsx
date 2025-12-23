@@ -5,7 +5,7 @@ import {
 } from '@fluentui/react-components';
 import { CalendarClock24Regular } from '@fluentui/react-icons';
 
-import { PriceTimeline } from './PriceTimeline';
+import { PriceTimeline } from '@/components';
 
 type Props = {
   result: {

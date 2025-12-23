@@ -15,6 +15,14 @@ npm run preview  # Preview production build
 
 This is an EV Charging Optimizer - a React + TypeScript + Vite application that helps users find the cheapest time window to charge their electric vehicle based on hourly electricity prices.
 
+## Code style
+
+Path aliases are enabled and must always be used. Always refer to a component or hook using the aliased names.
+
+Example: `import { useCars} from "@/hooks"`
+
+Folders are barelled, and imports must always be from the folder not the specific component. Now components, hooks and utilities should always be added to their barrels.
+
 ### Core Components
 
 - **App.tsx** - Main component that orchestrates the calculation flow. Takes user input, fetches price data, calls the optimizer, and displays results.

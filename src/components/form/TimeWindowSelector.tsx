@@ -6,7 +6,7 @@ import {
   ClockAlarm24Regular,
 } from '@fluentui/react-icons';
 
-import { LabeledFormField } from '../ui/LabeledFormField';
+import { LabeledFormField } from '@/components/ui';
 
 type Props = {
   earliest: string;

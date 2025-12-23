@@ -17,10 +17,9 @@ import {
   Dismiss24Regular,
 } from '@fluentui/react-icons';
 
-import type { Car, MergeResult } from '../hooks/useCars';
-import { AddCarForm } from './cars/AddCarForm';
-import { CarCard } from './cars/CarCard';
-import { SyncPanel } from './sync/SyncPanel';
+import { AddCarForm, CarCard } from '@/components/cars';
+import { SyncPanel } from '@/components/sync';
+import type { Car, MergeResult } from '@/hooks';
 
 type Props = {
   open: boolean;

@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
 
-import type { Car, MergeResult } from '../../hooks/useCars';
-import { parseShareableUrl } from '../../utils/carSyncCodec';
-import { CarImportPreviewDialog } from './CarImportPreviewDialog';
-import { CarImportResultDialog } from './CarImportResultDialog';
+import { CarImportPreviewDialog, CarImportResultDialog } from '@/components/sync';
+import type { Car, MergeResult } from '@/hooks';
+import { parseShareableUrl } from '@/utils';
 
 type Props = {
   existingCars: Car[];

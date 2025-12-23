@@ -7,13 +7,13 @@ import {
   webDarkTheme,
 } from '@fluentui/react-components';
 
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { InputForm } from './components/InputForm';
-import { Results } from './components/Results';
-import type { ChargingResult } from './utils/chargingCalculator';
-import { findOptimalChargingWindow } from './utils/chargingCalculator';
-import { MS_PER_HOUR } from './utils/constants';
-import { buildTimeline } from './utils/timelineBuilder';
+import { ErrorBoundary, InputForm, Results } from '@/components';
+import {
+  buildTimeline,
+  findOptimalChargingWindow,
+  MS_PER_HOUR,
+  type ChargingResult,
+} from '@/utils';
 
 const App: React.FC = () => {
   const [result, setResult] = useState<ChargingResult | null>(null);

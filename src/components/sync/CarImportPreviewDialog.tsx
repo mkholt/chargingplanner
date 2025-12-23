@@ -12,7 +12,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
-import type { Car } from '../../hooks/useCars';
+import type { Car } from '@/hooks';
 
 type Props = {
   open: boolean;

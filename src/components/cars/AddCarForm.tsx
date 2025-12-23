@@ -9,8 +9,8 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
-import type { Car } from '../../hooks/useCars';
-import { CHARGING_POWER_OPTIONS } from '../../utils/constants';
+import type { Car } from '@/hooks';
+import { CHARGING_POWER_OPTIONS } from '@/utils';
 
 type Props = {
   onAdd: (car: Omit<Car, 'id'>) => void;

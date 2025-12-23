@@ -1,4 +1,4 @@
-import type { Car } from '../hooks/useCars';
+import type { Car } from '@/hooks';
 
 // URL-safe base64 encoding/decoding
 function toUrlSafeBase64(str: string): string {

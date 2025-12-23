@@ -15,9 +15,8 @@ import {
   Share20Regular,
 } from '@fluentui/react-icons';
 
-import type { Car, MergeResult } from '../../hooks/useCars';
-import { ExportSection } from './ExportSection';
-import { ImportSection } from './ImportSection';
+import { ExportSection, ImportSection } from '@/components/sync';
+import type { Car, MergeResult } from '@/hooks';
 
 type Props = {
   cars: Car[];
