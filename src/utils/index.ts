@@ -10,7 +10,7 @@ export {
 } from './carSyncCodec';
 export { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, MS_PER_HOUR, MS_PER_DAY } from './constants';
 export { getLocalDateString, toDateTimeLocalString } from './dateUtils';
-export { getAvailableDates, getPricesForDate } from './mockPrices';
-export type { PriceData } from './mockPrices';
+export { getAvailableDates, getMockApiResponse, getPricesForDate } from './mockPrices';
+export { getPriceUnit, mapApiResponseToPrices } from './priceMapper';
 export { buildTimeline } from './timelineBuilder';
 export type { TimelineData } from './timelineBuilder';

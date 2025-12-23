@@ -5,10 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Start development server (Vite)
-npm run build    # TypeScript check + production build
-npm run lint     # Run ESLint
-npm run preview  # Preview production build
+npm run dev         # Start development server (Vite)
+npm run build       # TypeScript check + production build
+npm run lint        # Run ESLint
+npm run preview     # Preview production build
+npm run codegen:api # Generate API types from stromligning.dk swagger
 ```
 
 ## Architecture
@@ -34,7 +35,7 @@ Folders are barelled, and imports must always be from the folder not the specifi
 ### Calculation Logic
 
 - **chargingCalculator.ts** - `findOptimalChargingWindow()` finds the lowest-cost continuous charging window. Calculates energy needed from battery percentage, then uses sliding window to find minimum cost.
-- **mockPrices.ts** - Provides mock hourly electricity prices (DKK/kWh) for today and tomorrow. Real API integration would replace this.
+- **mockPrices.ts** - Generates mock data in stromligning.dk API format. Uses `priceMapper.ts` to convert to hourly price arrays.
 
 ### Tech Stack
 
