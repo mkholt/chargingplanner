@@ -1,19 +1,9 @@
-import React, { useState } from 'react';
-
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
+import React, { useMemo, useState } from 'react';
 
 import type { Car, MergeResult } from '../../hooks/useCars';
 import { parseShareableUrl } from '../../utils/carSyncCodec';
+import { CarImportPreviewDialog } from './CarImportPreviewDialog';
+import { CarImportResultDialog } from './CarImportResultDialog';
 
 type Props = {
   existingCars: Car[];
@@ -55,117 +45,31 @@ export const SyncLinkHandler: React.FC<Props> = ({ existingCars, onImport }) => 
     setImportResult(null);
   };
 
-  // Check which cars are duplicates
-  const existingNames = new Set(existingCars.map(c => c.name.toLowerCase().trim()));
+  // Memoize existing car names for duplicate detection
+  const existingCarNames = useMemo(
+    () => new Set(existingCars.map(c => c.name.toLowerCase().trim())),
+    [existingCars]
+  );
+
+  const carCount = carsToImport?.length ?? 0;
 
   return (
     <>
-      {/* Import Preview Dialog */}
-      <Dialog open={carsToImport !== null} onOpenChange={(_, data) => !data.open && handleClosePreview()}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Import Cars from Link</DialogTitle>
-            <DialogContent>
-              <Text size={300} style={{ marginBottom: 12, display: 'block' }}>
-                This link contains {carsToImport?.length} car{carsToImport?.length !== 1 ? 's' : ''} to import:
-              </Text>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {carsToImport?.map((car, i) => {
-                  const isDuplicate = existingNames.has(car.name.toLowerCase().trim());
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        padding: 8,
-                        background: isDuplicate
-                          ? tokens.colorPaletteYellowBackground1
-                          : tokens.colorNeutralBackground3,
-                        borderRadius: 6,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <Text weight="semibold">{car.name}</Text>
-                        <Text
-                          size={200}
-                          style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-                        >
-                          {car.batterySize} kWh · {car.maxPower} kW
-                        </Text>
-                      </div>
-                      {isDuplicate && (
-                        <Text
-                          size={200}
-                          style={{ color: tokens.colorPaletteYellowForeground2 }}
-                        >
-                          Duplicate
-                        </Text>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {carsToImport?.every(c => existingNames.has(c.name.toLowerCase().trim())) && (
-                <Text
-                  size={200}
-                  style={{
-                    display: 'block',
-                    marginTop: 12,
-                    color: tokens.colorPaletteYellowForeground2,
-                  }}
-                >
-                  All cars already exist and will be skipped.
-                </Text>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={handleClosePreview}>
-                Cancel
-              </Button>
-              <Button appearance="primary" onClick={handleConfirmImport}>
-                Import
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+      <CarImportPreviewDialog
+        open={carsToImport !== null}
+        onClose={handleClosePreview}
+        onConfirm={handleConfirmImport}
+        cars={carsToImport}
+        existingCarNames={existingCarNames}
+        title="Import Cars from Link"
+        description={`This link contains ${carCount} car${carCount !== 1 ? 's' : ''} to import:`}
+      />
 
-      {/* Result Dialog */}
-      <Dialog open={importResult !== null} onOpenChange={(_, data) => !data.open && handleCloseResult()}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Import Complete</DialogTitle>
-            <DialogContent>
-              {importResult && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {importResult.added.length > 0 && (
-                    <Text>
-                      Added {importResult.added.length} car{importResult.added.length !== 1 ? 's' : ''}:
-                      {' '}{importResult.added.map(c => c.name).join(', ')}
-                    </Text>
-                  )}
-                  {importResult.skipped.length > 0 && (
-                    <Text style={{ color: tokens.colorNeutralForeground3 }}>
-                      Skipped {importResult.skipped.length} duplicate{importResult.skipped.length !== 1 ? 's' : ''}:
-                      {' '}{importResult.skipped.map(c => c.name).join(', ')}
-                    </Text>
-                  )}
-                  {importResult.added.length === 0 && importResult.skipped.length === 0 && (
-                    <Text>No cars were imported.</Text>
-                  )}
-                </div>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="primary" onClick={handleCloseResult}>
-                Done
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+      <CarImportResultDialog
+        open={importResult !== null}
+        onClose={handleCloseResult}
+        result={importResult}
+      />
     </>
   );
 };

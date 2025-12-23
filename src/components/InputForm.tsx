@@ -3,9 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Dropdown,
   Input,
-  makeStyles,
   Option,
-  Slider,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -13,8 +11,6 @@ import {
   Battery024Regular,
   Battery1024Regular,
   BatteryCharge24Regular,
-  Clock24Regular,
-  ClockAlarm24Regular,
   Flash24Regular,
   VehicleCarProfileLtr24Regular,
 } from '@fluentui/react-icons';
@@ -24,7 +20,10 @@ import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS } from '../utils/constants';
 import { toDateTimeLocalString } from '../utils/dateUtils';
 import { CarManager } from './CarManager';
 import { CarSelector } from './CarSelector';
+import { BatteryPercentageSlider } from './form/BatteryPercentageSlider';
+import { TimeWindowSelector } from './form/TimeWindowSelector';
 import { SyncLinkHandler } from './sync/SyncLinkHandler';
+import { LabeledFormField } from './ui/LabeledFormField';
 
 type Props = {
   onSubmit: (input: {
@@ -37,41 +36,7 @@ type Props = {
   }) => void;
 };
 
-const useSliderStyles = makeStyles({
-  red: {
-    '& .fui-Slider__rail::before': {
-      backgroundColor: tokens.colorPaletteRedBorder1,
-    },
-    '& .fui-Slider__thumb': {
-      backgroundColor: tokens.colorPaletteRedBorder1,
-    },
-  },
-  yellow: {
-    '& .fui-Slider__rail::before': {
-      backgroundColor: tokens.colorPaletteYellowBorder1,
-    },
-    '& .fui-Slider__thumb': {
-      backgroundColor: tokens.colorPaletteYellowBorder1,
-    },
-  },
-  green: {
-    '& .fui-Slider__rail::before': {
-      backgroundColor: tokens.colorPaletteGreenBorder1,
-    },
-    '& .fui-Slider__thumb': {
-      backgroundColor: tokens.colorPaletteGreenBorder1,
-    },
-  },
-});
-
-function getSliderClass(value: number, styles: ReturnType<typeof useSliderStyles>): string {
-  if (value < 20) return styles.red;
-  if (value > 80) return styles.yellow;
-  return styles.green;
-}
-
 export const InputForm: React.FC<Props> = ({ onSubmit }) => {
-  const sliderStyles = useSliderStyles();
   const now = new Date();
   const tomorrow7am = new Date(now);
   tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
@@ -79,35 +44,6 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
 
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
-
-  // Sticky snap at 80% for end percent with hysteresis
-  const handleEndPercentChange = (newValue: number, fromSlider: boolean = true) => {
-    const SNAP_POINT = 80;
-    const SNAP_RANGE = 3;       // Snap when within 3 units of 80
-    const ESCAPE_DISTANCE = 7; // Must drag 7+ units from 80 to break free
-
-    if (!fromSlider) {
-      // Direct input (text field) bypasses snapping
-      setEndPercent(newValue);
-      return;
-    }
-
-    // If currently snapped at 80, require dragging far enough to break free
-    if (endPercent === SNAP_POINT) {
-      if (Math.abs(newValue - SNAP_POINT) >= ESCAPE_DISTANCE) {
-        setEndPercent(newValue);
-      }
-      // Otherwise stay snapped
-      return;
-    }
-
-    // If approaching snap point, snap to it
-    if (Math.abs(newValue - SNAP_POINT) <= SNAP_RANGE) {
-      setEndPercent(SNAP_POINT);
-    } else {
-      setEndPercent(newValue);
-    }
-  };
   const [batterySize, setBatterySize] = useState(60);
   const [chargingSpeed, setChargingSpeed] = useState(11);
   const [earliest, setEarliest] = useState(toDateTimeLocalString(now));
@@ -179,65 +115,20 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
             e.preventDefault();
           }}
         >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <Battery024Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Start %
-              </Text>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Slider
-                min={0}
-                max={100}
-                value={startPercent}
-                onChange={(_ev, data) => setStartPercent(data.value)}
-                className={getSliderClass(startPercent, sliderStyles)}
-                style={{ flex: 1 }}
-              />
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={String(startPercent)}
-                onChange={(_ev, data) => setStartPercent(Number(data.value))}
-                style={{ width: 70 }}
-              />
-            </div>
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <Battery1024Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                End %
-              </Text>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Slider
-                min={0}
-                max={100}
-                value={endPercent}
-                onChange={(_ev, data) => handleEndPercentChange(data.value)}
-                className={getSliderClass(endPercent, sliderStyles)}
-                style={{ flex: 1 }}
-              />
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={String(endPercent)}
-                onChange={(_ev, data) => handleEndPercentChange(Number(data.value), false)}
-                style={{ width: 70 }}
-              />
-            </div>
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <VehicleCarProfileLtr24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Battery Size (kWh)
-              </Text>
-            </div>
+          <LabeledFormField icon={<Battery024Regular />} label="Start %">
+            <BatteryPercentageSlider
+              value={startPercent}
+              onChange={(value) => setStartPercent(value)}
+            />
+          </LabeledFormField>
+          <LabeledFormField icon={<Battery1024Regular />} label="End %">
+            <BatteryPercentageSlider
+              value={endPercent}
+              onChange={(value) => setEndPercent(value)}
+              snapPoint={80}
+            />
+          </LabeledFormField>
+          <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label="Battery Size (kWh)">
             <Input
               type="number"
               min={10}
@@ -246,14 +137,8 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
               onChange={(_ev, data) => setBatterySize(Number(data.value))}
               style={{ width: "100%" }}
             />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <Flash24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Charging Power
-              </Text>
-            </div>
+          </LabeledFormField>
+          <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
             <Dropdown
               value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
               onOptionSelect={(_ev, data) => setChargingSpeed(Number(data.optionValue))}
@@ -265,35 +150,13 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
                 </Option>
               ))}
             </Dropdown>
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <Clock24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Earliest Start
-              </Text>
-            </div>
-            <Input
-              type="datetime-local"
-              value={earliest}
-              onChange={(_ev, data) => setEarliest(data.value)}
-              style={{ width: "100%" }}
-            />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <ClockAlarm24Regular style={{ color: tokens.colorNeutralForeground3, fontSize: 16 }} />
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Latest End
-              </Text>
-            </div>
-            <Input
-              type="datetime-local"
-              value={latest}
-              onChange={(_ev, data) => setLatest(data.value)}
-              style={{ width: "100%" }}
-            />
-          </div>
+          </LabeledFormField>
+          <TimeWindowSelector
+            earliest={earliest}
+            latest={latest}
+            onEarliestChange={setEarliest}
+            onLatestChange={setLatest}
+          />
         </form>
       </div>
       <CarManager

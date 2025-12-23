@@ -2,9 +2,14 @@ import React, { useRef, useState } from 'react';
 
 import {
   Text,
-  Tooltip,
   tokens,
 } from '@fluentui/react-components';
+
+import { PriceLegend } from './timeline/PriceLegend';
+import { getDayLabel, getPriceColor } from './timeline/priceColors';
+import { SelectedHourDetail } from './timeline/SelectedHourDetail';
+import { TimelineBar } from './timeline/TimelineBar';
+import type { HourData } from './timeline/types';
 
 type Props = {
   prices: number[];
@@ -15,44 +20,6 @@ type Props = {
   totalCost?: number;
   duration?: number;
 };
-
-type HourData = {
-  index: number;
-  hour: number;
-  price: number;
-  isCharging: boolean;
-  date: Date;
-  dayLabel: string;
-};
-
-function getPriceColor(price: number, min: number, max: number): string {
-  const range = max - min;
-  if (range === 0) return tokens.colorPaletteYellowBorder1;
-
-  const normalized = (price - min) / range;
-
-  if (normalized < 0.33) {
-    return tokens.colorPaletteGreenBorder1;
-  } else if (normalized < 0.66) {
-    return tokens.colorPaletteYellowBorder1;
-  } else {
-    return tokens.colorPaletteRedBorder1;
-  }
-}
-
-function getDayLabel(date: Date): string {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (date.toDateString() === today.toDateString()) {
-    return 'Today';
-  } else if (date.toDateString() === tomorrow.toDateString()) {
-    return 'Tomorrow';
-  } else {
-    return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
-  }
-}
 
 export const PriceTimeline: React.FC<Props> = ({
   prices,
@@ -161,69 +128,16 @@ export const PriceTimeline: React.FC<Props> = ({
             ? 20 + ((data.price - minPrice) / range) * 80
             : 50;
 
-          const tooltipContent = (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 100 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <Text size={200} weight="semibold">
-                  {String(data.hour).padStart(2, '0')}:00 - {String((data.hour + 1) % 24).padStart(2, '0')}:00
-                </Text>
-                <Text size={200} weight="semibold" style={{ color }}>
-                  {data.price.toFixed(2)}
-                </Text>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                  {data.dayLabel}
-                </Text>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                  DKK/kWh
-                </Text>
-              </div>
-              {data.isCharging && (
-                <div
-                  style={{
-                    marginTop: 2,
-                    padding: '2px 6px',
-                    background: tokens.colorBrandBackground2,
-                    borderRadius: 3,
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  <Text size={100} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-                    Charging
-                  </Text>
-                </div>
-              )}
-            </div>
-          );
-
           return (
-            <Tooltip
+            <TimelineBar
               key={data.index}
-              content={tooltipContent}
-              relationship="description"
-              positioning="above"
-              withArrow
-            >
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedIndex(isSelected ? null : data.index);
-                }}
-                style={{
-                  flex: 1,
-                  height: `${normalizedHeight}%`,
-                  background: color,
-                  borderRadius: 3,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease-out',
-                  transform: isSelected ? 'scaleY(1.1)' : 'none',
-                  transformOrigin: 'bottom',
-                  boxShadow: isSelected ? `0 0 0 2px ${tokens.colorNeutralStroke1}` : 'none',
-                  opacity: selectedIndex !== null && !isSelected ? 0.6 : 1,
-                }}
-              />
-            </Tooltip>
+              data={data}
+              color={color}
+              isSelected={isSelected}
+              hasSelection={selectedIndex !== null}
+              normalizedHeight={normalizedHeight}
+              onClick={() => setSelectedIndex(isSelected ? null : data.index)}
+            />
           );
         })}
       </div>
@@ -283,128 +197,14 @@ export const PriceTimeline: React.FC<Props> = ({
 
       {/* Selected hour detail */}
       {selectedHour && (
-        <div
-          style={{
-            marginTop: 8,
-            padding: 12,
-            background: tokens.colorNeutralBackground3,
-            borderRadius: 8,
-            border: `1px solid ${tokens.colorNeutralStroke1}`,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <Text weight="semibold" size={300}>
-                {selectedHour.date.toLocaleTimeString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-                {' - '}
-                {new Date(selectedHour.date.getTime() + 3600000).toLocaleTimeString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
-              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground2 }}>
-                {selectedHour.dayLabel}
-              </Text>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <Text weight="semibold" size={400} style={{ color: getPriceColor(selectedHour.price, minPrice, maxPrice) }}>
-                {selectedHour.price.toFixed(2)}
-              </Text>
-              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
-                DKK/kWh
-              </Text>
-            </div>
-          </div>
-
-          {chargingSpeed !== undefined && (
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
-              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-                Cost for 1 hour @ {chargingSpeed} kW:{' '}
-                <Text weight="semibold">
-                  {(selectedHour.price * chargingSpeed).toFixed(2)} DKK
-                </Text>
-              </Text>
-            </div>
-          )}
-
-          {selectedHour.isCharging && (
-            <div
-              style={{
-                marginTop: 8,
-                padding: '4px 8px',
-                background: tokens.colorBrandBackground2,
-                borderRadius: 4,
-                display: 'inline-block',
-              }}
-            >
-              <Text size={200} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-                Charging
-              </Text>
-            </div>
-          )}
-        </div>
+        <SelectedHourDetail
+          hour={selectedHour}
+          color={getPriceColor(selectedHour.price, minPrice, maxPrice)}
+          chargingSpeed={chargingSpeed}
+        />
       )}
 
-      {/* Legend */}
-      {(() => {
-        const range = maxPrice - minPrice;
-        const cheapCutoff = minPrice + range * 0.33;
-        const expensiveCutoff = minPrice + range * 0.66;
-        return (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '8px 16px',
-              marginTop: 8,
-              padding: '8px 12px',
-              background: tokens.colorNeutralBackground3,
-              borderRadius: 8,
-              fontSize: 11,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div
-                style={{
-                  width: 12,
-                  height: 12,
-                  background: tokens.colorPaletteGreenBorder1,
-                  borderRadius: 2,
-                }}
-              />
-              <span>&lt; {cheapCutoff.toFixed(2)}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div
-                style={{
-                  width: 12,
-                  height: 12,
-                  background: tokens.colorPaletteYellowBorder1,
-                  borderRadius: 2,
-                }}
-              />
-              <span>{cheapCutoff.toFixed(2)} - {expensiveCutoff.toFixed(2)}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div
-                style={{
-                  width: 12,
-                  height: 12,
-                  background: tokens.colorPaletteRedBorder1,
-                  borderRadius: 2,
-                }}
-              />
-              <span>&gt; {expensiveCutoff.toFixed(2)}</span>
-            </div>
-            <span style={{ color: tokens.colorNeutralForeground3 }}>DKK/kWh</span>
-          </div>
-        );
-      })()}
+      <PriceLegend minPrice={minPrice} maxPrice={maxPrice} />
     </div>
   );
 };
