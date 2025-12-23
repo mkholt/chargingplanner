@@ -19,6 +19,7 @@ import {
 import {
   Add24Regular,
   Delete24Regular,
+  Dismiss24Regular,
 } from '@fluentui/react-icons';
 
 import type { Car, MergeResult } from '../hooks/useCars';
@@ -72,7 +73,18 @@ export const CarManager: React.FC<Props> = ({
     <Dialog open={open} onOpenChange={(_e, data) => onOpenChange(data.open)}>
       <DialogSurface style={{ maxWidth: 500 }}>
         <DialogBody>
-          <DialogTitle>Manage Cars</DialogTitle>
+          <DialogTitle
+            action={
+              <Button
+                appearance="subtle"
+                aria-label="Close"
+                icon={<Dismiss24Regular />}
+                onClick={() => onOpenChange(false)}
+              />
+            }
+          >
+            Manage Cars
+          </DialogTitle>
           <DialogContent>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Car list */}
