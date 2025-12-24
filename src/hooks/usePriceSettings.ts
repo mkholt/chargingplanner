@@ -140,6 +140,11 @@ export function usePriceSettings() {
     saveSettings(DEFAULT_SETTINGS);
   }, []);
 
+  const applySettings = useCallback((newSettings: PriceSettings) => {
+    setSettings(newSettings);
+    saveSettings(newSettings);
+  }, []);
+
   return {
     settings,
     resolved,
@@ -148,5 +153,6 @@ export function usePriceSettings() {
     setCompanyId,
     setProductId,
     clearAll,
+    applySettings,
   };
 }

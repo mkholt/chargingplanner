@@ -13,18 +13,21 @@ import type { Car } from '@/hooks';
 import { CHARGING_POWER_OPTIONS } from '@/utils';
 
 type Props = {
-  onAdd: (car: Omit<Car, 'id'>) => void;
+  car?: Car;
+  onSave: (car: Omit<Car, 'id'>) => void;
   onCancel: () => void;
 };
 
-export const AddCarForm: React.FC<Props> = ({ onAdd, onCancel }) => {
-  const [name, setName] = useState('');
-  const [batterySize, setBatterySize] = useState<number>(60);
-  const [maxPower, setMaxPower] = useState<number>(11);
+export const CarForm: React.FC<Props> = ({ car, onSave, onCancel }) => {
+  const [name, setName] = useState(car?.name ?? '');
+  const [batterySize, setBatterySize] = useState<number>(car?.batterySize ?? 60);
+  const [maxPower, setMaxPower] = useState<number>(car?.maxPower ?? 11);
 
-  const handleAdd = () => {
+  const isEditing = !!car;
+
+  const handleSave = () => {
     if (!name.trim() || batterySize <= 0 || maxPower <= 0) return;
-    onAdd({
+    onSave({
       name: name.trim(),
       batterySize,
       maxPower,
@@ -35,12 +38,13 @@ export const AddCarForm: React.FC<Props> = ({ onAdd, onCancel }) => {
     <div
       style={{
         background: tokens.colorNeutralBackground3,
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
         borderRadius: 8,
         padding: 16,
       }}
     >
       <Text weight="semibold" size={300} style={{ marginBottom: 12, display: 'block' }}>
-        Add New Car
+        {isEditing ? 'Edit Car' : 'Add New Car'}
       </Text>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
@@ -97,8 +101,8 @@ export const AddCarForm: React.FC<Props> = ({ onAdd, onCancel }) => {
           </Combobox>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <Button appearance="primary" onClick={handleAdd}>
-            Add Car
+          <Button appearance="primary" onClick={handleSave}>
+            {isEditing ? 'Save' : 'Add Car'}
           </Button>
           <Button appearance="secondary" onClick={onCancel}>
             Cancel

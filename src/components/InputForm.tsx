@@ -1,28 +1,34 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import {
+  Button,
   Dropdown,
   Input,
   Option,
   Text,
   tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   Battery024Regular,
   Battery1024Regular,
   BatteryCharge24Regular,
   Flash24Regular,
+  Settings20Regular,
   VehicleCarProfileLtr24Regular,
 } from '@fluentui/react-icons';
 
-import { CarManager, CarSelector } from '@/components';
+import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
-import { SyncLinkHandler } from '@/components/sync';
 import { LabeledFormField } from '@/components/ui';
-import { type Car, useCars } from '@/hooks';
+import type { Car } from '@/hooks';
 import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
 
 type Props = {
+  cars: Car[];
+  selectedCarId: string | null;
+  onSelectCar: (car: Car) => void;
+  onSettingsClick: () => void;
   onSubmit: (input: {
     startPercent: number;
     endPercent: number;
@@ -33,7 +39,13 @@ type Props = {
   }) => void;
 };
 
-export const InputForm: React.FC<Props> = ({ onSubmit }) => {
+export const InputForm: React.FC<Props> = ({
+  cars,
+  selectedCarId,
+  onSelectCar,
+  onSettingsClick,
+  onSubmit,
+}) => {
   const now = new Date();
   const tomorrow7am = new Date(now);
   tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
@@ -45,11 +57,13 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
   const [chargingSpeed, setChargingSpeed] = useState(11);
   const [earliest, setEarliest] = useState(toDateTimeLocalString(now));
   const [latest, setLatest] = useState(toDateTimeLocalString(tomorrow7am));
-  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
-  const [carManagerOpen, setCarManagerOpen] = useState(false);
 
-  // Car management
-  const { cars, addCar, deleteCar, mergeCars } = useCars();
+  // Handle car selection - update local state and notify parent
+  const handleCarSelect = (car: Car) => {
+    onSelectCar(car);
+    setBatterySize(car.batterySize);
+    setChargingSpeed(car.maxPower);
+  };
 
   // Auto-select first car if none selected
   const hasAutoSelected = useRef(false);
@@ -57,20 +71,24 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
     if (cars.length > 0 && !selectedCarId && !hasAutoSelected.current) {
       hasAutoSelected.current = true;
       const firstCar = cars[0];
-      // Use queueMicrotask to make setState asynchronous (satisfies react-hooks/set-state-in-effect)
+      // Use queueMicrotask to avoid synchronous setState in effect
       queueMicrotask(() => {
-        setSelectedCarId(firstCar.id);
+        onSelectCar(firstCar);
         setBatterySize(firstCar.batterySize);
         setChargingSpeed(firstCar.maxPower);
       });
     }
-  }, [cars, selectedCarId]);
+  }, [cars, selectedCarId, onSelectCar]);
 
-  const handleCarSelect = (car: Car) => {
-    setSelectedCarId(car.id);
-    setBatterySize(car.batterySize);
-    setChargingSpeed(car.maxPower);
-  };
+  // Sync form values when the selected car is edited
+  const selectedCar = cars.find(c => c.id === selectedCarId);
+  useEffect(() => {
+    if (selectedCar) {
+      setBatterySize(selectedCar.batterySize);
+      // Cap charging speed at car's max power
+      setChargingSpeed(prev => Math.min(prev, selectedCar.maxPower));
+    }
+  }, [selectedCar?.batterySize, selectedCar?.maxPower]);
 
   // Store callback in ref to avoid resetting debounce when callback identity changes
   const onSubmitRef = useRef(onSubmit);
@@ -98,13 +116,21 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
           <BatteryCharge24Regular />
-          <Text weight="semibold" size={400}>Charging Settings</Text>
+          <Text weight="semibold" size={400} style={{ flex: 1 }}>Charging Settings</Text>
+          <Tooltip content="Settings" relationship="label">
+            <Button
+              appearance="subtle"
+              icon={<Settings20Regular />}
+              onClick={onSettingsClick}
+              aria-label="Settings"
+            />
+          </Tooltip>
         </div>
         <CarSelector
           cars={cars}
           selectedCarId={selectedCarId}
           onSelect={handleCarSelect}
-          onManageClick={() => setCarManagerOpen(true)}
+          onAddCarClick={onSettingsClick}
         />
         <form
           style={{ display: "flex", flexDirection: "column", gap: 16 }}
@@ -156,20 +182,6 @@ export const InputForm: React.FC<Props> = ({ onSubmit }) => {
           />
         </form>
       </div>
-      <CarManager
-        open={carManagerOpen}
-        onOpenChange={setCarManagerOpen}
-        cars={cars}
-        selectedCarId={selectedCarId}
-        onSelect={handleCarSelect}
-        onAdd={addCar}
-        onDelete={deleteCar}
-        onMergeCars={mergeCars}
-      />
-      <SyncLinkHandler
-        existingCars={cars}
-        onImport={mergeCars}
-      />
     </div>
   );
 };

@@ -1,21 +1,22 @@
 import React, { useMemo, useState } from 'react';
 
-import { CarImportPreviewDialog, CarImportResultDialog } from '@/components/sync';
-import type { Car, MergeResult } from '@/hooks';
-import { parseShareableUrl } from '@/utils';
+import { CarImportResultDialog, ImportPreviewDialog } from '@/components/sync';
+import type { Car, PriceSettings } from '@/hooks';
+import { type MergeResult, parseShareableUrl, type SyncData } from '@/utils';
 
 type Props = {
   existingCars: Car[];
-  onImport: (cars: Omit<Car, 'id'>[]) => MergeResult;
+  onImport: (data: SyncData, selectedCarIndices: number[], importSettings: boolean) => MergeResult;
+  onApplyPriceSettings?: (settings: PriceSettings) => void;
 };
 
 /** Check URL hash for sync data and clear it */
-function getInitialCarsFromUrl(): Omit<Car, 'id'>[] | null {
+function getInitialDataFromUrl(): SyncData | null {
   const hash = window.location.hash;
   if (!hash.startsWith('#sync=')) return null;
 
   const parsed = parseShareableUrl(window.location.href);
-  if (parsed && parsed.length > 0) {
+  if (parsed && (parsed.cars.length > 0 || parsed.settings)) {
     // Clear the hash from URL without triggering a reload
     window.history.replaceState(null, '', window.location.pathname);
     return parsed;
@@ -23,21 +24,31 @@ function getInitialCarsFromUrl(): Omit<Car, 'id'>[] | null {
   return null;
 }
 
-export const SyncLinkHandler: React.FC<Props> = ({ existingCars, onImport }) => {
+export const SyncLinkHandler: React.FC<Props> = ({
+  existingCars,
+  onImport,
+  onApplyPriceSettings,
+}) => {
   // Use lazy initialization to read URL on first render
-  const [carsToImport, setCarsToImport] = useState<Omit<Car, 'id'>[] | null>(getInitialCarsFromUrl);
+  const [dataToImport, setDataToImport] = useState<SyncData | null>(getInitialDataFromUrl);
   const [importResult, setImportResult] = useState<MergeResult | null>(null);
 
-  const handleConfirmImport = () => {
-    if (!carsToImport) return;
+  const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
+    if (!dataToImport) return;
 
-    const result = onImport(carsToImport);
+    const result = onImport(dataToImport, selectedCarIndices, importSettings);
+
+    // Apply settings if requested
+    if (importSettings && dataToImport.settings && onApplyPriceSettings) {
+      onApplyPriceSettings(dataToImport.settings);
+    }
+
     setImportResult(result);
-    setCarsToImport(null);
+    setDataToImport(null);
   };
 
   const handleClosePreview = () => {
-    setCarsToImport(null);
+    setDataToImport(null);
   };
 
   const handleCloseResult = () => {
@@ -50,18 +61,14 @@ export const SyncLinkHandler: React.FC<Props> = ({ existingCars, onImport }) => 
     [existingCars]
   );
 
-  const carCount = carsToImport?.length ?? 0;
-
   return (
     <>
-      <CarImportPreviewDialog
-        open={carsToImport !== null}
+      <ImportPreviewDialog
+        open={dataToImport !== null}
         onClose={handleClosePreview}
         onConfirm={handleConfirmImport}
-        cars={carsToImport}
+        syncData={dataToImport}
         existingCarNames={existingCarNames}
-        title="Import Cars from Link"
-        description={`This link contains ${carCount} car${carCount !== 1 ? 's' : ''} to import:`}
       />
 
       <CarImportResultDialog

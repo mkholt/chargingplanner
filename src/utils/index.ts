@@ -1,13 +1,15 @@
 export { findOptimalChargingWindow } from './chargingCalculator';
 export type { ChargingResult } from './chargingCalculator';
 export {
-  encodeCars,
+  decodeSyncData,
+  encodeSyncData,
   generateShareableUrl,
-  generateShareableUrl as createShareableUrl,
   generateSyncCode,
+  mergeCars,
   parseAnyFormat,
   parseShareableUrl,
 } from './carSyncCodec';
+export type { MergeResult, SyncData } from './carSyncCodec';
 export { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, MS_PER_HOUR, MS_PER_DAY } from './constants';
 export { getLocalDateString, toDateTimeLocalString } from './dateUtils';
 export {

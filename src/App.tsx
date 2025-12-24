@@ -1,22 +1,24 @@
 import React, { useCallback, useState } from 'react';
 
 import {
-  Button,
   FluentProvider,
   Title3,
-  Tooltip,
   tokens,
   webDarkTheme,
 } from '@fluentui/react-components';
-import { Settings20Regular } from '@fluentui/react-icons';
 
-import { ErrorBoundary, InputForm, PriceSettingsDialog, Results } from '@/components';
-import { usePriceSettings } from '@/hooks';
+import { ErrorBoundary, InputForm, Results } from '@/components';
+import { SettingsDialog } from '@/components/settings';
+import { SyncLinkHandler } from '@/components/sync';
+import { type Car, useCars, usePriceSettings } from '@/hooks';
 import {
   buildTimeline,
   findOptimalChargingWindow,
+  mergeCars as mergeCarData,
   MS_PER_HOUR,
   type ChargingResult,
+  type MergeResult,
+  type SyncData,
 } from '@/utils';
 
 const App: React.FC = () => {
@@ -26,14 +28,54 @@ const App: React.FC = () => {
   const [intervalStart, setIntervalStart] = useState<Date | null>(null);
   const [chargingSpeed, setChargingSpeed] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
+  // Car management
+  const { cars, addCar, updateCar, deleteCar } = useCars();
+
+  // Price settings
   const {
+    settings: rawPriceSettings,
     resolved: priceSettings,
     setPostalCode,
     setCompanyId,
     setProductId,
     clearAll: clearPriceSettings,
+    applySettings: applyPriceSettings,
   } = usePriceSettings();
+
+  // Handle car selection
+  const handleSelectCar = useCallback((car: Car) => {
+    setSelectedCarId(car.id);
+  }, []);
+
+  // Handle import from sync
+  const handleImport = useCallback((
+    data: SyncData,
+    selectedCarIndices: number[],
+    importSettings: boolean
+  ): MergeResult => {
+    // Filter cars by selected indices
+    const selectedCars = selectedCarIndices.map(i => data.cars[i]);
+
+    // Generate IDs for new cars
+    const generateId = () => Math.random().toString(36).slice(2);
+
+    // Merge cars
+    const result = mergeCarData(cars, selectedCars, generateId);
+
+    // Add new cars
+    result.added.forEach(car => {
+      addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
+    });
+
+    // Apply settings if requested
+    if (importSettings && data.settings) {
+      applyPriceSettings(data.settings);
+    }
+
+    return result;
+  }, [cars, addCar, applyPriceSettings]);
 
   const handleSubmit = useCallback((input: {
     startPercent: number;
@@ -126,14 +168,6 @@ const App: React.FC = () => {
             <Title3 as="h1" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
               EV Charging Optimizer
             </Title3>
-            <Tooltip content="Price settings" relationship="label">
-              <Button
-                appearance="subtle"
-                icon={<Settings20Regular />}
-                onClick={() => setSettingsOpen(true)}
-                aria-label="Price settings"
-              />
-            </Tooltip>
           </div>
           <div
             style={{
@@ -149,7 +183,13 @@ const App: React.FC = () => {
             }}
           >
             <div style={{ flex: '1 1 320px' }}>
-              <InputForm onSubmit={handleSubmit} />
+              <InputForm
+                cars={cars}
+                selectedCarId={selectedCarId}
+                onSelectCar={handleSelectCar}
+                onSettingsClick={() => setSettingsOpen(true)}
+                onSubmit={handleSubmit}
+              />
             </div>
             <div style={{ flex: '2 1 400px' }}>
               <Results
@@ -162,14 +202,28 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-        <PriceSettingsDialog
+        <SettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
-          resolved={priceSettings}
+          cars={cars}
+          selectedCarId={selectedCarId}
+          onSelectCar={handleSelectCar}
+          onAddCar={addCar}
+          onUpdateCar={updateCar}
+          onDeleteCar={deleteCar}
+          priceSettings={priceSettings}
+          rawPriceSettings={rawPriceSettings}
           onPostalCodeChange={setPostalCode}
           onCompanyChange={setCompanyId}
           onProductChange={setProductId}
-          onClearAll={clearPriceSettings}
+          onClearPriceSettings={clearPriceSettings}
+          onApplyPriceSettings={applyPriceSettings}
+          onImport={handleImport}
+        />
+        <SyncLinkHandler
+          existingCars={cars}
+          onImport={handleImport}
+          onApplyPriceSettings={applyPriceSettings}
         />
       </ErrorBoundary>
     </FluentProvider>

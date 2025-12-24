@@ -1,3 +1,4 @@
+export { CarsSection } from './CarsSection';
 export { CompanySection } from './CompanySection';
-export { PriceSettingsDialog } from './PriceSettingsDialog';
+export { SettingsDialog } from './SettingsDialog';
 export { SupplierSection } from './SupplierSection';

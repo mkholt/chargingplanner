@@ -14,37 +14,42 @@ import {
 } from '@fluentui/react-icons';
 
 import {
-  CarImportPreviewDialog,
   CarImportResultDialog,
+  ImportPreviewDialog,
   QRCodeScanner,
 } from '@/components/sync';
-import type { Car, MergeResult } from '@/hooks';
+import type { Car, PriceSettings } from '@/hooks';
+import type { MergeResult, SyncData } from '@/utils';
 import { parseAnyFormat } from '@/utils';
 
 type Props = {
   existingCars: Car[];
-  onImport: (cars: Omit<Car, 'id'>[]) => MergeResult;
+  onImport: (data: SyncData, selectedCarIndices: number[], importSettings: boolean) => MergeResult;
+  onApplyPriceSettings?: (settings: PriceSettings) => void;
 };
 
 type ImportTab = 'scan' | 'paste';
 
-export const ImportSection: React.FC<Props> = ({ existingCars, onImport }) => {
+export const ImportSection: React.FC<Props> = ({
+  existingCars,
+  onImport,
+}) => {
   const [activeTab, setActiveTab] = useState<ImportTab>('paste');
   const [pasteValue, setPasteValue] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [previewCars, setPreviewCars] = useState<Omit<Car, 'id'>[] | null>(null);
+  const [previewData, setPreviewData] = useState<SyncData | null>(null);
   const [importResult, setImportResult] = useState<MergeResult | null>(null);
 
   const handleParse = (input: string) => {
     setError(null);
 
     const parsed = parseAnyFormat(input);
-    if (!parsed || parsed.length === 0) {
-      setError('Could not parse car data. Make sure you copied the full code or link.');
+    if (!parsed || (parsed.cars.length === 0 && !parsed.settings)) {
+      setError('Could not parse data. Make sure you copied the full code or link.');
       return;
     }
 
-    setPreviewCars(parsed);
+    setPreviewData(parsed);
   };
 
   const handleScan = (data: string) => {
@@ -55,12 +60,12 @@ export const ImportSection: React.FC<Props> = ({ existingCars, onImport }) => {
     handleParse(pasteValue);
   };
 
-  const handleConfirmImport = () => {
-    if (!previewCars) return;
+  const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
+    if (!previewData) return;
 
-    const result = onImport(previewCars);
+    const result = onImport(previewData, selectedCarIndices, importSettings);
     setImportResult(result);
-    setPreviewCars(null);
+    setPreviewData(null);
     setPasteValue('');
   };
 
@@ -69,7 +74,7 @@ export const ImportSection: React.FC<Props> = ({ existingCars, onImport }) => {
   };
 
   const handleClosePreview = () => {
-    setPreviewCars(null);
+    setPreviewData(null);
   };
 
   // Memoize existing car names for duplicate detection
@@ -125,11 +130,11 @@ export const ImportSection: React.FC<Props> = ({ existingCars, onImport }) => {
         </div>
       )}
 
-      <CarImportPreviewDialog
-        open={previewCars !== null}
+      <ImportPreviewDialog
+        open={previewData !== null}
         onClose={handleClosePreview}
         onConfirm={handleConfirmImport}
-        cars={previewCars}
+        syncData={previewData}
         existingCarNames={existingCarNames}
       />
 

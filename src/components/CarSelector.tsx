@@ -7,10 +7,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import {
-  Settings20Regular,
-  VehicleCar20Regular,
-} from '@fluentui/react-icons';
+import { VehicleCar20Regular } from '@fluentui/react-icons';
 
 import type { Car } from '@/hooks';
 
@@ -18,14 +15,14 @@ type Props = {
   cars: Car[];
   selectedCarId: string | null;
   onSelect: (car: Car) => void;
-  onManageClick: () => void;
+  onAddCarClick?: () => void;
 };
 
 export const CarSelector: React.FC<Props> = ({
   cars,
   selectedCarId,
   onSelect,
-  onManageClick,
+  onAddCarClick,
 }) => {
   const selectedCar = cars.find(c => c.id === selectedCarId);
 
@@ -51,7 +48,7 @@ export const CarSelector: React.FC<Props> = ({
         <Button
           appearance="primary"
           size="small"
-          onClick={onManageClick}
+          onClick={onAddCarClick}
         >
           Add Car
         </Button>
@@ -92,14 +89,6 @@ export const CarSelector: React.FC<Props> = ({
           </Option>
         ))}
       </Dropdown>
-      <Button
-        appearance="subtle"
-        size="small"
-        icon={<Settings20Regular />}
-        onClick={onManageClick}
-        aria-label="Manage cars"
-        style={{ flexShrink: 0 }}
-      />
     </div>
   );
 };

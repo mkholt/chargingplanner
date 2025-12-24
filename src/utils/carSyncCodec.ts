@@ -1,6 +1,31 @@
 import type { Car } from '@/hooks';
+import type { PriceSettings } from '@/hooks';
 
+// =============================================================================
+// Types
+// =============================================================================
+
+// Ultra-compact tuple format: [cars[], postalCode?, supplierId?, companyId?, productId?]
+type CarTuple = [string, number, number]; // [name, batterySize, maxPower]
+type SyncTuple = [
+  CarTuple[],  // cars
+  number?,     // postalCode
+  string?,     // supplierId
+  string?,     // companyId
+  string?,     // productId
+];
+
+export type SyncData = {
+  cars: Omit<Car, 'id'>[];
+  settings?: PriceSettings;
+};
+
+export type SyncInputFormat = 'url' | 'code' | 'raw' | 'unknown';
+
+// =============================================================================
 // URL-safe base64 encoding/decoding
+// =============================================================================
+
 function toUrlSafeBase64(str: string): string {
   return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -11,68 +36,122 @@ function fromUrlSafeBase64(str: string): string {
   return atob(b64);
 }
 
-// Validate car data structure (tuple format: [name, batterySize, maxPower])
-function validateCarData(data: unknown): Omit<Car, 'id'>[] {
-  if (!Array.isArray(data)) {
-    throw new Error('Invalid data format: expected array');
+// =============================================================================
+// Validation
+// =============================================================================
+
+function validateCarTuple(item: unknown, index: number): Omit<Car, 'id'> {
+  if (!Array.isArray(item) || item.length !== 3) {
+    throw new Error(`Invalid car at index ${index}: expected [name, batterySize, maxPower]`);
   }
 
-  return data.map((item, i) => {
-    if (!Array.isArray(item) || item.length !== 3) {
-      throw new Error(`Invalid car at index ${i}: expected [name, batterySize, maxPower]`);
-    }
+  const [name, batterySize, maxPower] = item;
 
-    const [name, batterySize, maxPower] = item;
+  if (typeof name !== 'string' || !name.trim()) {
+    throw new Error(`Invalid car name at index ${index}`);
+  }
+  if (typeof batterySize !== 'number' || batterySize <= 0) {
+    throw new Error(`Invalid battery size at index ${index}`);
+  }
+  if (typeof maxPower !== 'number' || maxPower <= 0) {
+    throw new Error(`Invalid max power at index ${index}`);
+  }
 
-    if (typeof name !== 'string' || !name.trim()) {
-      throw new Error(`Invalid car name at index ${i}`);
-    }
-    if (typeof batterySize !== 'number' || batterySize <= 0) {
-      throw new Error(`Invalid battery size at index ${i}`);
-    }
-    if (typeof maxPower !== 'number' || maxPower <= 0) {
-      throw new Error(`Invalid max power at index ${i}`);
-    }
-
-    return {
-      name: name.trim(),
-      batterySize,
-      maxPower,
-    };
-  });
+  return {
+    name: name.trim(),
+    batterySize,
+    maxPower,
+  };
 }
 
-// Encode cars to base64 (tuple format: [name, batterySize, maxPower])
-export function encodeCars(cars: Car[]): string {
-  const data = cars.map(({ name, batterySize, maxPower }) =>
+function validateSyncTuple(data: unknown): SyncData {
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error('Invalid sync data: expected non-empty array');
+  }
+
+  const [carTuples, postalCode, supplierId, companyId, productId] = data as SyncTuple;
+
+  if (!Array.isArray(carTuples)) {
+    throw new Error('Invalid sync data: first element must be cars array');
+  }
+
+  const cars = carTuples.map((tuple, i) => validateCarTuple(tuple, i));
+
+  // Build settings if any setting values are present
+  const hasSettings = postalCode !== undefined ||
+    supplierId !== undefined ||
+    companyId !== undefined ||
+    productId !== undefined;
+
+  const settings: PriceSettings | undefined = hasSettings ? {
+    postalCode: typeof postalCode === 'number' ? postalCode : null,
+    supplierId: typeof supplierId === 'string' ? supplierId : null,
+    companyId: typeof companyId === 'string' ? companyId : null,
+    productId: typeof productId === 'string' ? productId : null,
+  } : undefined;
+
+  return { cars, settings };
+}
+
+// =============================================================================
+// Encoding
+// =============================================================================
+
+export function encodeSyncData(cars: Car[], settings?: PriceSettings | null): string {
+  const carTuples: CarTuple[] = cars.map(({ name, batterySize, maxPower }) =>
     [name, batterySize, maxPower]
   );
-  return toUrlSafeBase64(JSON.stringify(data));
+
+  const tuple: SyncTuple = [carTuples];
+
+  // Add settings if present (in order, trailing undefined values omitted by JSON)
+  if (settings) {
+    if (settings.postalCode) tuple[1] = settings.postalCode;
+    if (settings.supplierId) tuple[2] = settings.supplierId;
+    if (settings.companyId) tuple[3] = settings.companyId;
+    if (settings.productId) tuple[4] = settings.productId;
+  }
+
+  return toUrlSafeBase64(JSON.stringify(tuple));
 }
 
-// Decode base64 to cars (without IDs - caller must generate)
-export function decodeCars(encoded: string): Omit<Car, 'id'>[] {
+// =============================================================================
+// Decoding
+// =============================================================================
+
+export function decodeSyncData(encoded: string): SyncData {
   try {
     const json = fromUrlSafeBase64(encoded);
     const data = JSON.parse(json);
-    return validateCarData(data);
+    return validateSyncTuple(data);
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`Failed to decode car data: ${error.message}`);
+      throw new Error(`Failed to decode sync data: ${error.message}`);
     }
-    throw new Error('Failed to decode car data');
+    throw new Error('Failed to decode sync data');
   }
 }
 
-// Generate shareable URL with car data in hash
-export function generateShareableUrl(cars: Car[]): string {
-  const encoded = encodeCars(cars);
+// =============================================================================
+// URL Generation & Parsing
+// =============================================================================
+
+const MAX_URL_LENGTH = 2000;
+
+export function generateShareableUrl(cars: Car[], settings?: PriceSettings | null): string | null {
+  const encoded = encodeSyncData(cars, settings);
   const baseUrl = window.location.origin + window.location.pathname;
-  return `${baseUrl}#sync=${encoded}`;
+  const url = `${baseUrl}#sync=${encoded}`;
+
+  // Return null if URL is too long
+  if (url.length > MAX_URL_LENGTH) {
+    return null;
+  }
+
+  return url;
 }
 
-// Parse shareable URL and extract car data
-export function parseShareableUrl(url: string): Omit<Car, 'id'>[] | null {
+export function parseShareableUrl(url: string): SyncData | null {
   try {
     const urlObj = new URL(url);
     const hash = urlObj.hash;
@@ -82,21 +161,23 @@ export function parseShareableUrl(url: string): Omit<Car, 'id'>[] | null {
     }
 
     const encoded = hash.slice(6); // Remove '#sync='
-    return decodeCars(encoded);
+    return decodeSyncData(encoded);
   } catch {
     return null;
   }
 }
 
-// Generate copy/paste sync code
+// =============================================================================
+// Sync Code Generation & Parsing
+// =============================================================================
+
 const SYNC_CODE_PREFIX = 'EV:';
 
-export function generateSyncCode(cars: Car[]): string {
-  return SYNC_CODE_PREFIX + encodeCars(cars);
+export function generateSyncCode(cars: Car[], settings?: PriceSettings | null): string {
+  return SYNC_CODE_PREFIX + encodeSyncData(cars, settings);
 }
 
-// Parse sync code
-export function parseSyncCode(code: string): Omit<Car, 'id'>[] | null {
+export function parseSyncCode(code: string): SyncData | null {
   const trimmed = code.trim();
 
   if (!trimmed.startsWith(SYNC_CODE_PREFIX)) {
@@ -105,14 +186,15 @@ export function parseSyncCode(code: string): Omit<Car, 'id'>[] | null {
 
   try {
     const encoded = trimmed.slice(SYNC_CODE_PREFIX.length);
-    return decodeCars(encoded);
+    return decodeSyncData(encoded);
   } catch {
     return null;
   }
 }
 
-// Auto-detect input format and parse
-export type SyncInputFormat = 'url' | 'code' | 'raw' | 'unknown';
+// =============================================================================
+// Auto-detect Format & Parse
+// =============================================================================
 
 export function detectInputFormat(input: string): SyncInputFormat {
   const trimmed = input.trim();
@@ -127,14 +209,14 @@ export function detectInputFormat(input: string): SyncInputFormat {
 
   // Try parsing as raw base64
   try {
-    decodeCars(trimmed);
+    decodeSyncData(trimmed);
     return 'raw';
   } catch {
     return 'unknown';
   }
 }
 
-export function parseAnyFormat(input: string): Omit<Car, 'id'>[] | null {
+export function parseAnyFormat(input: string): SyncData | null {
   const format = detectInputFormat(input);
 
   switch (format) {
@@ -144,7 +226,7 @@ export function parseAnyFormat(input: string): Omit<Car, 'id'>[] | null {
       return parseSyncCode(input);
     case 'raw':
       try {
-        return decodeCars(input.trim());
+        return decodeSyncData(input.trim());
       } catch {
         return null;
       }
@@ -153,14 +235,16 @@ export function parseAnyFormat(input: string): Omit<Car, 'id'>[] | null {
   }
 }
 
-// Merge result type
+// =============================================================================
+// Merge Logic
+// =============================================================================
+
 export type MergeResult = {
   added: Car[];
   skipped: Omit<Car, 'id'>[];
   total: number;
 };
 
-// Merge imported cars with existing (skip duplicates by name)
 export function mergeCars(
   existing: Car[],
   imported: Omit<Car, 'id'>[],

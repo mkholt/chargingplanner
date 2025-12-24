@@ -114,7 +114,8 @@ export const CompanySection: React.FC<Props> = ({
               style={{
                 padding: 12,
                 background: tokens.colorNeutralBackground3,
-                borderRadius: 6,
+                border: `1px solid ${tokens.colorNeutralStroke1}`,
+                borderRadius: 8,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,

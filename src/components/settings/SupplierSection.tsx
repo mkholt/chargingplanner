@@ -75,7 +75,8 @@ export const SupplierSection: React.FC<Props> = ({
           style={{
             padding: 12,
             background: tokens.colorNeutralBackground3,
-            borderRadius: 6,
+            border: `1px solid ${tokens.colorNeutralStroke1}`,
+            borderRadius: 8,
           }}
         >
           <Text weight="semibold" style={{ display: 'block' }}>

@@ -1,6 +1,6 @@
-export { CarImportPreviewDialog } from './CarImportPreviewDialog';
 export { CarImportResultDialog } from './CarImportResultDialog';
 export { ExportSection } from './ExportSection';
+export { ImportPreviewDialog } from './ImportPreviewDialog';
 export { ImportSection } from './ImportSection';
 export { QRCodeScanner } from './QRCodeScanner';
 export { SyncLinkHandler } from './SyncLinkHandler';

@@ -6,7 +6,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Delete24Regular } from '@fluentui/react-icons';
+import { Delete20Regular, Edit20Regular } from '@fluentui/react-icons';
 
 import type { Car } from '@/hooks';
 
@@ -14,6 +14,7 @@ type Props = {
   car: Car;
   isSelected: boolean;
   onSelect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 };
 
@@ -21,6 +22,7 @@ export const CarCard: React.FC<Props> = ({
   car,
   isSelected,
   onSelect,
+  onEdit,
   onDelete,
 }) => {
   return (
@@ -42,25 +44,31 @@ export const CarCard: React.FC<Props> = ({
         position: 'relative',
       }}
     >
-      <Button
-        size="small"
-        appearance="subtle"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        style={{
-          position: 'absolute',
-          top: 6,
-          right: 6,
-          minWidth: 24,
-          minHeight: 24,
-          padding: 0,
-        }}
-        icon={<Delete24Regular />}
-        aria-label="Delete car"
-      />
-      <div style={{ fontWeight: 600, fontSize: 15, color: tokens.colorNeutralForeground1 }}>
+      <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 2 }}>
+        <Button
+          size="small"
+          appearance="subtle"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          style={{ minWidth: 24, minHeight: 24, padding: 0 }}
+          icon={<Edit20Regular />}
+          aria-label="Edit car"
+        />
+        <Button
+          size="small"
+          appearance="subtle"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          style={{ minWidth: 24, minHeight: 24, padding: 0 }}
+          icon={<Delete20Regular />}
+          aria-label="Delete car"
+        />
+      </div>
+      <div style={{ fontWeight: 600, fontSize: 15, color: tokens.colorNeutralForeground1, paddingRight: 50 }}>
         {car.name}
       </div>
       <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>

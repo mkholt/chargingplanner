@@ -50,6 +50,14 @@ export function useCars() {
     return newCar;
   }, []);
 
+  const updateCar = useCallback((id: string, updates: Partial<Omit<Car, 'id'>>) => {
+    setCars(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, ...updates } : c);
+      saveCars(updated);
+      return updated;
+    });
+  }, []);
+
   const deleteCar = useCallback((id: string) => {
     setCars(prev => {
       const updated = prev.filter(c => c.id !== id);
@@ -71,5 +79,5 @@ export function useCars() {
     return result;
   }, []);
 
-  return { cars, addCar, deleteCar, mergeCars };
+  return { cars, addCar, updateCar, deleteCar, mergeCars };
 }
