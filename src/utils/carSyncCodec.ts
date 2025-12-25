@@ -1,11 +1,10 @@
-import type { Car } from '@/hooks';
-import type { PriceSettings } from '@/hooks';
+import type { AggregationMethod, AggregationSize, Car, PriceSettings } from '@/hooks';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-// Ultra-compact tuple format: [cars[], postalCode?, supplierId?, companyId?, productId?]
+// Ultra-compact tuple format: [cars[], postalCode?, supplierId?, companyId?, productId?, aggSize?, aggMethod?]
 type CarTuple = [string, number, number]; // [name, batterySize, maxPower]
 type SyncTuple = [
   CarTuple[],  // cars
@@ -13,6 +12,8 @@ type SyncTuple = [
   string?,     // supplierId
   string?,     // companyId
   string?,     // productId
+  string?,     // aggregationSize ('15m' | '1h')
+  string?,     // aggregationMethod ('mean' | 'min' | 'max')
 ];
 
 export type SyncData = {
@@ -64,12 +65,20 @@ function validateCarTuple(item: unknown, index: number): Omit<Car, 'id'> {
   };
 }
 
+function isValidAggregationSize(value: unknown): value is AggregationSize {
+  return value === '15m' || value === '1h';
+}
+
+function isValidAggregationMethod(value: unknown): value is AggregationMethod {
+  return value === 'mean' || value === 'min' || value === 'max';
+}
+
 function validateSyncTuple(data: unknown): SyncData {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('Invalid sync data: expected non-empty array');
   }
 
-  const [carTuples, postalCode, supplierId, companyId, productId] = data as SyncTuple;
+  const [carTuples, postalCode, supplierId, companyId, productId, aggSize, aggMethod] = data as SyncTuple;
 
   if (!Array.isArray(carTuples)) {
     throw new Error('Invalid sync data: first element must be cars array');
@@ -81,13 +90,17 @@ function validateSyncTuple(data: unknown): SyncData {
   const hasSettings = postalCode !== undefined ||
     supplierId !== undefined ||
     companyId !== undefined ||
-    productId !== undefined;
+    productId !== undefined ||
+    aggSize !== undefined ||
+    aggMethod !== undefined;
 
   const settings: PriceSettings | undefined = hasSettings ? {
     postalCode: typeof postalCode === 'number' ? postalCode : null,
     supplierId: typeof supplierId === 'string' ? supplierId : null,
     companyId: typeof companyId === 'string' ? companyId : null,
     productId: typeof productId === 'string' ? productId : null,
+    aggregationSize: isValidAggregationSize(aggSize) ? aggSize : '1h',
+    aggregationMethod: isValidAggregationMethod(aggMethod) ? aggMethod : 'mean',
   } : undefined;
 
   return { cars, settings };
@@ -110,6 +123,13 @@ export function encodeSyncData(cars: Car[], settings?: PriceSettings | null): st
     if (settings.supplierId) tuple[2] = settings.supplierId;
     if (settings.companyId) tuple[3] = settings.companyId;
     if (settings.productId) tuple[4] = settings.productId;
+    // Only include non-default aggregation settings
+    if (settings.aggregationSize && settings.aggregationSize !== '1h') {
+      tuple[5] = settings.aggregationSize;
+    }
+    if (settings.aggregationMethod && settings.aggregationMethod !== 'mean') {
+      tuple[6] = settings.aggregationMethod;
+    }
   }
 
   return toUrlSafeBase64(JSON.stringify(tuple));

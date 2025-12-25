@@ -3,8 +3,9 @@ import type { PricesApiResponse } from '@/types';
 import { getLocalDateString } from './dateUtils';
 
 /**
- * Convert API response to a map of date -> hourly prices.
- * Groups prices by local date and extracts the total price for each hour.
+ * Convert API response to a map of date -> 15-minute prices.
+ * Groups prices by local date and extracts the total price for each 15-minute interval.
+ * Returns 96 entries per day (4 per hour).
  */
 export function mapApiResponseToPrices(
   response: PricesApiResponse
@@ -23,14 +24,17 @@ export function mapApiResponseToPrices(
     const date = new Date(entry.date);
     const dateKey = getLocalDateString(date);
     const hour = date.getHours();
+    const minute = date.getMinutes();
+    // Calculate the 15-minute interval index (0-95)
+    const intervalIndex = hour * 4 + Math.floor(minute / 15);
 
     if (!pricesByDate.has(dateKey)) {
-      // Initialize with 24 slots (undefined becomes 0)
-      pricesByDate.set(dateKey, new Array(24).fill(0));
+      // Initialize with 96 slots for 15-minute intervals
+      pricesByDate.set(dateKey, new Array(96).fill(0));
     }
 
     const prices = pricesByDate.get(dateKey)!;
-    prices[hour] = entry.price.total;
+    prices[intervalIndex] = entry.price.total;
   }
 
   return pricesByDate;

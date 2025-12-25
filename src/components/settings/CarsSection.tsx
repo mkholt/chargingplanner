@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
 
-import {
-  Button,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
-import { Add24Regular } from '@fluentui/react-icons';
-
-import { CarCard, CarForm, DeleteCarDialog } from '@/components/cars';
+import { AddCarCard, CarCard, DeleteCarDialog } from '@/components/cars';
 import type { Car } from '@/hooks';
 
 type Props = {
@@ -29,20 +22,18 @@ export const CarsSection: React.FC<Props> = ({
   onDelete,
   onCloseDialog,
 }) => {
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingCar, setEditingCar] = useState<Car | null>(null);
+  const [editingCarId, setEditingCarId] = useState<string | null>(null);
+  const [isAddingCar, setIsAddingCar] = useState(false);
   const [carToDelete, setCarToDelete] = useState<Car | null>(null);
 
   const handleAdd = (car: Omit<Car, 'id'>) => {
     onAdd(car);
-    setShowAddForm(false);
+    setIsAddingCar(false);
   };
 
-  const handleEdit = (car: Omit<Car, 'id'>) => {
-    if (editingCar) {
-      onUpdate(editingCar.id, car);
-      setEditingCar(null);
-    }
+  const handleSave = (carId: string, updates: Omit<Car, 'id'>) => {
+    onUpdate(carId, updates);
+    setEditingCarId(null);
   };
 
   const handleConfirmDelete = () => {
@@ -57,59 +48,42 @@ export const CarsSection: React.FC<Props> = ({
     onCloseDialog?.();
   };
 
+  const handleStartEdit = (carId: string) => {
+    setIsAddingCar(false);
+    setEditingCarId(carId);
+  };
+
+  const handleStartAdd = () => {
+    setEditingCarId(null);
+    setIsAddingCar(true);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Car list */}
+      {/* Car cards grid */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {cars.length === 0 && !showAddForm && (
-          <div
-            style={{
-              padding: '24px 16px',
-              width: '100%',
-              textAlign: 'center',
-              color: tokens.colorNeutralForeground3,
-            }}
-          >
-            <Text size={300}>No saved cars yet.</Text>
-          </div>
-        )}
         {cars.map((car) => (
           <CarCard
             key={car.id}
             car={car}
             isSelected={selectedCarId === car.id}
+            isEditing={editingCarId === car.id}
             onSelect={() => handleSelectCar(car)}
-            onEdit={() => setEditingCar(car)}
+            onEdit={() => handleStartEdit(car.id)}
+            onSave={(updates) => handleSave(car.id, updates)}
+            onCancelEdit={() => setEditingCarId(null)}
             onDelete={() => setCarToDelete(car)}
           />
         ))}
+
+        {/* Add car card - always visible at end of grid */}
+        <AddCarCard
+          isAdding={isAddingCar}
+          onStartAdd={handleStartAdd}
+          onAdd={handleAdd}
+          onCancel={() => setIsAddingCar(false)}
+        />
       </div>
-
-      {/* Edit car form */}
-      {editingCar && (
-        <CarForm
-          car={editingCar}
-          onSave={handleEdit}
-          onCancel={() => setEditingCar(null)}
-        />
-      )}
-
-      {/* Add car form */}
-      {showAddForm && !editingCar ? (
-        <CarForm
-          onSave={handleAdd}
-          onCancel={() => setShowAddForm(false)}
-        />
-      ) : !editingCar ? (
-        <Button
-          appearance="subtle"
-          icon={<Add24Regular />}
-          onClick={() => setShowAddForm(true)}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          Add Car
-        </Button>
-      ) : null}
 
       {/* Delete confirmation dialog */}
       <DeleteCarDialog

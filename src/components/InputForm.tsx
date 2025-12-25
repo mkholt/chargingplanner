@@ -21,7 +21,7 @@ import {
 import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
 import { LabeledFormField } from '@/components/ui';
-import type { Car } from '@/hooks';
+import { type Car, useChargingForm } from '@/hooks';
 import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
 
 type Props = {
@@ -46,6 +46,7 @@ export const InputForm: React.FC<Props> = ({
   onSettingsClick,
   onSubmit,
 }) => {
+  const { batterySize, chargingSpeed, setBatterySize, setChargingSpeed } = useChargingForm();
   const now = new Date();
   const tomorrow7am = new Date(now);
   tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
@@ -53,12 +54,10 @@ export const InputForm: React.FC<Props> = ({
 
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
-  const [batterySize, setBatterySize] = useState(60);
-  const [chargingSpeed, setChargingSpeed] = useState(11);
   const [earliest, setEarliest] = useState(toDateTimeLocalString(now));
   const [latest, setLatest] = useState(toDateTimeLocalString(tomorrow7am));
 
-  // Handle car selection - update local state and notify parent
+  // Handle car selection - update form values via context
   const handleCarSelect = (car: Car) => {
     onSelectCar(car);
     setBatterySize(car.batterySize);
@@ -78,17 +77,7 @@ export const InputForm: React.FC<Props> = ({
         setChargingSpeed(firstCar.maxPower);
       });
     }
-  }, [cars, selectedCarId, onSelectCar]);
-
-  // Sync form values when the selected car is edited
-  const selectedCar = cars.find(c => c.id === selectedCarId);
-  useEffect(() => {
-    if (selectedCar) {
-      setBatterySize(selectedCar.batterySize);
-      // Cap charging speed at car's max power
-      setChargingSpeed(prev => Math.min(prev, selectedCar.maxPower));
-    }
-  }, [selectedCar?.batterySize, selectedCar?.maxPower]);
+  }, [cars, selectedCarId, onSelectCar, setBatterySize, setChargingSpeed]);
 
   // Store callback in ref to avoid resetting debounce when callback identity changes
   const onSubmitRef = useRef(onSubmit);

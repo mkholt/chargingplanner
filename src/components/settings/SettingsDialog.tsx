@@ -21,9 +21,10 @@ import {
 } from '@fluentui/react-icons';
 
 import { SyncPanel } from '@/components/sync';
-import type { Car, PriceSettings, ResolvedPriceSettings } from '@/hooks';
+import type { AggregationMethod, AggregationSize, Car, PriceSettings, ResolvedPriceSettings } from '@/hooks';
 import type { MergeResult, SyncData } from '@/utils';
 
+import { AggregationSection } from './AggregationSection';
 import { CarsSection } from './CarsSection';
 import { CompanySection } from './CompanySection';
 import { SupplierSection } from './SupplierSection';
@@ -46,6 +47,8 @@ type Props = {
   onPostalCodeChange: (postalCode: number | null) => void;
   onCompanyChange: (companyId: string | null) => void;
   onProductChange: (productId: string | null) => void;
+  onAggregationSizeChange: (size: AggregationSize) => void;
+  onAggregationMethodChange: (method: AggregationMethod) => void;
   onClearPriceSettings: () => void;
   onApplyPriceSettings: (settings: PriceSettings) => void;
   // Import handler
@@ -66,6 +69,8 @@ export const SettingsDialog: React.FC<Props> = ({
   onPostalCodeChange,
   onCompanyChange,
   onProductChange,
+  onAggregationSizeChange,
+  onAggregationMethodChange,
   onClearPriceSettings,
   onApplyPriceSettings,
   onImport,
@@ -133,6 +138,15 @@ export const SettingsDialog: React.FC<Props> = ({
                     product={priceSettings.product}
                     onCompanyChange={onCompanyChange}
                     onProductChange={onProductChange}
+                  />
+
+                  <Divider />
+
+                  <AggregationSection
+                    aggregationSize={priceSettings.aggregationSize}
+                    aggregationMethod={priceSettings.aggregationMethod}
+                    onAggregationSizeChange={onAggregationSizeChange}
+                    onAggregationMethodChange={onAggregationMethodChange}
                   />
                 </div>
               )}

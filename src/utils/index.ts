@@ -18,7 +18,13 @@ export {
   getMockCompanies,
 } from './mockCompanies';
 export type { Company, Product } from './mockCompanies';
-export { getAvailableDates, getMockApiResponse, getPricesForDate } from './mockPrices';
+export {
+  getAggregationSize,
+  getAvailableDates,
+  getMockApiResponse,
+  getPricesForDate,
+  setAggregationSettings,
+} from './mockPrices';
 export {
   findSupplierById,
   findSupplierByPostalCode,

@@ -11,11 +11,16 @@ import {
   type Supplier,
 } from '@/utils';
 
+export type AggregationSize = '15m' | '1h';
+export type AggregationMethod = 'mean' | 'min' | 'max';
+
 export type PriceSettings = {
   postalCode: number | null;
   supplierId: string | null;
   companyId: string | null;
   productId: string | null;
+  aggregationSize: AggregationSize;
+  aggregationMethod: AggregationMethod;
 };
 
 export type ResolvedPriceSettings = {
@@ -24,6 +29,8 @@ export type ResolvedPriceSettings = {
   company: Company | null;
   product: Product | null;
   priceArea: PriceArea | null;
+  aggregationSize: AggregationSize;
+  aggregationMethod: AggregationMethod;
 };
 
 const LS_KEY = 'ev-price-settings';
@@ -33,6 +40,8 @@ const DEFAULT_SETTINGS: PriceSettings = {
   supplierId: null,
   companyId: null,
   productId: null,
+  aggregationSize: '1h',
+  aggregationMethod: 'mean',
 };
 
 function loadSettings(): PriceSettings {
@@ -68,6 +77,8 @@ export function usePriceSettings() {
     company,
     product,
     priceArea,
+    aggregationSize: settings.aggregationSize,
+    aggregationMethod: settings.aggregationMethod,
   };
 
   const setPostalCode = useCallback((postalCode: number | null) => {
@@ -83,6 +94,8 @@ export function usePriceSettings() {
         supplierId: newSupplier?.id ?? null,
         companyId: supplierChanged ? null : prev.companyId,
         productId: supplierChanged ? null : prev.productId,
+        aggregationSize: prev.aggregationSize,
+        aggregationMethod: prev.aggregationMethod,
       };
 
       saveSettings(updated);
@@ -135,6 +148,30 @@ export function usePriceSettings() {
     });
   }, []);
 
+  const setAggregationSize = useCallback((aggregationSize: AggregationSize) => {
+    setSettings(prev => {
+      const updated: PriceSettings = {
+        ...prev,
+        aggregationSize,
+      };
+
+      saveSettings(updated);
+      return updated;
+    });
+  }, []);
+
+  const setAggregationMethod = useCallback((aggregationMethod: AggregationMethod) => {
+    setSettings(prev => {
+      const updated: PriceSettings = {
+        ...prev,
+        aggregationMethod,
+      };
+
+      saveSettings(updated);
+      return updated;
+    });
+  }, []);
+
   const clearAll = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
     saveSettings(DEFAULT_SETTINGS);
@@ -152,6 +189,8 @@ export function usePriceSettings() {
     setSupplierId,
     setCompanyId,
     setProductId,
+    setAggregationSize,
+    setAggregationMethod,
     clearAll,
     applySettings,
   };

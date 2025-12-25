@@ -1,3 +1,4 @@
+import type { AggregationMethod, AggregationSize } from '@/hooks';
 import type { PricesApiResponse, PriceEntry } from '@/types';
 
 import { MS_PER_DAY } from './constants';
@@ -11,12 +12,12 @@ function seededRandom(seed: number): number {
 }
 
 /**
- * Generate a realistic hourly price based on time of day.
+ * Generate a realistic 15-minute price based on time of day.
  * Prices range from ~1.50-2.50 kr/kWh with:
  * - Lower prices at night (00:00-06:00)
  * - Higher prices during peak hours (17:00-20:00)
  */
-function generateHourlyPrice(hour: number, daySeed: number): number {
+function generate15mPrice(hour: number, quarter: number, daySeed: number): number {
   const basePrice = 2.0; // Base price in kr/kWh
 
   // Time-of-day adjustment
@@ -38,8 +39,8 @@ function generateHourlyPrice(hour: number, daySeed: number): number {
     adjustment = 0.05;
   }
 
-  // Add some random variation (-0.15 to +0.15)
-  const randomVariation = (seededRandom(daySeed + hour) - 0.5) * 0.30;
+  // Add some random variation (-0.15 to +0.15) - different seed per quarter
+  const randomVariation = (seededRandom(daySeed + hour * 4 + quarter) - 0.5) * 0.30;
 
   const price = basePrice + adjustment + randomVariation;
 
@@ -48,7 +49,40 @@ function generateHourlyPrice(hour: number, daySeed: number): number {
 }
 
 /**
+ * Aggregate 15-minute prices to hourly using the specified method.
+ */
+function aggregate15mToHourly(
+  prices15m: number[],
+  method: AggregationMethod
+): number[] {
+  const hourlyPrices: number[] = [];
+
+  for (let i = 0; i < prices15m.length; i += 4) {
+    const quarter = prices15m.slice(i, i + 4);
+    if (quarter.length === 0) continue;
+
+    let value: number;
+    switch (method) {
+      case 'min':
+        value = Math.min(...quarter);
+        break;
+      case 'max':
+        value = Math.max(...quarter);
+        break;
+      case 'mean':
+      default:
+        value = quarter.reduce((sum, p) => sum + p, 0) / quarter.length;
+        break;
+    }
+    hourlyPrices.push(Math.round(value * 1000000) / 1000000);
+  }
+
+  return hourlyPrices;
+}
+
+/**
  * Generate mock API response with 48 hours of price data (today + tomorrow).
+ * Always generates 15-minute resolution data.
  */
 export function getMockApiResponse(): PricesApiResponse {
   const now = new Date();
@@ -57,38 +91,42 @@ export function getMockApiResponse(): PricesApiResponse {
 
   const prices: PriceEntry[] = [];
 
-  // Generate prices for today
+  // Generate 15-minute prices for today
   const todaySeed = today.getTime();
   for (let hour = 0; hour < 24; hour++) {
-    const date = new Date(today);
-    date.setHours(hour, 0, 0, 0);
+    for (let quarter = 0; quarter < 4; quarter++) {
+      const date = new Date(today);
+      date.setHours(hour, quarter * 15, 0, 0);
 
-    prices.push({
-      date: date.toISOString(),
-      price: {
-        total: generateHourlyPrice(hour, todaySeed),
-        unit: 'kr/kWh',
-      },
-      forecast: false,
-      resolution: '1h',
-    });
+      prices.push({
+        date: date.toISOString(),
+        price: {
+          total: generate15mPrice(hour, quarter, todaySeed),
+          unit: 'kr/kWh',
+        },
+        forecast: false,
+        resolution: '15m',
+      });
+    }
   }
 
-  // Generate prices for tomorrow
+  // Generate 15-minute prices for tomorrow
   const tomorrowSeed = tomorrow.getTime();
   for (let hour = 0; hour < 24; hour++) {
-    const date = new Date(tomorrow);
-    date.setHours(hour, 0, 0, 0);
+    for (let quarter = 0; quarter < 4; quarter++) {
+      const date = new Date(tomorrow);
+      date.setHours(hour, quarter * 15, 0, 0);
 
-    prices.push({
-      date: date.toISOString(),
-      price: {
-        total: generateHourlyPrice(hour, tomorrowSeed),
-        unit: 'kr/kWh',
-      },
-      forecast: false,
-      resolution: '1h',
-    });
+      prices.push({
+        date: date.toISOString(),
+        price: {
+          total: generate15mPrice(hour, quarter, tomorrowSeed),
+          unit: 'kr/kWh',
+        },
+        forecast: false,
+        resolution: '15m',
+      });
+    }
   }
 
   return {
@@ -97,24 +135,39 @@ export function getMockApiResponse(): PricesApiResponse {
   };
 }
 
-// Cache the mapped prices
-let cachedPrices: Map<string, number[]> | null = null;
+// Cache for raw 15-minute prices (before aggregation)
+let cached15mPrices: Map<string, number[]> | null = null;
 let cacheDate: string | null = null;
 
-function getCachedPrices(): Map<string, number[]> {
+function getCached15mPrices(): Map<string, number[]> {
   const today = getLocalDateString(new Date());
 
   // Invalidate cache if day changed
   if (cacheDate !== today) {
-    cachedPrices = null;
+    cached15mPrices = null;
     cacheDate = today;
   }
 
-  if (!cachedPrices) {
-    cachedPrices = mapApiResponseToPrices(getMockApiResponse());
+  if (!cached15mPrices) {
+    cached15mPrices = mapApiResponseToPrices(getMockApiResponse());
   }
 
-  return cachedPrices;
+  return cached15mPrices;
+}
+
+// Current aggregation settings
+let currentAggregationSize: AggregationSize = '1h';
+let currentAggregationMethod: AggregationMethod = 'mean';
+
+/**
+ * Set the aggregation settings for price data.
+ */
+export function setAggregationSettings(
+  size: AggregationSize,
+  method: AggregationMethod
+): void {
+  currentAggregationSize = size;
+  currentAggregationMethod = method;
 }
 
 /**
@@ -133,9 +186,24 @@ export function getAvailableDates(now: Date): string[] {
 }
 
 /**
- * Get price data for a given date as an array of 24 hourly prices.
+ * Get price data for a given date.
+ * Returns 24 hourly prices (if aggregated to 1h) or 96 15-minute prices (if 15m).
  */
 export function getPricesForDate(date: string): number[] | undefined {
-  const prices = getCachedPrices();
-  return prices.get(date);
+  const prices15m = getCached15mPrices().get(date);
+  if (!prices15m) return undefined;
+
+  if (currentAggregationSize === '15m') {
+    return prices15m;
+  }
+
+  // Aggregate to hourly
+  return aggregate15mToHourly(prices15m, currentAggregationMethod);
+}
+
+/**
+ * Get the current aggregation size setting.
+ */
+export function getAggregationSize(): AggregationSize {
+  return currentAggregationSize;
 }

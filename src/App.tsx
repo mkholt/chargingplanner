@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import {
   FluentProvider,
@@ -10,28 +10,48 @@ import {
 import { ErrorBoundary, InputForm, Results } from '@/components';
 import { SettingsDialog } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
-import { type Car, useCars, usePriceSettings } from '@/hooks';
+import { ChargingFormProvider, type Car, useChargingForm, useCars, usePriceSettings } from '@/hooks';
 import {
   buildTimeline,
   findOptimalChargingWindow,
   mergeCars as mergeCarData,
   MS_PER_HOUR,
+  setAggregationSettings,
   type ChargingResult,
   type MergeResult,
   type SyncData,
 } from '@/utils';
 
-const App: React.FC = () => {
+// Inner component that uses the charging form context
+const AppContent: React.FC = () => {
   const [result, setResult] = useState<ChargingResult | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [intervalPrices, setIntervalPrices] = useState<number[]>([]);
   const [intervalStart, setIntervalStart] = useState<Date | null>(null);
-  const [chargingSpeed, setChargingSpeed] = useState<number | undefined>(undefined);
+  const [resultsChargingSpeed, setResultsChargingSpeed] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
+  // Charging form context - used to sync form when car is edited
+  const { syncWithCar } = useChargingForm();
+
   // Car management
-  const { cars, addCar, updateCar, deleteCar } = useCars();
+  const { cars, addCar, updateCar: updateCarInStore, deleteCar } = useCars();
+
+  // Wrap updateCar to sync form state when the selected car is edited
+  const updateCar = useCallback((id: string, updates: Partial<Omit<Car, 'id'>>) => {
+    updateCarInStore(id, updates);
+    // If updating the currently selected car, sync form values
+    if (id === selectedCarId) {
+      const car = cars.find(c => c.id === id);
+      if (car) {
+        syncWithCar(
+          updates.batterySize ?? car.batterySize,
+          updates.maxPower ?? car.maxPower
+        );
+      }
+    }
+  }, [updateCarInStore, selectedCarId, cars, syncWithCar]);
 
   // Price settings
   const {
@@ -40,9 +60,19 @@ const App: React.FC = () => {
     setPostalCode,
     setCompanyId,
     setProductId,
+    setAggregationSize,
+    setAggregationMethod,
     clearAll: clearPriceSettings,
     applySettings: applyPriceSettings,
   } = usePriceSettings();
+
+  // Sync aggregation settings to the mock prices module
+  useEffect(() => {
+    setAggregationSettings(
+      priceSettings.aggregationSize,
+      priceSettings.aggregationMethod
+    );
+  }, [priceSettings.aggregationSize, priceSettings.aggregationMethod]);
 
   // Handle car selection
   const handleSelectCar = useCallback((car: Car) => {
@@ -85,7 +115,7 @@ const App: React.FC = () => {
     earliest: string;
     latest: string;
   }) => {
-    setChargingSpeed(input.chargingSpeed);
+    setResultsChargingSpeed(input.chargingSpeed);
 
     const earliestDate = new Date(input.earliest);
     const latestDate = new Date(input.latest);
@@ -197,7 +227,7 @@ const App: React.FC = () => {
                 date={selectedDate}
                 intervalPrices={intervalPrices}
                 intervalStart={intervalStart}
-                chargingSpeed={chargingSpeed}
+                chargingSpeed={resultsChargingSpeed}
               />
             </div>
           </div>
@@ -216,6 +246,8 @@ const App: React.FC = () => {
           onPostalCodeChange={setPostalCode}
           onCompanyChange={setCompanyId}
           onProductChange={setProductId}
+          onAggregationSizeChange={setAggregationSize}
+          onAggregationMethodChange={setAggregationMethod}
           onClearPriceSettings={clearPriceSettings}
           onApplyPriceSettings={applyPriceSettings}
           onImport={handleImport}
@@ -229,5 +261,12 @@ const App: React.FC = () => {
     </FluentProvider>
   );
 };
+
+// Wrap with ChargingFormProvider so context is available
+const App: React.FC = () => (
+  <ChargingFormProvider>
+    <AppContent />
+  </ChargingFormProvider>
+);
 
 export default App;
