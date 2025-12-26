@@ -60,13 +60,28 @@ export const InputForm: React.FC<Props> = ({
     setChargingSpeed(car.maxPower);
   };
 
-  // Auto-select first car if none selected
-  const hasAutoSelected = useRef(false);
+  // Sync form with selected car on mount or when selection changes
+  const hasSyncedOnMount = useRef(false);
   useEffect(() => {
-    if (cars.length > 0 && !selectedCarId && !hasAutoSelected.current) {
-      hasAutoSelected.current = true;
+    if (cars.length === 0) return;
+
+    // If a car is selected (e.g., from localStorage), sync form values
+    if (selectedCarId) {
+      const selectedCar = cars.find(c => c.id === selectedCarId);
+      if (selectedCar && !hasSyncedOnMount.current) {
+        hasSyncedOnMount.current = true;
+        queueMicrotask(() => {
+          setBatterySize(selectedCar.batterySize);
+          setChargingSpeed(selectedCar.maxPower);
+        });
+      }
+      return;
+    }
+
+    // Auto-select first car if none selected
+    if (!hasSyncedOnMount.current) {
+      hasSyncedOnMount.current = true;
       const firstCar = cars[0];
-      // Use queueMicrotask to avoid synchronous setState in effect
       queueMicrotask(() => {
         setSelectedCarId(firstCar.id);
         setBatterySize(firstCar.batterySize);
