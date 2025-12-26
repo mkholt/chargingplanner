@@ -12,6 +12,7 @@ import {
   Money16Regular,
   Play16Regular,
   Stop16Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 
 import { PriceTimeline } from '@/components';
@@ -39,12 +40,19 @@ type Props = {
   priceData: PricesApiResponse | undefined;
 };
 
+type CalculationError =
+  | { type: 'no_input' }
+  | { type: 'no_timeline'; reason: string }
+  | { type: 'time_too_short'; availableHours: number; requiredHours: number }
+  | { type: 'invalid_params'; reason: string };
+
 type CalculationResults = {
   result: ChargingResult | null;
   slots: PriceSlot[];
   intervalStart: Date | null;
   intervalMinutes: number;
   chargingSpeed: number | undefined;
+  error: CalculationError | null;
 };
 
 function calculateResults(
@@ -57,10 +65,11 @@ function calculateResults(
     intervalStart: null,
     intervalMinutes: 60,
     chargingSpeed: undefined,
+    error: null,
   };
 
   if (!input || !priceData) {
-    return emptyResults;
+    return { ...emptyResults, error: { type: 'no_input' } };
   }
 
   const earliestDate = new Date(input.earliest);
@@ -70,20 +79,33 @@ function calculateResults(
   // Resolution is determined by the API response (based on aggregation param we sent)
   const timeline = buildTimeline(earliestDate, latestDate, priceData);
   if (!timeline) {
-    return { ...emptyResults, chargingSpeed: input.chargingSpeed };
+    return {
+      ...emptyResults,
+      chargingSpeed: input.chargingSpeed,
+      error: { type: 'no_timeline', reason: 'No price data available for the selected time window.' },
+    };
   }
 
   // Validate interval duration using the timeline's interval size
   const msPerInterval = timeline.intervalMinutes * MS_PER_MINUTE;
   const intervalCount = Math.floor((latestDate.getTime() - earliestDate.getTime()) / msPerInterval) + 1;
   if (intervalCount <= 0) {
-    return { ...emptyResults, chargingSpeed: input.chargingSpeed };
+    return {
+      ...emptyResults,
+      chargingSpeed: input.chargingSpeed,
+      error: { type: 'no_timeline', reason: 'The time window is too short.' },
+    };
   }
 
   // Extract prices for the charging interval only (for optimization calculation)
   const chargingIntervalPrices = timeline.slots
     .slice(timeline.chargingStartIdx, timeline.chargingEndIdx)
     .map(slot => slot.total);
+
+  // Calculate required charging duration for error messages
+  const kWhNeeded = ((input.endPercent - input.startPercent) / 100) * input.batterySize;
+  const requiredHours = kWhNeeded / input.chargingSpeed;
+  const availableHours = chargingIntervalPrices.length * (timeline.intervalMinutes / 60);
 
   // Find optimal charging window
   const calcResult = findOptimalChargingWindow({
@@ -104,12 +126,27 @@ function calculateResults(
       }
     : null;
 
+  // Determine error if calculation failed
+  let error: CalculationError | null = null;
+  if (!adjustedResult) {
+    if (input.endPercent <= input.startPercent) {
+      error = { type: 'invalid_params', reason: 'End percentage must be greater than start percentage.' };
+    } else if (input.chargingSpeed <= 0 || input.batterySize <= 0) {
+      error = { type: 'invalid_params', reason: 'Battery size and charging speed must be positive.' };
+    } else if (requiredHours > availableHours) {
+      error = { type: 'time_too_short', availableHours, requiredHours };
+    } else {
+      error = { type: 'no_timeline', reason: 'Unable to calculate optimal charging window.' };
+    }
+  }
+
   return {
     result: adjustedResult,
     slots: timeline.slots,
     intervalStart: timeline.startDate,
     intervalMinutes: timeline.intervalMinutes,
     chargingSpeed: input.chargingSpeed,
+    error,
   };
 }
 
@@ -122,6 +159,20 @@ function formatDuration(hours: number): string {
   return `${h}h ${m}m`;
 }
 
+/** Get user-friendly error message */
+function getErrorMessage(error: CalculationError): string {
+  switch (error.type) {
+    case 'no_input':
+      return 'Enter charging parameters to calculate.';
+    case 'no_timeline':
+      return error.reason;
+    case 'invalid_params':
+      return error.reason;
+    case 'time_too_short':
+      return `Not enough time. Charging requires ${formatDuration(error.requiredHours)}, but only ${formatDuration(error.availableHours)} available in the selected window.`;
+  }
+}
+
 export const Results: React.FC<Props> = ({
   formInput,
   priceData,
@@ -129,7 +180,7 @@ export const Results: React.FC<Props> = ({
   const { resolved: priceSettings } = usePriceSettings();
 
   // Calculate results from raw inputs
-  const { result, slots, intervalStart, intervalMinutes, chargingSpeed } = useMemo(
+  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error } = useMemo(
     () => calculateResults(formInput, priceData),
     [formInput, priceData]
   );
@@ -288,6 +339,25 @@ export const Results: React.FC<Props> = ({
               {result.totalCost} DKK
             </div>
           </div>
+        </div>
+      )}
+      {!result && error && error.type !== 'no_input' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            padding: 12,
+            marginBottom: 12,
+            background: tokens.colorPaletteYellowBackground1,
+            borderRadius: 6,
+            border: `1px solid ${tokens.colorPaletteYellowBorder1}`,
+          }}
+        >
+          <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
+          <Text style={{ color: tokens.colorPaletteYellowForeground1 }}>
+            {getErrorMessage(error)}
+          </Text>
         </div>
       )}
       <PriceTimeline
