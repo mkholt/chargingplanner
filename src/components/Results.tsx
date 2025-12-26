@@ -16,7 +16,7 @@ import {
 } from '@fluentui/react-icons';
 
 import { PriceTimeline } from '@/components';
-import { usePriceSettings } from '@/contexts';
+import { useCars, usePriceSettings } from '@/contexts';
 import type { PricesApiResponse } from '@/types';
 import {
   buildTimeline,
@@ -177,6 +177,7 @@ export const Results: React.FC<Props> = ({
   formInput,
   priceData,
 }) => {
+  const { cars, selectedCarId } = useCars();
   const { resolved: priceSettings } = usePriceSettings();
 
   // Calculate results from raw inputs
@@ -190,6 +191,9 @@ export const Results: React.FC<Props> = ({
   const text = tokens.colorNeutralForeground1;
   const brand = tokens.colorBrandForeground1;
   const secondary = tokens.colorNeutralForeground2;
+
+  // Get selected car name
+  const selectedCar = cars.find(c => c.id === selectedCarId);
 
   // Build price source description
   const priceSource = (() => {
@@ -208,6 +212,11 @@ export const Results: React.FC<Props> = ({
       ? `Spot price ${priceArea}`
       : `${priceArea}`;
   })();
+
+  // Build subtitle with car name and price source
+  const subtitle = selectedCar
+    ? `${selectedCar.name} · ${priceSource}`
+    : priceSource;
 
   if (!slots.length || !intervalStart) {
     return (
@@ -256,7 +265,7 @@ export const Results: React.FC<Props> = ({
             Charging Plan
           </Text>
           <Text size={200} style={{ color: secondary }}>
-            {priceSource}
+            {subtitle}
           </Text>
         </div>
       </div>
