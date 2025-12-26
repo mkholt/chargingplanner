@@ -1,3 +1,4 @@
+export { AppFooter } from './AppFooter';
 export { CarSelector } from './CarSelector';
 export { ErrorBoundary } from './ErrorBoundary';
 export { InputForm } from './InputForm';

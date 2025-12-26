@@ -15,7 +15,7 @@ npm run generate:icons # Generate PWA icons from SVG (requires sharp)
 
 ## Architecture
 
-This is an EV Charging Optimizer - a React + TypeScript + Vite application that helps users find the cheapest time window to charge their electric vehicle based on hourly electricity prices.
+This is an EV Charging Planner - a React + TypeScript + Vite application that helps users find the cheapest time window to charge their electric vehicle based on hourly electricity prices.
 
 ## Code style
 

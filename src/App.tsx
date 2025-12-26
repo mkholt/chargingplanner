@@ -7,7 +7,7 @@ import {
   webDarkTheme,
 } from '@fluentui/react-components';
 
-import { ErrorBoundary, InputForm, Results } from '@/components';
+import { AppFooter, ErrorBoundary, InputForm, Results } from '@/components';
 import { SettingsDialog } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
 import {
@@ -134,7 +134,7 @@ const AppContent: React.FC = () => {
               }}
             />
             <Title3 as="h1" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
-              EV Charging Optimizer
+              EV Charging Planner
             </Title3>
           </div>
           <div
@@ -166,6 +166,7 @@ const AppContent: React.FC = () => {
               />
             </div>
           </div>
+          <AppFooter />
         </div>
         <SettingsDialog
           open={settingsOpen}

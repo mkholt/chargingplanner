@@ -12,7 +12,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['ev-charging-logo.svg'],
       manifest: {
-        name: 'EV Charging Optimizer',
+        name: 'EV Charging Planner',
         short_name: 'EV Charge',
         description: 'Find the cheapest time to charge your electric vehicle',
         theme_color: '#0078D4',
