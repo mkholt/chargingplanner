@@ -45,8 +45,7 @@ type CalculationResults = {
 
 function calculateResults(
   input: FormInput | null,
-  priceData: PricesApiResponse | undefined,
-  aggregationSize: '15m' | '1h'
+  priceData: PricesApiResponse | undefined
 ): CalculationResults {
   const emptyResults: CalculationResults = {
     result: null,
@@ -65,9 +64,8 @@ function calculateResults(
   const latestDate = new Date(input.latest);
 
   // Build timeline of prices from now to end of available data
-  const timeline = buildTimeline(earliestDate, latestDate, priceData, {
-    aggregationSize,
-  });
+  // Resolution is determined by the API response (based on aggregation param we sent)
+  const timeline = buildTimeline(earliestDate, latestDate, priceData);
   if (!timeline) {
     return { ...emptyResults, chargingSpeed: input.chargingSpeed };
   }
@@ -127,10 +125,11 @@ const AppContent: React.FC = () => {
   // Track form input
   const [formInput, setFormInput] = useState<FormInput | null>(null);
 
-  // Calculate results based on current input, price data, and aggregation settings
+  // Calculate results based on current input and price data
+  // Aggregation is handled by the API, so we don't need to pass it here
   const calculationResults = useMemo(
-    () => calculateResults(formInput, priceData, priceSettings.aggregationSize),
-    [formInput, priceData, priceSettings.aggregationSize]
+    () => calculateResults(formInput, priceData),
+    [formInput, priceData]
   );
 
   const handleSubmit = useCallback((input: FormInput) => {

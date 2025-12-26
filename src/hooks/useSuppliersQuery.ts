@@ -47,8 +47,9 @@ function mapApiFindSuppliers(apiResult: SuppliersFindApiResponse): Supplier[] {
 /**
  * Fetch all suppliers.
  * Suppliers rarely change, so we cache aggressively.
+ * @param enabled - Whether to enable the query (default: true)
  */
-export function useSuppliersQuery() {
+export function useSuppliersQuery(enabled = true) {
   return useQuery({
     queryKey: supplierQueryKeys.list(),
     queryFn: async (): Promise<Supplier[]> => {
@@ -59,6 +60,7 @@ export function useSuppliersQuery() {
       const apiResponse = await fetchSuppliers();
       return mapApiSuppliers(apiResponse ?? []);
     },
+    enabled,
     staleTime: QUERY_TIMING.static.staleTime,
     gcTime: QUERY_TIMING.static.gcTime,
   });

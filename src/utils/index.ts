@@ -21,5 +21,6 @@ export {
 } from './constants';
 export { getLocalDateString, toDateTimeLocalString } from './dateUtils';
 export { getPriceUnit, mapApiResponseToPrices } from './priceMapper';
+export type { PriceMapResult } from './priceMapper';
 export { buildTimeline } from './timelineBuilder';
-export type { TimelineData, TimelineOptions } from './timelineBuilder';
+export type { TimelineData } from './timelineBuilder';

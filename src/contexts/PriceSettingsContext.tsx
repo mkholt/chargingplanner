@@ -100,8 +100,9 @@ function saveSettings(settings: PriceSettings) {
 export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<PriceSettings>(() => loadSettings());
 
-  // Fetch data using React Query
-  const { data: allSuppliers = [] } = useSuppliersQuery();
+  // Only fetch suppliers when needed (when postal code is set or supplier is selected)
+  const needsSuppliers = settings.postalCode !== null || settings.supplierId !== null;
+  const { data: allSuppliers = [] } = useSuppliersQuery(needsSuppliers);
   const {
     data: suppliersForPostalCode = [],
     isLoading: isLoadingSuppliers,
@@ -128,8 +129,11 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const priceArea: PriceArea = supplier?.priceArea ?? settings.priceArea ?? 'DK1';
   const priceAreaSource: 'supplier' | 'manual' = supplier?.priceArea ? 'supplier' : 'manual';
 
-  // Fetch companies for the current price area
-  const { data: companies = [], isLoading: isLoadingCompanies } = useCompaniesQuery(priceArea);
+  // Only fetch companies when needed (when company or product is selected)
+  const needsCompanies = settings.companyId !== null || settings.productId !== null;
+  const { data: companies = [], isLoading: isLoadingCompanies } = useCompaniesQuery(
+    needsCompanies ? priceArea : null
+  );
 
   // Resolve company and product from cached data
   const company = useMemo(() => {

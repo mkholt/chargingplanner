@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPrices, type FetchPricesParams } from '@/api';
 import { type PriceArea, usePriceSettings } from '@/contexts';
 import { getMockApiResponse } from '@/test/mocks/mockPrices';
-import { getLocalDateString, MS_PER_DAY, QUERY_TIMING, USE_MOCK_API } from '@/utils';
+import { getLocalDateString, QUERY_TIMING, USE_MOCK_API } from '@/utils';
 
 // Query key factory for type safety and consistency
 export const priceQueryKeys = {
@@ -15,10 +15,9 @@ export function usePricesQuery() {
   const { resolved } = usePriceSettings();
   const queryClient = useQueryClient();
 
-  // Calculate date range: today and tomorrow
+  // Calculate start date (today)
   const now = new Date();
   const today = getLocalDateString(now);
-  const tomorrow = getLocalDateString(new Date(now.getTime() + MS_PER_DAY));
 
   // API requires either:
   // 1. priceArea alone (for general spot prices)
@@ -32,8 +31,7 @@ export function usePricesQuery() {
     supplierId: hasProductSelection ? resolved.supplier?.id : undefined,
     productId: hasProductSelection ? resolved.product?.id : undefined,
     from: today,
-    to: tomorrow,
-    forecast: true,
+    // 'to' defaults to tomorrow on the API, no need to pass it
     // Aggregation: API uses '1h' to aggregate, omit for 15-minute data
     aggregation: resolved.aggregationSize === '1h' ? '1h' : undefined,
     aggregationMethod: resolved.aggregationSize === '1h' ? resolved.aggregationMethod : undefined,
