@@ -10,7 +10,7 @@ export {
   parseShareableUrl,
 } from './carSyncCodec';
 export type { MergeResult, SyncData } from './carSyncCodec';
-export { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, MS_PER_HOUR, MS_PER_DAY } from './constants';
+export { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY } from './constants';
 export { getLocalDateString, toDateTimeLocalString } from './dateUtils';
 export {
   findCompanyById,

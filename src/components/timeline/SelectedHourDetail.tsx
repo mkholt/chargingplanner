@@ -8,13 +8,18 @@ type Props = {
   hour: HourData;
   color: string;
   chargingSpeed?: number;
+  intervalMinutes: number;
 };
 
 export const SelectedHourDetail: React.FC<Props> = ({
   hour,
   color,
   chargingSpeed,
+  intervalMinutes,
 }) => {
+  const endDate = new Date(hour.date.getTime() + intervalMinutes * 60 * 1000);
+  const durationLabel = intervalMinutes === 60 ? '1 hour' : `${intervalMinutes} min`;
+
   return (
     <div
       style={{
@@ -33,7 +38,7 @@ export const SelectedHourDetail: React.FC<Props> = ({
               minute: '2-digit',
             })}
             {' - '}
-            {new Date(hour.date.getTime() + 3600000).toLocaleTimeString(undefined, {
+            {endDate.toLocaleTimeString(undefined, {
               hour: '2-digit',
               minute: '2-digit',
             })}
@@ -55,9 +60,9 @@ export const SelectedHourDetail: React.FC<Props> = ({
       {chargingSpeed !== undefined && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
           <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-            Cost for 1 hour @ {chargingSpeed} kW:{' '}
+            Cost for {durationLabel} @ {chargingSpeed} kW:{' '}
             <Text weight="semibold">
-              {(hour.price * chargingSpeed).toFixed(2)} DKK
+              {(hour.price * chargingSpeed * (intervalMinutes / 60)).toFixed(2)} DKK
             </Text>
           </Text>
         </div>

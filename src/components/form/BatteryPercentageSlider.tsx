@@ -43,6 +43,8 @@ function getSliderClass(value: number, styles: ReturnType<typeof useSliderStyles
 type Props = {
   value: number;
   onChange: (value: number, fromSlider?: boolean) => void;
+  min?: number;
+  max?: number;
   snapPoint?: number;
   snapRange?: number;
   escapeDistance?: number;
@@ -51,6 +53,8 @@ type Props = {
 export const BatteryPercentageSlider: React.FC<Props> = ({
   value,
   onChange,
+  min = 0,
+  max = 100,
   snapPoint,
   snapRange = 3,
   escapeDistance = 7,
@@ -58,32 +62,41 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
   const sliderStyles = useSliderStyles();
 
   const handleSliderChange = (newValue: number) => {
+    // Clamp to min/max bounds
+    const clampedValue = Math.max(min, Math.min(max, newValue));
+
     if (snapPoint === undefined) {
-      onChange(newValue, true);
+      onChange(clampedValue, true);
       return;
     }
 
     // If currently snapped, require dragging far enough to break free
     if (value === snapPoint) {
-      if (Math.abs(newValue - snapPoint) >= escapeDistance) {
-        onChange(newValue, true);
+      if (Math.abs(clampedValue - snapPoint) >= escapeDistance) {
+        onChange(clampedValue, true);
       }
       return;
     }
 
     // If approaching snap point, snap to it
-    if (Math.abs(newValue - snapPoint) <= snapRange) {
+    if (Math.abs(clampedValue - snapPoint) <= snapRange) {
       onChange(snapPoint, true);
     } else {
-      onChange(newValue, true);
+      onChange(clampedValue, true);
     }
+  };
+
+  const handleInputChange = (newValue: number) => {
+    // Clamp to min/max bounds
+    const clampedValue = Math.max(min, Math.min(max, newValue));
+    onChange(clampedValue, false);
   };
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <Slider
-        min={0}
-        max={100}
+        min={min}
+        max={max}
         value={value}
         onChange={(_ev, data) => handleSliderChange(data.value)}
         className={getSliderClass(value, sliderStyles)}
@@ -91,10 +104,10 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
       />
       <Input
         type="number"
-        min={0}
-        max={100}
+        min={min}
+        max={max}
         value={String(value)}
-        onChange={(_ev, data) => onChange(Number(data.value), false)}
+        onChange={(_ev, data) => handleInputChange(Number(data.value))}
         style={{ width: 70 }}
       />
     </div>

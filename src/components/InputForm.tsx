@@ -126,13 +126,13 @@ export const InputForm: React.FC<Props> = ({
           <LabeledFormField icon={<Battery024Regular />} label="Start %">
             <BatteryPercentageSlider
               value={startPercent}
-              onChange={(value) => setStartPercent(value)}
+              onChange={(value) => setStartPercent(Math.min(value, endPercent - 1))}
             />
           </LabeledFormField>
           <LabeledFormField icon={<Battery1024Regular />} label="End %">
             <BatteryPercentageSlider
               value={endPercent}
-              onChange={(value) => setEndPercent(value)}
+              onChange={(value) => setEndPercent(Math.max(value, startPercent + 1))}
               snapPoint={80}
             />
           </LabeledFormField>

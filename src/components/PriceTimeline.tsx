@@ -22,7 +22,8 @@ type Props = {
   chargingEnd?: number;
   chargingSpeed?: number;
   totalCost?: number;
-  duration?: number;
+  durationHours?: number;
+  intervalMinutes?: number;
 };
 
 export const PriceTimeline: React.FC<Props> = ({
@@ -31,6 +32,7 @@ export const PriceTimeline: React.FC<Props> = ({
   chargingStart = -1,
   chargingEnd = -1,
   chargingSpeed,
+  intervalMinutes = 60,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,15 +42,16 @@ export const PriceTimeline: React.FC<Props> = ({
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
-  // Build hour data
+  // Build interval data (each entry represents one interval - 15m or 1h)
   const hourData: HourData[] = prices.map((price, index) => {
     const date = new Date(startDate);
-    date.setHours(date.getHours() + index, 0, 0, 0);
+    date.setMinutes(date.getMinutes() + index * intervalMinutes, 0, 0);
     const isCharging = index >= chargingStart && index < chargingEnd;
 
     return {
       index,
       hour: date.getHours(),
+      minute: date.getMinutes(),
       price,
       isCharging,
       date,
@@ -140,6 +143,7 @@ export const PriceTimeline: React.FC<Props> = ({
               isSelected={isSelected}
               hasSelection={selectedIndex !== null}
               normalizedHeight={normalizedHeight}
+              intervalMinutes={intervalMinutes}
               onClick={() => setSelectedIndex(isSelected ? null : data.index)}
             />
           );
@@ -170,7 +174,7 @@ export const PriceTimeline: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Hour labels - matches bar layout with flex: 1 and gap: 2 */}
+      {/* Time labels - matches bar layout with flex: 1 and gap: 2 */}
       <div
         style={{
           display: 'flex',
@@ -182,10 +186,22 @@ export const PriceTimeline: React.FC<Props> = ({
           const isFirst = i === 0;
           const isLast = i === hourData.length - 1;
 
-          // Show labels at reasonable intervals - every 2nd for <= 24, every 3rd for > 24
-          // Always show first and last
-          const interval = hourData.length > 24 ? 3 : 2;
-          const showLabel = isFirst || isLast || i % interval === 0;
+          // For 15m intervals (96 per day), show labels every hour (every 4th interval)
+          // For 1h intervals (24 per day), show every 2nd or 3rd
+          let showLabel = false;
+          if (intervalMinutes === 15) {
+            // Show on the hour (minute === 0), plus first and last
+            showLabel = isFirst || isLast || (data.minute === 0 && i % 8 === 0);
+          } else {
+            // Original logic for hourly intervals
+            const labelInterval = hourData.length > 24 ? 3 : 2;
+            showLabel = isFirst || isLast || i % labelInterval === 0;
+          }
+
+          // Format label: show HH:MM for 15m, just HH for 1h
+          const label = intervalMinutes === 15
+            ? `${String(data.hour).padStart(2, '0')}:${String(data.minute ?? 0).padStart(2, '0')}`
+            : String(data.hour).padStart(2, '0');
 
           return (
             <div
@@ -200,7 +216,7 @@ export const PriceTimeline: React.FC<Props> = ({
                   size={100}
                   style={{ color: tokens.colorNeutralForeground3 }}
                 >
-                  {String(data.hour).padStart(2, '0')}
+                  {label}
                 </Text>
               )}
             </div>
@@ -214,6 +230,7 @@ export const PriceTimeline: React.FC<Props> = ({
           hour={selectedHour}
           color={getPriceColor(selectedHour.price, minPrice, maxPrice)}
           chargingSpeed={chargingSpeed}
+          intervalMinutes={intervalMinutes}
         />
       )}
 

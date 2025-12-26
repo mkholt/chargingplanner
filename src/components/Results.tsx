@@ -16,16 +16,18 @@ import { PriceTimeline } from '@/components';
 
 type Props = {
   result: {
-    startHour: number;
-    endHour: number;
+    startIndex: number;
+    endIndex: number;
+    intervalMinutes: number;
     totalCost: number;
-    duration: number;
+    durationHours: number;
     windowPrices: number[];
     energyNeeded: number;
   } | null;
   date: string;
   intervalPrices: number[];
   intervalStart: Date | null;
+  intervalMinutes: number;
   chargingSpeed?: number;
 };
 
@@ -42,6 +44,7 @@ export const Results: React.FC<Props> = ({
   result,
   intervalPrices,
   intervalStart,
+  intervalMinutes,
   chargingSpeed,
 }) => {
   const bg = tokens.colorNeutralBackground2;
@@ -58,28 +61,29 @@ export const Results: React.FC<Props> = ({
     );
   }
 
-  // Filter out prices before the current hour
-  // Use start of current hour so partial hours are included
+  // Filter out prices before the current interval
   const now = new Date();
-  const currentHourStart = new Date(now);
-  currentHourStart.setMinutes(0, 0, 0);
+  const currentIntervalStart = new Date(now);
+  // Round down to the start of the current interval
+  const currentMinutes = currentIntervalStart.getMinutes();
+  currentIntervalStart.setMinutes(Math.floor(currentMinutes / intervalMinutes) * intervalMinutes, 0, 0);
 
   let firstIdx = 0;
   for (let i = 0; i < intervalPrices.length; i++) {
-    const hourDate = new Date(intervalStart);
-    hourDate.setHours(hourDate.getHours() + i, 0, 0, 0);
-    if (hourDate >= currentHourStart) {
+    const intervalDate = new Date(intervalStart);
+    intervalDate.setMinutes(intervalDate.getMinutes() + i * intervalMinutes, 0, 0);
+    if (intervalDate >= currentIntervalStart) {
       firstIdx = i;
       break;
     }
   }
   const filteredPrices = intervalPrices.slice(firstIdx);
   const filteredStart = new Date(intervalStart);
-  filteredStart.setHours(filteredStart.getHours() + firstIdx, 0, 0, 0);
+  filteredStart.setMinutes(filteredStart.getMinutes() + firstIdx * intervalMinutes, 0, 0);
 
   // Highlight charging window (adjusted for filtered index)
-  let highlightStart = result ? result.startHour - firstIdx : -1;
-  let highlightEnd = result ? result.endHour - firstIdx : -1;
+  let highlightStart = result ? result.startIndex - firstIdx : -1;
+  let highlightEnd = result ? result.endIndex - firstIdx : -1;
   if (highlightStart < 0 || highlightStart >= filteredPrices.length) highlightStart = -1;
   if (highlightEnd < 0 || highlightEnd > filteredPrices.length) highlightEnd = filteredPrices.length;
 
@@ -119,7 +123,7 @@ export const Results: React.FC<Props> = ({
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {(() => {
                 const startDate = new Date(filteredStart);
-                startDate.setHours(startDate.getHours() + highlightStart, 0, 0, 0);
+                startDate.setMinutes(startDate.getMinutes() + highlightStart * intervalMinutes, 0, 0);
                 return startDate.toLocaleString(undefined, {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -137,7 +141,7 @@ export const Results: React.FC<Props> = ({
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {(() => {
                 const endDate = new Date(filteredStart);
-                endDate.setHours(endDate.getHours() + highlightEnd, 0, 0, 0);
+                endDate.setMinutes(endDate.getMinutes() + highlightEnd * intervalMinutes, 0, 0);
                 return endDate.toLocaleString(undefined, {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -153,7 +157,7 @@ export const Results: React.FC<Props> = ({
               <Text size={200} style={{ color: secondary }}>Duration</Text>
             </div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
-              {formatDuration(result.duration)}
+              {formatDuration(result.durationHours)}
             </div>
           </div>
           <div>
@@ -183,7 +187,8 @@ export const Results: React.FC<Props> = ({
         chargingEnd={highlightEnd}
         chargingSpeed={chargingSpeed}
         totalCost={result?.totalCost}
-        duration={result?.duration}
+        durationHours={result?.durationHours}
+        intervalMinutes={intervalMinutes}
       />
     </Card>
   );

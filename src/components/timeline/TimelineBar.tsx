@@ -14,6 +14,7 @@ type Props = {
   isSelected: boolean;
   hasSelection: boolean;
   normalizedHeight: number;
+  intervalMinutes: number;
   onClick: () => void;
 };
 
@@ -23,13 +24,18 @@ export const TimelineBar: React.FC<Props> = ({
   isSelected,
   hasSelection,
   normalizedHeight,
+  intervalMinutes,
   onClick,
 }) => {
+  const startTime = `${String(data.hour).padStart(2, '0')}:${String(data.minute ?? 0).padStart(2, '0')}`;
+  const endDate = new Date(data.date.getTime() + intervalMinutes * 60 * 1000);
+  const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+
   const tooltipContent = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 100 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <Text size={200} weight="semibold">
-          {String(data.hour).padStart(2, '0')}:00 - {String((data.hour + 1) % 24).padStart(2, '0')}:00
+          {startTime} - {endTime}
         </Text>
         <Text size={200} weight="semibold" style={{ color }}>
           {data.price.toFixed(2)}

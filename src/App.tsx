@@ -19,7 +19,7 @@ import {
 import {
   buildTimeline,
   findOptimalChargingWindow,
-  MS_PER_HOUR,
+  MS_PER_MINUTE,
   setAggregationSettings,
   type ChargingResult,
 } from '@/utils';
@@ -31,6 +31,7 @@ const AppContent: React.FC = () => {
   const [intervalPrices, setIntervalPrices] = useState<number[]>([]);
   const [intervalStart, setIntervalStart] = useState<Date | null>(null);
   const [resultsChargingSpeed, setResultsChargingSpeed] = useState<number | undefined>(undefined);
+  const [resultsIntervalMinutes, setResultsIntervalMinutes] = useState<number>(60);
 
   // UI state
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -38,12 +39,15 @@ const AppContent: React.FC = () => {
   // Get aggregation settings from context to sync with mock prices module
   const { resolved: priceSettings } = usePriceSettings();
 
-  useEffect(() => {
-    setAggregationSettings(
-      priceSettings.aggregationSize,
-      priceSettings.aggregationMethod
-    );
-  }, [priceSettings.aggregationSize, priceSettings.aggregationMethod]);
+  // Track last input to allow re-running when settings change
+  const [lastInput, setLastInput] = useState<{
+    startPercent: number;
+    endPercent: number;
+    batterySize: number;
+    chargingSpeed: number;
+    earliest: string;
+    latest: string;
+  } | null>(null);
 
   const handleSubmit = useCallback((input: {
     startPercent: number;
@@ -53,20 +57,11 @@ const AppContent: React.FC = () => {
     earliest: string;
     latest: string;
   }) => {
+    setLastInput(input);
     setResultsChargingSpeed(input.chargingSpeed);
 
     const earliestDate = new Date(input.earliest);
     const latestDate = new Date(input.latest);
-
-    // Validate interval duration
-    const intervalHours = Math.floor((latestDate.getTime() - earliestDate.getTime()) / MS_PER_HOUR) + 1;
-    if (intervalHours <= 0) {
-      setResult(null);
-      setSelectedDate('');
-      setIntervalPrices([]);
-      setIntervalStart(null);
-      return;
-    }
 
     // Build timeline of prices from now to end of available data
     const timeline = buildTimeline(earliestDate, latestDate);
@@ -78,8 +73,20 @@ const AppContent: React.FC = () => {
       return;
     }
 
+    // Validate interval duration using the timeline's interval size
+    const msPerInterval = timeline.intervalMinutes * MS_PER_MINUTE;
+    const intervalCount = Math.floor((latestDate.getTime() - earliestDate.getTime()) / msPerInterval) + 1;
+    if (intervalCount <= 0) {
+      setResult(null);
+      setSelectedDate('');
+      setIntervalPrices([]);
+      setIntervalStart(null);
+      return;
+    }
+
     setIntervalPrices(timeline.prices);
     setIntervalStart(timeline.startDate);
+    setResultsIntervalMinutes(timeline.intervalMinutes);
 
     // Extract prices for the charging interval only
     const chargingIntervalPrices = timeline.prices.slice(
@@ -94,14 +101,15 @@ const AppContent: React.FC = () => {
       batterySize: input.batterySize,
       chargingSpeed: input.chargingSpeed,
       prices: chargingIntervalPrices,
+      intervalMinutes: timeline.intervalMinutes,
     });
 
     // Adjust result indices to be relative to the full timeline
     const adjustedResult = calcResult
       ? {
           ...calcResult,
-          startHour: calcResult.startHour + timeline.chargingStartIdx,
-          endHour: calcResult.endHour + timeline.chargingStartIdx,
+          startIndex: calcResult.startIndex + timeline.chargingStartIdx,
+          endIndex: calcResult.endIndex + timeline.chargingStartIdx,
         }
       : null;
 
@@ -110,6 +118,20 @@ const AppContent: React.FC = () => {
       `${earliestDate.toLocaleString()} - ${latestDate.toLocaleString()}`
     );
   }, []);
+
+  // Sync aggregation settings and re-run calculation when they change
+  useEffect(() => {
+    setAggregationSettings(
+      priceSettings.aggregationSize,
+      priceSettings.aggregationMethod
+    );
+    // Re-run calculation when aggregation settings change (if we have previous input)
+    if (lastInput) {
+      // Use setTimeout to ensure settings are applied first
+      setTimeout(() => handleSubmit(lastInput), 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceSettings.aggregationSize, priceSettings.aggregationMethod]);
 
   return (
     <FluentProvider theme={webDarkTheme}>
@@ -162,6 +184,7 @@ const AppContent: React.FC = () => {
                 date={selectedDate}
                 intervalPrices={intervalPrices}
                 intervalStart={intervalStart}
+                intervalMinutes={resultsIntervalMinutes}
                 chargingSpeed={resultsChargingSpeed}
               />
             </div>

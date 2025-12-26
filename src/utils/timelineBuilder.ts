@@ -1,20 +1,22 @@
-import { MS_PER_DAY, MS_PER_HOUR } from './constants';
+import { MS_PER_DAY, MS_PER_MINUTE } from './constants';
 import { getLocalDateString } from './dateUtils';
-import { getPricesForDate } from './mockPrices';
+import { getAggregationSize, getPricesForDate } from './mockPrices';
 
 export interface TimelineData {
   /** All prices from now to end of available data */
   prices: number[];
-  /** Start time of the timeline (current hour, truncated to hour) */
+  /** Start time of the timeline (truncated to current interval) */
   startDate: Date;
   /** Index of charging interval start within the timeline */
   chargingStartIdx: number;
   /** Index of charging interval end within the timeline */
   chargingEndIdx: number;
+  /** Interval size in minutes (15 or 60) */
+  intervalMinutes: number;
 }
 
 /**
- * Builds a timeline of prices from the current hour to the end of available data,
+ * Builds a timeline of prices from the current interval to the end of available data,
  * and calculates where the charging interval falls within that timeline.
  *
  * @param earliestDate - Start of the user's desired charging window
@@ -26,6 +28,10 @@ export function buildTimeline(
   latestDate: Date
 ): TimelineData | null {
   const now = new Date();
+  const aggregationSize = getAggregationSize();
+  const intervalMinutes = aggregationSize === '15m' ? 15 : 60;
+  const msPerInterval = intervalMinutes * MS_PER_MINUTE;
+  const intervalsPerDay = (24 * 60) / intervalMinutes;
 
   // Gather prices for today and tomorrow
   const today = getLocalDateString(now);
@@ -44,23 +50,25 @@ export function buildTimeline(
   const timelineAllStart = new Date(now);
   timelineAllStart.setHours(0, 0, 0, 0);
 
-  // Find the index matching the current hour and slice from there
+  // Find the index matching the current interval and slice from there
   // This gives us prices from "now" onwards
-  const nowHourIdx =
-    (now.getDate() - timelineAllStart.getDate()) * 24 + now.getHours();
-  const timelinePrices = allPrices.slice(nowHourIdx);
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+  const nowIntervalIdx =
+    (now.getDate() - timelineAllStart.getDate()) * intervalsPerDay +
+    Math.floor(minutesSinceMidnight / intervalMinutes);
+  const timelinePrices = allPrices.slice(nowIntervalIdx);
 
   // Calculate the actual start time of our sliced timeline
   const timelineStart = new Date(timelineAllStart);
-  timelineStart.setHours(timelineStart.getHours() + nowHourIdx, 0, 0, 0);
+  timelineStart.setMinutes(nowIntervalIdx * intervalMinutes, 0, 0);
 
   // Calculate charging interval indices relative to the timeline
   const chargingStartIdx = Math.max(
-    Math.floor((earliestDate.getTime() - timelineStart.getTime()) / MS_PER_HOUR),
+    Math.floor((earliestDate.getTime() - timelineStart.getTime()) / msPerInterval),
     0
   );
   const chargingEndIdx = Math.max(
-    Math.floor((latestDate.getTime() - timelineStart.getTime()) / MS_PER_HOUR),
+    Math.floor((latestDate.getTime() - timelineStart.getTime()) / msPerInterval),
     chargingStartIdx
   );
 
@@ -69,5 +77,6 @@ export function buildTimeline(
     startDate: timelineStart,
     chargingStartIdx,
     chargingEndIdx,
+    intervalMinutes,
   };
 }
