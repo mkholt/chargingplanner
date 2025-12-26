@@ -3,7 +3,14 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { CalendarClock24Regular } from '@fluentui/react-icons';
+import {
+  CalendarClock24Regular,
+  Clock16Regular,
+  Flash16Regular,
+  Money16Regular,
+  Play16Regular,
+  Stop16Regular,
+} from '@fluentui/react-icons';
 
 import { PriceTimeline } from '@/components';
 
@@ -14,12 +21,22 @@ type Props = {
     totalCost: number;
     duration: number;
     windowPrices: number[];
+    energyNeeded: number;
   } | null;
   date: string;
   intervalPrices: number[];
   intervalStart: Date | null;
   chargingSpeed?: number;
 };
+
+/** Format duration as "Xh Ym" */
+function formatDuration(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (m === 0) return `${h}h`;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
 
 export const Results: React.FC<Props> = ({
   result,
@@ -41,13 +58,17 @@ export const Results: React.FC<Props> = ({
     );
   }
 
-  // Filter out prices before now
+  // Filter out prices before the current hour
+  // Use start of current hour so partial hours are included
   const now = new Date();
+  const currentHourStart = new Date(now);
+  currentHourStart.setMinutes(0, 0, 0);
+
   let firstIdx = 0;
   for (let i = 0; i < intervalPrices.length; i++) {
     const hourDate = new Date(intervalStart);
     hourDate.setHours(hourDate.getHours() + i, 0, 0, 0);
-    if (hourDate >= now) {
+    if (hourDate >= currentHourStart) {
       firstIdx = i;
       break;
     }
@@ -91,10 +112,11 @@ export const Results: React.FC<Props> = ({
           }}
         >
           <div>
-            <Text size={200} style={{ color: secondary }}>
-              Start
-            </Text>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+              <Play16Regular />
+              <Text size={200} style={{ color: secondary }}>Start</Text>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>
               {(() => {
                 const startDate = new Date(filteredStart);
                 startDate.setHours(startDate.getHours() + highlightStart, 0, 0, 0);
@@ -108,10 +130,11 @@ export const Results: React.FC<Props> = ({
             </div>
           </div>
           <div>
-            <Text size={200} style={{ color: secondary }}>
-              End
-            </Text>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+              <Stop16Regular />
+              <Text size={200} style={{ color: secondary }}>End</Text>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>
               {(() => {
                 const endDate = new Date(filteredStart);
                 endDate.setHours(endDate.getHours() + highlightEnd, 0, 0, 0);
@@ -125,17 +148,28 @@ export const Results: React.FC<Props> = ({
             </div>
           </div>
           <div>
-            <Text size={200} style={{ color: secondary }}>
-              Duration
-            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+              <Clock16Regular />
+              <Text size={200} style={{ color: secondary }}>Duration</Text>
+            </div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
-              {result.duration}h
+              {formatDuration(result.duration)}
             </div>
           </div>
           <div>
-            <Text size={200} style={{ color: secondary }}>
-              Cost
-            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+              <Flash16Regular />
+              <Text size={200} style={{ color: secondary }}>Energy</Text>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              {result.energyNeeded.toFixed(1)} kWh
+            </div>
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+              <Money16Regular />
+              <Text size={200} style={{ color: secondary }}>Est. Cost</Text>
+            </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: brand }}>
               {result.totalCost} DKK
             </div>

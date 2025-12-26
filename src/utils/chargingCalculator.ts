@@ -12,6 +12,7 @@ export type ChargingResult = {
   totalCost: number;
   duration: number;
   windowPrices: number[];
+  energyNeeded: number;
 };
 
 export function findOptimalChargingWindow(input: ChargingInput): ChargingResult | null {
@@ -51,5 +52,6 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
     totalCost: Math.round(minCost * 100) / 100,
     duration: Math.round(duration * 100) / 100,
     windowPrices: bestWindow,
+    energyNeeded: kWhNeeded,
   };
 }
