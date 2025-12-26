@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "codegen:api": "openapi-typescript https://stromligning.dk/api/swagger.json -o src/types/stromligning.d.ts"
+    "codegen:api": "openapi-typescript https://stromligning.dk/api/swagger.json -o src/types/stromligning.d.ts",
+    "generate:icons": "node scripts/generate-pwa-icons.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -20,9 +21,11 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^16.5.0",
     "openapi-typescript": "^7.10.1",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.50.0",
     "vite": "^7.3.0",
+    "vite-plugin-pwa": "^1.2.0",
     "vite-tsconfig-paths": "^6.0.3"
   },
   "dependencies": {

@@ -5,11 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev         # Start development server (Vite)
-npm run build       # TypeScript check + production build
-npm run lint        # Run ESLint
-npm run preview     # Preview production build
-npm run codegen:api # Generate API types from stromligning.dk swagger
+npm run dev           # Start development server (Vite)
+npm run build         # TypeScript check + production build
+npm run lint          # Run ESLint
+npm run preview       # Preview production build
+npm run codegen:api   # Generate API types from stromligning.dk swagger
+npm run generate:icons # Generate PWA icons from SVG (requires sharp)
 ```
 
 ## Architecture
