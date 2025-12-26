@@ -1,4 +1,4 @@
-import type { AggregationMethod, AggregationSize, Car, PriceSettings } from '@/hooks';
+import type { AggregationMethod, AggregationSize, Car, PriceSettings } from '@/contexts';
 
 // =============================================================================
 // Types

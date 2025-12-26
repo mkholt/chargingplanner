@@ -13,7 +13,7 @@ import {
 } from '@fluentui/react-components';
 import { Warning24Regular } from '@fluentui/react-icons';
 
-import type { Car } from '@/hooks';
+import type { Car } from '@/contexts';
 
 type Props = {
   car: Car | null;

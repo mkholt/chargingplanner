@@ -21,8 +21,7 @@ import {
 } from '@fluentui/react-icons';
 
 import { SyncPanel } from '@/components/sync';
-import type { AggregationMethod, AggregationSize, Car, PriceSettings, ResolvedPriceSettings } from '@/hooks';
-import type { MergeResult, SyncData } from '@/utils';
+import { usePriceSettings } from '@/contexts';
 
 import { AggregationSection } from './AggregationSection';
 import { CarsSection } from './CarsSection';
@@ -34,48 +33,14 @@ type SettingsTab = 'cars' | 'electricity' | 'sync';
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Car props
-  cars: Car[];
-  selectedCarId: string | null;
-  onSelectCar: (car: Car) => void;
-  onAddCar: (car: Omit<Car, 'id'>) => void;
-  onUpdateCar: (id: string, updates: Partial<Omit<Car, 'id'>>) => void;
-  onDeleteCar: (id: string) => void;
-  // Price settings props
-  priceSettings: ResolvedPriceSettings;
-  rawPriceSettings: PriceSettings;
-  onPostalCodeChange: (postalCode: number | null) => void;
-  onCompanyChange: (companyId: string | null) => void;
-  onProductChange: (productId: string | null) => void;
-  onAggregationSizeChange: (size: AggregationSize) => void;
-  onAggregationMethodChange: (method: AggregationMethod) => void;
-  onClearPriceSettings: () => void;
-  onApplyPriceSettings: (settings: PriceSettings) => void;
-  // Import handler
-  onImport: (data: SyncData, selectedCarIndices: number[], importSettings: boolean) => MergeResult;
 };
 
 export const SettingsDialog: React.FC<Props> = ({
   open,
   onOpenChange,
-  cars,
-  selectedCarId,
-  onSelectCar,
-  onAddCar,
-  onUpdateCar,
-  onDeleteCar,
-  priceSettings,
-  rawPriceSettings,
-  onPostalCodeChange,
-  onCompanyChange,
-  onProductChange,
-  onAggregationSizeChange,
-  onAggregationMethodChange,
-  onClearPriceSettings,
-  onApplyPriceSettings,
-  onImport,
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('cars');
+  const { clearAll: clearPriceSettings } = usePriceSettings();
 
   const closeButton = (
     <Button
@@ -111,59 +76,25 @@ export const SettingsDialog: React.FC<Props> = ({
 
               {/* Tab content */}
               {activeTab === 'cars' && (
-                <CarsSection
-                  cars={cars}
-                  selectedCarId={selectedCarId}
-                  onSelect={onSelectCar}
-                  onAdd={onAddCar}
-                  onUpdate={onUpdateCar}
-                  onDelete={onDeleteCar}
-                  onCloseDialog={() => onOpenChange(false)}
-                />
+                <CarsSection onCloseDialog={() => onOpenChange(false)} />
               )}
 
               {activeTab === 'electricity' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <SupplierSection
-                    postalCode={priceSettings.postalCode}
-                    supplier={priceSettings.supplier}
-                    onPostalCodeChange={onPostalCodeChange}
-                  />
-
+                  <SupplierSection />
                   <Divider />
-
-                  <CompanySection
-                    priceArea={priceSettings.priceArea}
-                    company={priceSettings.company}
-                    product={priceSettings.product}
-                    onCompanyChange={onCompanyChange}
-                    onProductChange={onProductChange}
-                  />
-
+                  <CompanySection />
                   <Divider />
-
-                  <AggregationSection
-                    aggregationSize={priceSettings.aggregationSize}
-                    aggregationMethod={priceSettings.aggregationMethod}
-                    onAggregationSizeChange={onAggregationSizeChange}
-                    onAggregationMethodChange={onAggregationMethodChange}
-                  />
+                  <AggregationSection />
                 </div>
               )}
 
-              {activeTab === 'sync' && (
-                <SyncPanel
-                  cars={cars}
-                  priceSettings={rawPriceSettings}
-                  onImport={onImport}
-                  onApplyPriceSettings={onApplyPriceSettings}
-                />
-              )}
+              {activeTab === 'sync' && <SyncPanel />}
             </div>
           </DialogContent>
           <DialogActions style={{ justifyContent: 'space-between' }}>
             {activeTab === 'electricity' ? (
-              <Button appearance="secondary" onClick={onClearPriceSettings}>
+              <Button appearance="secondary" onClick={clearPriceSettings}>
                 Clear Settings
               </Button>
             ) : (

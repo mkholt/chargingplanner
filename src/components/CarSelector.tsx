@@ -9,7 +9,7 @@ import {
 } from '@fluentui/react-components';
 import { VehicleCar20Regular } from '@fluentui/react-icons';
 
-import type { Car } from '@/hooks';
+import type { Car } from '@/contexts';
 
 type Props = {
   cars: Car[];

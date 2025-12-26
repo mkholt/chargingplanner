@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 
-import {
-  mergeCars as mergeCarData,
-  type MergeResult,
-} from '../utils/carSyncCodec';
+import { mergeCars as mergeCarData, type MergeResult } from '@/utils';
+
+// ============ Types ============
 
 export type Car = {
   id: string;
@@ -12,9 +11,23 @@ export type Car = {
   maxPower: number;
 };
 
-export type { MergeResult };
+type CarsContextType = {
+  cars: Car[];
+  selectedCarId: string | null;
+  setSelectedCarId: (id: string | null) => void;
+  addCar: (car: Omit<Car, 'id'>) => Car;
+  updateCar: (id: string, updates: Partial<Omit<Car, 'id'>>) => void;
+  deleteCar: (id: string) => void;
+  mergeCars: (imported: Omit<Car, 'id'>[]) => MergeResult;
+};
 
-const LS_KEY = "ev-cars";
+// ============ Context ============
+
+const CarsContext = createContext<CarsContextType | null>(null);
+
+// ============ Storage ============
+
+const LS_KEY = 'ev-cars';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2);
@@ -34,8 +47,11 @@ function saveCars(cars: Car[]) {
   localStorage.setItem(LS_KEY, JSON.stringify(cars));
 }
 
-export function useCars() {
+// ============ Provider ============
+
+export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cars, setCars] = useState<Car[]>(() => loadCars());
+  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
   const addCar = useCallback((car: Omit<Car, 'id'>) => {
     const newCar: Car = {
@@ -79,5 +95,30 @@ export function useCars() {
     return result;
   }, []);
 
-  return { cars, addCar, updateCar, deleteCar, mergeCars };
+  return (
+    <CarsContext.Provider
+      value={{
+        cars,
+        selectedCarId,
+        setSelectedCarId,
+        addCar,
+        updateCar,
+        deleteCar,
+        mergeCars,
+      }}
+    >
+      {children}
+    </CarsContext.Provider>
+  );
+};
+
+// ============ Hook ============
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useCars(): CarsContextType {
+  const context = useContext(CarsContext);
+  if (!context) {
+    throw new Error('useCars must be used within a CarsProvider');
+  }
+  return context;
 }

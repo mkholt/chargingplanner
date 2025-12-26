@@ -18,7 +18,7 @@ import {
 } from '@fluentui/react-icons';
 import { QRCodeSVG } from 'qrcode.react';
 
-import type { Car, PriceSettings } from '@/hooks';
+import type { Car, PriceSettings } from '@/contexts';
 import { encodeSyncData, generateShareableUrl, generateSyncCode } from '@/utils';
 
 type Props = {

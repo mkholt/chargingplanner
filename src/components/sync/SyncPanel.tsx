@@ -11,24 +11,14 @@ import {
 } from '@fluentui/react-icons';
 
 import { ExportSection, ImportSection } from '@/components/sync';
-import type { Car, PriceSettings } from '@/hooks';
-import type { MergeResult, SyncData } from '@/utils';
-
-type Props = {
-  cars: Car[];
-  priceSettings?: PriceSettings | null;
-  onImport: (data: SyncData, selectedCarIndices: number[], importSettings: boolean) => MergeResult;
-  onApplyPriceSettings?: (settings: PriceSettings) => void;
-};
+import { useCars, usePriceSettings } from '@/contexts';
 
 type SyncTab = 'export' | 'import';
 
-export const SyncPanel: React.FC<Props> = ({
-  cars,
-  priceSettings,
-  onImport,
-  onApplyPriceSettings,
-}) => {
+export const SyncPanel: React.FC = () => {
+  const { cars } = useCars();
+  const { settings: priceSettings } = usePriceSettings();
+
   const [activeTab, setActiveTab] = useState<SyncTab>('export');
 
   return (
@@ -50,13 +40,7 @@ export const SyncPanel: React.FC<Props> = ({
         }}
       >
         {activeTab === 'export' && <ExportSection cars={cars} priceSettings={priceSettings} />}
-        {activeTab === 'import' && (
-          <ImportSection
-            existingCars={cars}
-            onImport={onImport}
-            onApplyPriceSettings={onApplyPriceSettings}
-          />
-        )}
+        {activeTab === 'import' && <ImportSection />}
       </div>
     </div>
   );

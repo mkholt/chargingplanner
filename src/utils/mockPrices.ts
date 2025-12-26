@@ -1,4 +1,4 @@
-import type { AggregationMethod, AggregationSize } from '@/hooks';
+import type { AggregationMethod, AggregationSize } from '@/contexts';
 import type { PricesApiResponse, PriceEntry } from '@/types';
 
 import { MS_PER_DAY } from './constants';

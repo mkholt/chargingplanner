@@ -11,7 +11,7 @@ import {
 } from '@fluentui/react-components';
 import { Checkmark20Regular, Delete20Regular, Dismiss20Regular, Edit20Regular } from '@fluentui/react-icons';
 
-import type { Car } from '@/hooks';
+import type { Car } from '@/contexts';
 import { CHARGING_POWER_OPTIONS } from '@/utils';
 
 type Props = {

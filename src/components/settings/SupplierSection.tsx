@@ -7,20 +7,13 @@ import {
 } from '@fluentui/react-components';
 import { Location20Regular } from '@fluentui/react-icons';
 
-import type { Supplier } from '@/utils';
+import { usePriceSettings } from '@/contexts';
 import { isValidPostalCode } from '@/utils';
 
-type Props = {
-  postalCode: number | null;
-  supplier: Supplier | null;
-  onPostalCodeChange: (postalCode: number | null) => void;
-};
+export const SupplierSection: React.FC = () => {
+  const { resolved, setPostalCode } = usePriceSettings();
+  const { postalCode, supplier } = resolved;
 
-export const SupplierSection: React.FC<Props> = ({
-  postalCode,
-  supplier,
-  onPostalCodeChange,
-}) => {
   const [inputValue, setInputValue] = useState(postalCode?.toString() ?? '');
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +22,7 @@ export const SupplierSection: React.FC<Props> = ({
     setError(null);
 
     if (!value.trim()) {
-      onPostalCodeChange(null);
+      setPostalCode(null);
       return;
     }
 
@@ -44,7 +37,7 @@ export const SupplierSection: React.FC<Props> = ({
       return;
     }
 
-    onPostalCodeChange(parsed);
+    setPostalCode(parsed);
   };
 
   return (

@@ -10,102 +10,40 @@ import {
 import { ErrorBoundary, InputForm, Results } from '@/components';
 import { SettingsDialog } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
-import { ChargingFormProvider, type Car, useChargingForm, useCars, usePriceSettings } from '@/hooks';
+import {
+  CarsProvider,
+  ChargingFormProvider,
+  PriceSettingsProvider,
+  usePriceSettings,
+} from '@/contexts';
 import {
   buildTimeline,
   findOptimalChargingWindow,
-  mergeCars as mergeCarData,
   MS_PER_HOUR,
   setAggregationSettings,
   type ChargingResult,
-  type MergeResult,
-  type SyncData,
 } from '@/utils';
 
-// Inner component that uses the charging form context
 const AppContent: React.FC = () => {
+  // Calculation results state
   const [result, setResult] = useState<ChargingResult | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [intervalPrices, setIntervalPrices] = useState<number[]>([]);
   const [intervalStart, setIntervalStart] = useState<Date | null>(null);
   const [resultsChargingSpeed, setResultsChargingSpeed] = useState<number | undefined>(undefined);
+
+  // UI state
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
-  // Charging form context - used to sync form when car is edited
-  const { syncWithCar } = useChargingForm();
+  // Get aggregation settings from context to sync with mock prices module
+  const { resolved: priceSettings } = usePriceSettings();
 
-  // Car management
-  const { cars, addCar, updateCar: updateCarInStore, deleteCar } = useCars();
-
-  // Wrap updateCar to sync form state when the selected car is edited
-  const updateCar = useCallback((id: string, updates: Partial<Omit<Car, 'id'>>) => {
-    updateCarInStore(id, updates);
-    // If updating the currently selected car, sync form values
-    if (id === selectedCarId) {
-      const car = cars.find(c => c.id === id);
-      if (car) {
-        syncWithCar(
-          updates.batterySize ?? car.batterySize,
-          updates.maxPower ?? car.maxPower
-        );
-      }
-    }
-  }, [updateCarInStore, selectedCarId, cars, syncWithCar]);
-
-  // Price settings
-  const {
-    settings: rawPriceSettings,
-    resolved: priceSettings,
-    setPostalCode,
-    setCompanyId,
-    setProductId,
-    setAggregationSize,
-    setAggregationMethod,
-    clearAll: clearPriceSettings,
-    applySettings: applyPriceSettings,
-  } = usePriceSettings();
-
-  // Sync aggregation settings to the mock prices module
   useEffect(() => {
     setAggregationSettings(
       priceSettings.aggregationSize,
       priceSettings.aggregationMethod
     );
   }, [priceSettings.aggregationSize, priceSettings.aggregationMethod]);
-
-  // Handle car selection
-  const handleSelectCar = useCallback((car: Car) => {
-    setSelectedCarId(car.id);
-  }, []);
-
-  // Handle import from sync
-  const handleImport = useCallback((
-    data: SyncData,
-    selectedCarIndices: number[],
-    importSettings: boolean
-  ): MergeResult => {
-    // Filter cars by selected indices
-    const selectedCars = selectedCarIndices.map(i => data.cars[i]);
-
-    // Generate IDs for new cars
-    const generateId = () => Math.random().toString(36).slice(2);
-
-    // Merge cars
-    const result = mergeCarData(cars, selectedCars, generateId);
-
-    // Add new cars
-    result.added.forEach(car => {
-      addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
-    });
-
-    // Apply settings if requested
-    if (importSettings && data.settings) {
-      applyPriceSettings(data.settings);
-    }
-
-    return result;
-  }, [cars, addCar, applyPriceSettings]);
 
   const handleSubmit = useCallback((input: {
     startPercent: number;
@@ -214,9 +152,6 @@ const AppContent: React.FC = () => {
           >
             <div style={{ flex: '1 1 320px' }}>
               <InputForm
-                cars={cars}
-                selectedCarId={selectedCarId}
-                onSelectCar={handleSelectCar}
                 onSettingsClick={() => setSettingsOpen(true)}
                 onSubmit={handleSubmit}
               />
@@ -235,38 +170,22 @@ const AppContent: React.FC = () => {
         <SettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
-          cars={cars}
-          selectedCarId={selectedCarId}
-          onSelectCar={handleSelectCar}
-          onAddCar={addCar}
-          onUpdateCar={updateCar}
-          onDeleteCar={deleteCar}
-          priceSettings={priceSettings}
-          rawPriceSettings={rawPriceSettings}
-          onPostalCodeChange={setPostalCode}
-          onCompanyChange={setCompanyId}
-          onProductChange={setProductId}
-          onAggregationSizeChange={setAggregationSize}
-          onAggregationMethodChange={setAggregationMethod}
-          onClearPriceSettings={clearPriceSettings}
-          onApplyPriceSettings={applyPriceSettings}
-          onImport={handleImport}
         />
-        <SyncLinkHandler
-          existingCars={cars}
-          onImport={handleImport}
-          onApplyPriceSettings={applyPriceSettings}
-        />
+        <SyncLinkHandler />
       </ErrorBoundary>
     </FluentProvider>
   );
 };
 
-// Wrap with ChargingFormProvider so context is available
+// Wrap with all providers
 const App: React.FC = () => (
-  <ChargingFormProvider>
-    <AppContent />
-  </ChargingFormProvider>
+  <CarsProvider>
+    <PriceSettingsProvider>
+      <ChargingFormProvider>
+        <AppContent />
+      </ChargingFormProvider>
+    </PriceSettingsProvider>
+  </CarsProvider>
 );
 
 export default App;

@@ -12,25 +12,13 @@ import {
   LeafOne20Regular,
 } from '@fluentui/react-icons';
 
-import type { PriceArea } from '@/types';
-import type { Company, Product } from '@/utils';
+import { usePriceSettings } from '@/contexts';
 import { getMockCompanies } from '@/utils';
 
-type Props = {
-  priceArea: PriceArea | null;
-  company: Company | null;
-  product: Product | null;
-  onCompanyChange: (companyId: string | null) => void;
-  onProductChange: (productId: string | null) => void;
-};
+export const CompanySection: React.FC = () => {
+  const { resolved, setCompanyId, setProductId } = usePriceSettings();
+  const { priceArea, company, product } = resolved;
 
-export const CompanySection: React.FC<Props> = ({
-  priceArea,
-  company,
-  product,
-  onCompanyChange,
-  onProductChange,
-}) => {
   if (!priceArea) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -59,7 +47,7 @@ export const CompanySection: React.FC<Props> = ({
         <Dropdown
           value={companyDisplayValue}
           onOptionSelect={(_, data) => {
-            onCompanyChange(data.optionValue ?? null);
+            setCompanyId(data.optionValue ?? null);
           }}
           placeholder="Select company"
           style={{ flex: 1 }}
@@ -85,7 +73,7 @@ export const CompanySection: React.FC<Props> = ({
             <Dropdown
               value={productDisplayValue}
               onOptionSelect={(_, data) => {
-                onProductChange(data.optionValue ?? null);
+                setProductId(data.optionValue ?? null);
               }}
               placeholder="Select product"
               style={{ flex: 1 }}

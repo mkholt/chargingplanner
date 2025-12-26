@@ -1,14 +1,8 @@
 import React, { useMemo, useState } from 'react';
 
 import { CarImportResultDialog, ImportPreviewDialog } from '@/components/sync';
-import type { Car, PriceSettings } from '@/hooks';
-import { type MergeResult, parseShareableUrl, type SyncData } from '@/utils';
-
-type Props = {
-  existingCars: Car[];
-  onImport: (data: SyncData, selectedCarIndices: number[], importSettings: boolean) => MergeResult;
-  onApplyPriceSettings?: (settings: PriceSettings) => void;
-};
+import { useCars, usePriceSettings } from '@/contexts';
+import { mergeCars, parseShareableUrl, type MergeResult, type SyncData } from '@/utils';
 
 /** Check URL hash for sync data and clear it */
 function getInitialDataFromUrl(): SyncData | null {
@@ -24,11 +18,10 @@ function getInitialDataFromUrl(): SyncData | null {
   return null;
 }
 
-export const SyncLinkHandler: React.FC<Props> = ({
-  existingCars,
-  onImport,
-  onApplyPriceSettings,
-}) => {
+export const SyncLinkHandler: React.FC = () => {
+  const { cars, addCar } = useCars();
+  const { applySettings } = usePriceSettings();
+
   // Use lazy initialization to read URL on first render
   const [dataToImport, setDataToImport] = useState<SyncData | null>(getInitialDataFromUrl);
   const [importResult, setImportResult] = useState<MergeResult | null>(null);
@@ -36,11 +29,23 @@ export const SyncLinkHandler: React.FC<Props> = ({
   const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
     if (!dataToImport) return;
 
-    const result = onImport(dataToImport, selectedCarIndices, importSettings);
+    // Filter cars by selected indices
+    const selectedCars = selectedCarIndices.map(i => dataToImport.cars[i]);
+
+    // Generate IDs for new cars
+    const generateId = () => Math.random().toString(36).slice(2);
+
+    // Merge cars
+    const result = mergeCars(cars, selectedCars, generateId);
+
+    // Add new cars
+    result.added.forEach(car => {
+      addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
+    });
 
     // Apply settings if requested
-    if (importSettings && dataToImport.settings && onApplyPriceSettings) {
-      onApplyPriceSettings(dataToImport.settings);
+    if (importSettings && dataToImport.settings) {
+      applySettings(dataToImport.settings);
     }
 
     setImportResult(result);
@@ -57,8 +62,8 @@ export const SyncLinkHandler: React.FC<Props> = ({
 
   // Memoize existing car names for duplicate detection
   const existingCarNames = useMemo(
-    () => new Set(existingCars.map(c => c.name.toLowerCase().trim())),
-    [existingCars]
+    () => new Set(cars.map(c => c.name.toLowerCase().trim())),
+    [cars]
   );
 
   return (

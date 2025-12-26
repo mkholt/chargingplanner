@@ -18,22 +18,15 @@ import {
   ImportPreviewDialog,
   QRCodeScanner,
 } from '@/components/sync';
-import type { Car, PriceSettings } from '@/hooks';
-import type { MergeResult, SyncData } from '@/utils';
-import { parseAnyFormat } from '@/utils';
-
-type Props = {
-  existingCars: Car[];
-  onImport: (data: SyncData, selectedCarIndices: number[], importSettings: boolean) => MergeResult;
-  onApplyPriceSettings?: (settings: PriceSettings) => void;
-};
+import { useCars, usePriceSettings } from '@/contexts';
+import { mergeCars, parseAnyFormat, type MergeResult, type SyncData } from '@/utils';
 
 type ImportTab = 'scan' | 'paste';
 
-export const ImportSection: React.FC<Props> = ({
-  existingCars,
-  onImport,
-}) => {
+export const ImportSection: React.FC = () => {
+  const { cars, addCar } = useCars();
+  const { applySettings } = usePriceSettings();
+
   const [activeTab, setActiveTab] = useState<ImportTab>('paste');
   const [pasteValue, setPasteValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +56,25 @@ export const ImportSection: React.FC<Props> = ({
   const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
     if (!previewData) return;
 
-    const result = onImport(previewData, selectedCarIndices, importSettings);
+    // Filter cars by selected indices
+    const selectedCars = selectedCarIndices.map(i => previewData.cars[i]);
+
+    // Generate IDs for new cars
+    const generateId = () => Math.random().toString(36).slice(2);
+
+    // Merge cars
+    const result = mergeCars(cars, selectedCars, generateId);
+
+    // Add new cars
+    result.added.forEach(car => {
+      addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
+    });
+
+    // Apply settings if requested
+    if (importSettings && previewData.settings) {
+      applySettings(previewData.settings);
+    }
+
     setImportResult(result);
     setPreviewData(null);
     setPasteValue('');
@@ -79,8 +90,8 @@ export const ImportSection: React.FC<Props> = ({
 
   // Memoize existing car names for duplicate detection
   const existingCarNames = useMemo(
-    () => new Set(existingCars.map(c => c.name.toLowerCase().trim())),
-    [existingCars]
+    () => new Set(cars.map(c => c.name.toLowerCase().trim())),
+    [cars]
   );
 
   return (

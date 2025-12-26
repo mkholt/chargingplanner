@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 
 import type { PriceArea } from '@/types';
 import {
@@ -10,6 +10,8 @@ import {
   type Product,
   type Supplier,
 } from '@/utils';
+
+// ============ Types ============
 
 export type AggregationSize = '15m' | '1h';
 export type AggregationMethod = 'mean' | 'min' | 'max';
@@ -32,6 +34,25 @@ export type ResolvedPriceSettings = {
   aggregationSize: AggregationSize;
   aggregationMethod: AggregationMethod;
 };
+
+type PriceSettingsContextType = {
+  settings: PriceSettings;
+  resolved: ResolvedPriceSettings;
+  setPostalCode: (postalCode: number | null) => void;
+  setSupplierId: (supplierId: string | null) => void;
+  setCompanyId: (companyId: string | null) => void;
+  setProductId: (productId: string | null) => void;
+  setAggregationSize: (size: AggregationSize) => void;
+  setAggregationMethod: (method: AggregationMethod) => void;
+  clearAll: () => void;
+  applySettings: (settings: PriceSettings) => void;
+};
+
+// ============ Context ============
+
+const PriceSettingsContext = createContext<PriceSettingsContextType | null>(null);
+
+// ============ Storage ============
 
 const LS_KEY = 'ev-price-settings';
 
@@ -58,7 +79,9 @@ function saveSettings(settings: PriceSettings) {
   localStorage.setItem(LS_KEY, JSON.stringify(settings));
 }
 
-export function usePriceSettings() {
+// ============ Provider ============
+
+export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<PriceSettings>(() => loadSettings());
 
   // Resolve IDs to full objects
@@ -83,10 +106,7 @@ export function usePriceSettings() {
 
   const setPostalCode = useCallback((postalCode: number | null) => {
     setSettings(prev => {
-      // Auto-select supplier based on postal code
       const newSupplier = postalCode ? findSupplierByPostalCode(postalCode) : null;
-
-      // Clear company/product if supplier changes
       const supplierChanged = newSupplier?.id !== prev.supplierId;
 
       const updated: PriceSettings = {
@@ -110,7 +130,6 @@ export function usePriceSettings() {
       const updated: PriceSettings = {
         ...prev,
         supplierId,
-        // Clear company/product if supplier changes
         companyId: supplierChanged ? null : prev.companyId,
         productId: supplierChanged ? null : prev.productId,
       };
@@ -127,7 +146,6 @@ export function usePriceSettings() {
       const updated: PriceSettings = {
         ...prev,
         companyId,
-        // Clear product if company changes
         productId: companyChanged ? null : prev.productId,
       };
 
@@ -138,11 +156,7 @@ export function usePriceSettings() {
 
   const setProductId = useCallback((productId: string | null) => {
     setSettings(prev => {
-      const updated: PriceSettings = {
-        ...prev,
-        productId,
-      };
-
+      const updated: PriceSettings = { ...prev, productId };
       saveSettings(updated);
       return updated;
     });
@@ -150,11 +164,7 @@ export function usePriceSettings() {
 
   const setAggregationSize = useCallback((aggregationSize: AggregationSize) => {
     setSettings(prev => {
-      const updated: PriceSettings = {
-        ...prev,
-        aggregationSize,
-      };
-
+      const updated: PriceSettings = { ...prev, aggregationSize };
       saveSettings(updated);
       return updated;
     });
@@ -162,11 +172,7 @@ export function usePriceSettings() {
 
   const setAggregationMethod = useCallback((aggregationMethod: AggregationMethod) => {
     setSettings(prev => {
-      const updated: PriceSettings = {
-        ...prev,
-        aggregationMethod,
-      };
-
+      const updated: PriceSettings = { ...prev, aggregationMethod };
       saveSettings(updated);
       return updated;
     });
@@ -182,16 +188,33 @@ export function usePriceSettings() {
     saveSettings(newSettings);
   }, []);
 
-  return {
-    settings,
-    resolved,
-    setPostalCode,
-    setSupplierId,
-    setCompanyId,
-    setProductId,
-    setAggregationSize,
-    setAggregationMethod,
-    clearAll,
-    applySettings,
-  };
+  return (
+    <PriceSettingsContext.Provider
+      value={{
+        settings,
+        resolved,
+        setPostalCode,
+        setSupplierId,
+        setCompanyId,
+        setProductId,
+        setAggregationSize,
+        setAggregationMethod,
+        clearAll,
+        applySettings,
+      }}
+    >
+      {children}
+    </PriceSettingsContext.Provider>
+  );
+};
+
+// ============ Hook ============
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function usePriceSettings(): PriceSettingsContextType {
+  const context = useContext(PriceSettingsContext);
+  if (!context) {
+    throw new Error('usePriceSettings must be used within a PriceSettingsProvider');
+  }
+  return context;
 }

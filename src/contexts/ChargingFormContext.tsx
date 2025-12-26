@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 
-type ChargingFormState = {
+// ============ Types ============
+
+type ChargingFormContextType = {
   batterySize: number;
   chargingSpeed: number;
   setBatterySize: (size: number) => void;
@@ -8,7 +10,11 @@ type ChargingFormState = {
   syncWithCar: (batterySize: number, maxPower: number) => void;
 };
 
-const ChargingFormContext = createContext<ChargingFormState | null>(null);
+// ============ Context ============
+
+const ChargingFormContext = createContext<ChargingFormContextType | null>(null);
+
+// ============ Provider ============
 
 export const ChargingFormProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [batterySize, setBatterySize] = useState(60);
@@ -36,7 +42,10 @@ export const ChargingFormProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 };
 
-export function useChargingForm(): ChargingFormState {
+// ============ Hook ============
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useChargingForm(): ChargingFormContextType {
   const context = useContext(ChargingFormContext);
   if (!context) {
     throw new Error('useChargingForm must be used within a ChargingFormProvider');

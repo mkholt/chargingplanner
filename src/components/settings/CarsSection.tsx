@@ -1,50 +1,38 @@
 import React, { useState } from 'react';
 
 import { AddCarCard, CarCard, DeleteCarDialog } from '@/components/cars';
-import type { Car } from '@/hooks';
+import { type Car, useCars } from '@/contexts';
 
 type Props = {
-  cars: Car[];
-  selectedCarId: string | null;
-  onSelect: (car: Car) => void;
-  onAdd: (car: Omit<Car, 'id'>) => void;
-  onUpdate: (id: string, updates: Partial<Omit<Car, 'id'>>) => void;
-  onDelete: (id: string) => void;
   onCloseDialog?: () => void;
 };
 
-export const CarsSection: React.FC<Props> = ({
-  cars,
-  selectedCarId,
-  onSelect,
-  onAdd,
-  onUpdate,
-  onDelete,
-  onCloseDialog,
-}) => {
+export const CarsSection: React.FC<Props> = ({ onCloseDialog }) => {
+  const { cars, selectedCarId, setSelectedCarId, addCar, updateCar, deleteCar } = useCars();
+
   const [editingCarId, setEditingCarId] = useState<string | null>(null);
   const [isAddingCar, setIsAddingCar] = useState(false);
   const [carToDelete, setCarToDelete] = useState<Car | null>(null);
 
   const handleAdd = (car: Omit<Car, 'id'>) => {
-    onAdd(car);
+    addCar(car);
     setIsAddingCar(false);
   };
 
   const handleSave = (carId: string, updates: Omit<Car, 'id'>) => {
-    onUpdate(carId, updates);
+    updateCar(carId, updates);
     setEditingCarId(null);
   };
 
   const handleConfirmDelete = () => {
     if (carToDelete) {
-      onDelete(carToDelete.id);
+      deleteCar(carToDelete.id);
       setCarToDelete(null);
     }
   };
 
   const handleSelectCar = (car: Car) => {
-    onSelect(car);
+    setSelectedCarId(car.id);
     onCloseDialog?.();
   };
 

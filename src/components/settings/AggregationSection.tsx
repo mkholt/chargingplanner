@@ -11,14 +11,7 @@ import {
   MathFormula20Regular,
 } from '@fluentui/react-icons';
 
-import type { AggregationMethod, AggregationSize } from '@/hooks';
-
-type Props = {
-  aggregationSize: AggregationSize;
-  aggregationMethod: AggregationMethod;
-  onAggregationSizeChange: (size: AggregationSize) => void;
-  onAggregationMethodChange: (method: AggregationMethod) => void;
-};
+import { type AggregationMethod, type AggregationSize, usePriceSettings } from '@/contexts';
 
 const AGGREGATION_SIZE_OPTIONS: { value: AggregationSize; label: string; description: string }[] = [
   { value: '15m', label: '15 minutes', description: 'Original resolution' },
@@ -31,12 +24,10 @@ const AGGREGATION_METHOD_OPTIONS: { value: AggregationMethod; label: string; des
   { value: 'max', label: 'Maximum', description: 'Highest value in interval' },
 ];
 
-export const AggregationSection: React.FC<Props> = ({
-  aggregationSize,
-  aggregationMethod,
-  onAggregationSizeChange,
-  onAggregationMethodChange,
-}) => {
+export const AggregationSection: React.FC = () => {
+  const { resolved, setAggregationSize, setAggregationMethod } = usePriceSettings();
+  const { aggregationSize, aggregationMethod } = resolved;
+
   const sizeOption = AGGREGATION_SIZE_OPTIONS.find(o => o.value === aggregationSize);
   const methodOption = AGGREGATION_METHOD_OPTIONS.find(o => o.value === aggregationMethod);
 
@@ -50,7 +41,7 @@ export const AggregationSection: React.FC<Props> = ({
         <Dropdown
           value={sizeOption?.label ?? 'Select interval'}
           onOptionSelect={(_, data) => {
-            onAggregationSizeChange(data.optionValue as AggregationSize);
+            setAggregationSize(data.optionValue as AggregationSize);
           }}
           placeholder="Select interval"
           style={{ flex: 1 }}
@@ -75,7 +66,7 @@ export const AggregationSection: React.FC<Props> = ({
           <Dropdown
             value={methodOption?.label ?? 'Select method'}
             onOptionSelect={(_, data) => {
-              onAggregationMethodChange(data.optionValue as AggregationMethod);
+              setAggregationMethod(data.optionValue as AggregationMethod);
             }}
             placeholder="Select method"
             style={{ flex: 1 }}

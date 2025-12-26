@@ -21,13 +21,10 @@ import {
 import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
 import { LabeledFormField } from '@/components/ui';
-import { type Car, useChargingForm } from '@/hooks';
+import { type Car, useCars, useChargingForm } from '@/contexts';
 import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
 
 type Props = {
-  cars: Car[];
-  selectedCarId: string | null;
-  onSelectCar: (car: Car) => void;
   onSettingsClick: () => void;
   onSubmit: (input: {
     startPercent: number;
@@ -40,13 +37,12 @@ type Props = {
 };
 
 export const InputForm: React.FC<Props> = ({
-  cars,
-  selectedCarId,
-  onSelectCar,
   onSettingsClick,
   onSubmit,
 }) => {
+  const { cars, selectedCarId, setSelectedCarId } = useCars();
   const { batterySize, chargingSpeed, setBatterySize, setChargingSpeed } = useChargingForm();
+
   const now = new Date();
   const tomorrow7am = new Date(now);
   tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
@@ -59,7 +55,7 @@ export const InputForm: React.FC<Props> = ({
 
   // Handle car selection - update form values via context
   const handleCarSelect = (car: Car) => {
-    onSelectCar(car);
+    setSelectedCarId(car.id);
     setBatterySize(car.batterySize);
     setChargingSpeed(car.maxPower);
   };
@@ -72,12 +68,12 @@ export const InputForm: React.FC<Props> = ({
       const firstCar = cars[0];
       // Use queueMicrotask to avoid synchronous setState in effect
       queueMicrotask(() => {
-        onSelectCar(firstCar);
+        setSelectedCarId(firstCar.id);
         setBatterySize(firstCar.batterySize);
         setChargingSpeed(firstCar.maxPower);
       });
     }
-  }, [cars, selectedCarId, onSelectCar, setBatterySize, setChargingSpeed]);
+  }, [cars, selectedCarId, setSelectedCarId, setBatterySize, setChargingSpeed]);
 
   // Store callback in ref to avoid resetting debounce when callback identity changes
   const onSubmitRef = useRef(onSubmit);
