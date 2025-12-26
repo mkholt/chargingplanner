@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev           # Start development server (Vite)
-npm run build         # TypeScript check + production build
+npm run build         # TypeScript check + production build (runs lint & tests first)
+npm run test          # Run tests (runs lint first via pretest)
+npm run test:watch    # Run tests in watch mode (no linting)
+npm run test:coverage # Run tests with coverage report
 npm run lint          # Run ESLint
 npm run preview       # Preview production build
 npm run codegen:api   # Generate API types from stromligning.dk swagger

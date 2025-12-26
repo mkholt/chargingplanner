@@ -25,3 +25,6 @@ dist-ssr
 
 # Playwright Test artifacts
 .playwright-mcp/*
+
+# Temporary files
+.claude/prompts.txt
