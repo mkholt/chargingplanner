@@ -1,15 +1,17 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-import type { PriceArea } from '@/types';
 import {
   findCompanyById,
   findProductById,
   findSupplierById,
-  findSupplierByPostalCode,
   type Company,
   type Product,
   type Supplier,
-} from '@/utils';
+} from '@/data';
+import { useCompaniesQuery, useSuppliersQuery, useSuppliersByPostalCodeQuery } from '@/hooks';
+import type { PriceArea } from '@/types';
+
+export type { PriceArea } from '@/types';
 
 // ============ Types ============
 
@@ -21,18 +23,24 @@ export type PriceSettings = {
   supplierId: string | null;
   companyId: string | null;
   productId: string | null;
+  priceArea: PriceArea | null; // Manual price area selection (used when no supplier is set)
   aggregationSize: AggregationSize;
   aggregationMethod: AggregationMethod;
 };
 
 export type ResolvedPriceSettings = {
   postalCode: number | null;
+  availableSuppliers: Supplier[];
   supplier: Supplier | null;
   company: Company | null;
   product: Product | null;
-  priceArea: PriceArea | null;
+  /** Always resolved to a valid price area (supplier's area or manual selection, defaults to DK1) */
+  priceArea: PriceArea;
+  /** Where the price area came from */
+  priceAreaSource: 'supplier' | 'manual';
   aggregationSize: AggregationSize;
   aggregationMethod: AggregationMethod;
+  isLoading: boolean;
 };
 
 type PriceSettingsContextType = {
@@ -42,6 +50,7 @@ type PriceSettingsContextType = {
   setSupplierId: (supplierId: string | null) => void;
   setCompanyId: (companyId: string | null) => void;
   setProductId: (productId: string | null) => void;
+  setPriceArea: (priceArea: PriceArea) => void;
   setAggregationSize: (size: AggregationSize) => void;
   setAggregationMethod: (method: AggregationMethod) => void;
   clearAll: () => void;
@@ -61,6 +70,7 @@ const DEFAULT_SETTINGS: PriceSettings = {
   supplierId: null,
   companyId: null,
   productId: null,
+  priceArea: 'DK1', // Default to West Denmark
   aggregationSize: '1h',
   aggregationMethod: 'mean',
 };
@@ -69,7 +79,13 @@ function loadSettings(): PriceSettings {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    // Ensure priceArea has a valid value (handles old data without priceArea field)
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      priceArea: parsed.priceArea ?? DEFAULT_SETTINGS.priceArea,
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -84,36 +100,73 @@ function saveSettings(settings: PriceSettings) {
 export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<PriceSettings>(() => loadSettings());
 
-  // Resolve IDs to full objects
-  const supplier = settings.supplierId ? findSupplierById(settings.supplierId) ?? null : null;
-  const priceArea = supplier?.priceArea ?? null;
-  const company = priceArea && settings.companyId
-    ? findCompanyById(priceArea, settings.companyId) ?? null
-    : null;
-  const product = priceArea && settings.productId
-    ? findProductById(priceArea, settings.productId) ?? null
-    : null;
+  // Fetch data using React Query
+  const { data: allSuppliers = [] } = useSuppliersQuery();
+  const {
+    data: suppliersForPostalCode = [],
+    isLoading: isLoadingSuppliers,
+  } = useSuppliersByPostalCodeQuery(settings.postalCode);
 
-  const resolved: ResolvedPriceSettings = {
+  // Resolve supplier: use selected ID, or auto-select if only one available
+  const supplier = useMemo(() => {
+    if (settings.supplierId) {
+      // Try to find in postal code results first, then fall back to all suppliers
+      return (
+        suppliersForPostalCode.find(s => s.id === settings.supplierId) ??
+        findSupplierById(allSuppliers, settings.supplierId) ??
+        null
+      );
+    }
+    // Auto-select if exactly one supplier for postal code
+    if (suppliersForPostalCode.length === 1) {
+      return suppliersForPostalCode[0];
+    }
+    return null;
+  }, [settings.supplierId, suppliersForPostalCode, allSuppliers]);
+
+  // Resolve price area: supplier takes precedence, then manual selection, then default
+  const priceArea: PriceArea = supplier?.priceArea ?? settings.priceArea ?? 'DK1';
+  const priceAreaSource: 'supplier' | 'manual' = supplier?.priceArea ? 'supplier' : 'manual';
+
+  // Fetch companies for the current price area
+  const { data: companies = [], isLoading: isLoadingCompanies } = useCompaniesQuery(priceArea);
+
+  // Resolve company and product from cached data
+  const company = useMemo(() => {
+    if (!settings.companyId) return null;
+    return findCompanyById(companies, settings.companyId) ?? null;
+  }, [settings.companyId, companies]);
+
+  const product = useMemo(() => {
+    if (!settings.productId) return null;
+    return findProductById(companies, settings.productId) ?? null;
+  }, [settings.productId, companies]);
+
+  const isLoading = isLoadingSuppliers || isLoadingCompanies;
+
+  const resolved: ResolvedPriceSettings = useMemo(() => ({
     postalCode: settings.postalCode,
+    availableSuppliers: suppliersForPostalCode,
     supplier,
     company,
     product,
     priceArea,
+    priceAreaSource,
     aggregationSize: settings.aggregationSize,
     aggregationMethod: settings.aggregationMethod,
-  };
+    isLoading,
+  }), [settings.postalCode, settings.aggregationSize, settings.aggregationMethod, suppliersForPostalCode, supplier, company, product, priceArea, priceAreaSource, isLoading]);
 
   const setPostalCode = useCallback((postalCode: number | null) => {
     setSettings(prev => {
-      const newSupplier = postalCode ? findSupplierByPostalCode(postalCode) : null;
-      const supplierChanged = newSupplier?.id !== prev.supplierId;
-
+      // When postal code changes, clear supplier/company/product selections
+      // Suppliers will be resolved via useSuppliersByPostalCodeQuery
       const updated: PriceSettings = {
         postalCode,
-        supplierId: newSupplier?.id ?? null,
-        companyId: supplierChanged ? null : prev.companyId,
-        productId: supplierChanged ? null : prev.productId,
+        supplierId: null, // Will be auto-resolved from postal code
+        companyId: null,
+        productId: null,
+        priceArea: prev.priceArea,
         aggregationSize: prev.aggregationSize,
         aggregationMethod: prev.aggregationMethod,
       };
@@ -162,6 +215,14 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
+  const setPriceArea = useCallback((priceArea: PriceArea) => {
+    setSettings(prev => {
+      const updated: PriceSettings = { ...prev, priceArea };
+      saveSettings(updated);
+      return updated;
+    });
+  }, []);
+
   const setAggregationSize = useCallback((aggregationSize: AggregationSize) => {
     setSettings(prev => {
       const updated: PriceSettings = { ...prev, aggregationSize };
@@ -197,6 +258,7 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         setSupplierId,
         setCompanyId,
         setProductId,
+        setPriceArea,
         setAggregationSize,
         setAggregationMethod,
         clearAll,

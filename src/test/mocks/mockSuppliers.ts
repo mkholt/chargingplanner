@@ -1,16 +1,12 @@
-import type { PriceArea } from '@/types';
+import type { Supplier } from '@/data';
 
-// Extended supplier type with postal code ranges
-export type Supplier = {
-  id: string;
-  name: string;
-  companyName: string;
-  priceArea: PriceArea;
+// Extended supplier type with postal code ranges for mock filtering
+type MockSupplier = Supplier & {
   postalCodeRanges: Array<{ min: number; max: number }>;
 };
 
 // Mock Danish grid operators (netselskaber/DSOs)
-const suppliers: Supplier[] = [
+const suppliers: MockSupplier[] = [
   // DK2 - East Denmark (Zealand, Copenhagen, Bornholm)
   {
     id: 'radius_c',
@@ -89,13 +85,6 @@ export function getMockSuppliers(): Supplier[] {
 }
 
 /**
- * Get suppliers for a specific price area.
- */
-export function getSuppliersByPriceArea(priceArea: PriceArea): Supplier[] {
-  return suppliers.filter(s => s.priceArea === priceArea);
-}
-
-/**
  * Find supplier by postal code.
  * Returns the first matching supplier or undefined.
  */
@@ -105,18 +94,4 @@ export function findSupplierByPostalCode(postalCode: number): Supplier | undefin
       range => postalCode >= range.min && postalCode <= range.max
     )
   );
-}
-
-/**
- * Find supplier by ID.
- */
-export function findSupplierById(supplierId: string): Supplier | undefined {
-  return suppliers.find(s => s.id === supplierId);
-}
-
-/**
- * Validate if a postal code is a valid Danish postal code.
- */
-export function isValidPostalCode(postalCode: number): boolean {
-  return postalCode >= 1000 && postalCode <= 9999;
 }

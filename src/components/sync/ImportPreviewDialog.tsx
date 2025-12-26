@@ -14,8 +14,10 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
+import { findCompanyById, findProductById, findSupplierById } from '@/data';
+import type { Company, Supplier } from '@/data';
+import { useCompaniesQuery, useSuppliersQuery } from '@/hooks';
 import type { SyncData } from '@/utils';
-import { findCompanyById, findProductById, findSupplierById } from '@/utils';
 
 type Props = {
   open: boolean;
@@ -46,7 +48,9 @@ const ImportPreviewDialogContent: React.FC<{
   existingCarNames: Set<string>;
   onClose: () => void;
   onConfirm: (selectedCarIndices: number[], importSettings: boolean) => void;
-}> = ({ syncData, existingCarNames, onClose, onConfirm }) => {
+  suppliers: Supplier[];
+  companies: Company[];
+}> = ({ syncData, existingCarNames, onClose, onConfirm, suppliers, companies }) => {
   const cars = syncData.cars;
   const settings = syncData.settings;
 
@@ -62,17 +66,16 @@ const ImportPreviewDialogContent: React.FC<{
   const resolvedSettings = useMemo(() => {
     if (!settings) return null;
 
-    const supplier = settings.supplierId ? findSupplierById(settings.supplierId) : null;
-    const priceArea = supplier?.priceArea ?? null;
-    const company = priceArea && settings.companyId
-      ? findCompanyById(priceArea, settings.companyId)
+    const supplier = settings.supplierId ? findSupplierById(suppliers, settings.supplierId) : null;
+    const company = settings.companyId
+      ? findCompanyById(companies, settings.companyId)
       : null;
-    const product = priceArea && settings.productId
-      ? findProductById(priceArea, settings.productId)
+    const product = settings.productId
+      ? findProductById(companies, settings.productId)
       : null;
 
     return { supplier, company, product, postalCode: settings.postalCode };
-  }, [settings]);
+  }, [settings, suppliers, companies]);
 
   const toggleCar = (index: number) => {
     setSelectedCars(prev => {
@@ -245,13 +248,30 @@ export const ImportPreviewDialog: React.FC<Props> = ({
   syncData,
   existingCarNames,
 }) => {
-  // Generate a unique key for the content when syncData changes
-  // This causes React to remount the inner component, resetting its state
-  const contentKey = useMemo(() => {
-    if (!syncData) return 'empty';
-    // Use a simple hash of the syncData to detect changes
-    return JSON.stringify(syncData);
-  }, [syncData]);
+  // Fetch suppliers and companies data for resolving settings preview
+  const { data: suppliers = [] } = useSuppliersQuery();
+
+  // Get the priceArea from the supplier in syncData to fetch the right companies
+  const supplierId = syncData?.settings?.supplierId;
+  const syncSupplier = useMemo(() => {
+    if (!supplierId) return null;
+    return findSupplierById(suppliers, supplierId);
+  }, [supplierId, suppliers]);
+
+  const { data: companies = [] } = useCompaniesQuery(syncSupplier?.priceArea ?? null);
+
+  // Use a counter to generate unique keys when syncData changes
+  // This remounts the inner component to reset its state
+  // Pattern: "Adjusting state during rendering" - see React docs
+  const [keyCounter, setKeyCounter] = useState(0);
+  const [prevSyncData, setPrevSyncData] = useState(syncData);
+
+  if (syncData !== prevSyncData) {
+    setPrevSyncData(syncData);
+    setKeyCounter(c => c + 1);
+  }
+
+  const contentKey = syncData ? `sync-${keyCounter}` : 'empty';
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
@@ -264,6 +284,8 @@ export const ImportPreviewDialog: React.FC<Props> = ({
               existingCarNames={existingCarNames}
               onClose={onClose}
               onConfirm={onConfirm}
+              suppliers={suppliers}
+              companies={companies}
             />
           ) : (
             <>

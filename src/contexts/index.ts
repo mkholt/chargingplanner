@@ -7,6 +7,7 @@ export { PriceSettingsProvider, usePriceSettings } from './PriceSettingsContext'
 export type {
   AggregationMethod,
   AggregationSize,
+  PriceArea,
   PriceSettings,
   ResolvedPriceSettings,
 } from './PriceSettingsContext';

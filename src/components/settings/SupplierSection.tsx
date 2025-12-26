@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 
 import {
+  Dropdown,
   Input,
+  Option,
+  Spinner,
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Location20Regular } from '@fluentui/react-icons';
+import { Location20Regular, Building20Regular } from '@fluentui/react-icons';
 
 import { usePriceSettings } from '@/contexts';
-import { isValidPostalCode } from '@/utils';
+import { isValidPostalCode } from '@/data';
 
 export const SupplierSection: React.FC = () => {
-  const { resolved, setPostalCode } = usePriceSettings();
-  const { postalCode, supplier } = resolved;
+  const { resolved, setPostalCode, setSupplierId } = usePriceSettings();
+  const { postalCode, availableSuppliers, supplier, isLoading } = resolved;
 
   const [inputValue, setInputValue] = useState(postalCode?.toString() ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -40,9 +43,12 @@ export const SupplierSection: React.FC = () => {
     setPostalCode(parsed);
   };
 
+  const showSupplierDropdown = availableSuppliers.length > 1;
+  const supplierDisplayValue = supplier?.name ?? 'Select grid operator';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Text weight="semibold">Supplier (Netselskab)</Text>
+      <Text weight="semibold">Grid Operator (Netselskab)</Text>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Location20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
@@ -63,7 +69,48 @@ export const SupplierSection: React.FC = () => {
         </Text>
       )}
 
-      {supplier ? (
+      {isLoading && postalCode && !error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Spinner size="tiny" />
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            Looking up grid operators...
+          </Text>
+        </div>
+      )}
+
+      {/* Multiple suppliers - show dropdown with prompt */}
+      {!isLoading && showSupplierDropdown && (
+        <>
+          <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
+            Multiple grid operators serve this area. Please select one:
+          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Building20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
+            <Dropdown
+              value={supplierDisplayValue}
+              onOptionSelect={(_, data) => {
+                setSupplierId(data.optionValue ?? null);
+              }}
+              placeholder="Select grid operator"
+              style={{ flex: 1 }}
+            >
+              {availableSuppliers.map(s => (
+                <Option key={s.id} value={s.id} text={s.name}>
+                  <div>
+                    <div>{s.name}</div>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                      {s.companyName}
+                    </Text>
+                  </div>
+                </Option>
+              ))}
+            </Dropdown>
+          </div>
+        </>
+      )}
+
+      {/* Single supplier auto-selected - show info card */}
+      {!isLoading && !showSupplierDropdown && supplier && (
         <div
           style={{
             padding: 12,
@@ -79,11 +126,14 @@ export const SupplierSection: React.FC = () => {
             {supplier.companyName} · {supplier.priceArea === 'DK1' ? 'Vestdanmark' : 'Østdanmark'}
           </Text>
         </div>
-      ) : postalCode && !error ? (
+      )}
+
+      {/* No suppliers found */}
+      {!isLoading && postalCode && !error && availableSuppliers.length === 0 && (
         <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
-          No supplier found for postal code {postalCode}
+          No grid operator found for postal code {postalCode}
         </Text>
-      ) : null}
+      )}
     </div>
   );
 };

@@ -56,7 +56,7 @@ export const SettingsDialog: React.FC<Props> = ({
       <DialogSurface style={{ width: 600, maxHeight: '90vh' }}>
         <DialogBody>
           <DialogTitle action={closeButton}>Settings</DialogTitle>
-          <DialogContent style={{ overflow: 'auto', height: 550 }}>
+          <DialogContent style={{ overflow: 'auto', minHeight: 300, maxHeight: 'calc(90vh - 150px)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Tab navigation */}
               <TabList
@@ -80,7 +80,7 @@ export const SettingsDialog: React.FC<Props> = ({
               )}
 
               {activeTab === 'electricity' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 16 }}>
                   <SupplierSection />
                   <Divider />
                   <CompanySection />

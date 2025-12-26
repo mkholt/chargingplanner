@@ -1,19 +1,5 @@
+import type { Company } from '@/data';
 import type { PriceArea } from '@/types';
-
-// Extended company type with ID (API doesn't have ID, we generate from name)
-export type Company = {
-  id: string;
-  name: string;
-  products: Product[];
-};
-
-export type Product = {
-  id: string;
-  name: string;
-  surcharge: number; // kr/kWh added to spot price
-  subscriptionMonthly: number; // Monthly fee in kr
-  isGreen: boolean;
-};
 
 // Mock companies for DK1 (West Denmark - Jutland/Funen)
 const companiesDK1: Company[] = [
@@ -104,22 +90,4 @@ const companiesDK2: Company[] = [
  */
 export function getMockCompanies(priceArea: PriceArea): Company[] {
   return priceArea === 'DK1' ? companiesDK1 : companiesDK2;
-}
-
-/**
- * Find a company by ID within a price area.
- */
-export function findCompanyById(priceArea: PriceArea, companyId: string): Company | undefined {
-  return getMockCompanies(priceArea).find(c => c.id === companyId);
-}
-
-/**
- * Find a product by ID within a price area.
- */
-export function findProductById(priceArea: PriceArea, productId: string): Product | undefined {
-  for (const company of getMockCompanies(priceArea)) {
-    const product = company.products.find(p => p.id === productId);
-    if (product) return product;
-  }
-  return undefined;
 }

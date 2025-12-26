@@ -3,6 +3,7 @@ import React from 'react';
 import {
   Dropdown,
   Option,
+  Spinner,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -13,25 +14,28 @@ import {
 } from '@fluentui/react-icons';
 
 import { usePriceSettings } from '@/contexts';
-import { getMockCompanies } from '@/utils';
+import { useCompaniesQuery } from '@/hooks';
 
 export const CompanySection: React.FC = () => {
   const { resolved, setCompanyId, setProductId } = usePriceSettings();
   const { priceArea, company, product } = resolved;
 
-  if (!priceArea) {
+  const { data: companies = [], isLoading } = useCompaniesQuery(priceArea);
+
+  if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Text weight="semibold">Company (Elselskab)</Text>
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-          Select a supplier first to see available companies
-        </Text>
+        <Text weight="semibold">Electricity Supplier (Elselskab)</Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Spinner size="tiny" />
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            Loading suppliers...
+          </Text>
+        </div>
       </div>
     );
   }
-
-  const companies = getMockCompanies(priceArea);
-  const companyDisplayValue = company?.name ?? 'Select company';
+  const companyDisplayValue = company?.name ?? 'Select supplier';
 
   const productDisplayValue = product
     ? `${product.name}${product.isGreen ? ' 🌱' : ''}`
@@ -39,9 +43,9 @@ export const CompanySection: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Text weight="semibold">Company (Elselskab)</Text>
+      <Text weight="semibold">Electricity Supplier (Elselskab)</Text>
 
-      {/* Company dropdown */}
+      {/* Supplier dropdown */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Building20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
         <Dropdown
@@ -49,7 +53,7 @@ export const CompanySection: React.FC = () => {
           onOptionSelect={(_, data) => {
             setCompanyId(data.optionValue ?? null);
           }}
-          placeholder="Select company"
+          placeholder="Select supplier"
           style={{ flex: 1 }}
         >
           {companies.map(c => (
