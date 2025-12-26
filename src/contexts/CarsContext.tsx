@@ -28,6 +28,7 @@ const CarsContext = createContext<CarsContextType | null>(null);
 // ============ Storage ============
 
 const LS_KEY = 'ev-cars';
+const LS_SELECTED_KEY = 'ev-selected-car';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2);
@@ -47,11 +48,40 @@ function saveCars(cars: Car[]) {
   localStorage.setItem(LS_KEY, JSON.stringify(cars));
 }
 
+function loadSelectedCarId(cars: Car[]): string | null {
+  try {
+    const id = localStorage.getItem(LS_SELECTED_KEY);
+    // Validate the ID exists in the cars list
+    if (id && cars.some(c => c.id === id)) {
+      return id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSelectedCarId(id: string | null) {
+  if (id) {
+    localStorage.setItem(LS_SELECTED_KEY, id);
+  } else {
+    localStorage.removeItem(LS_SELECTED_KEY);
+  }
+}
+
 // ============ Provider ============
 
 export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cars, setCars] = useState<Car[]>(() => loadCars());
-  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  const [selectedCarId, setSelectedCarIdState] = useState<string | null>(() => {
+    const loadedCars = loadCars();
+    return loadSelectedCarId(loadedCars);
+  });
+
+  const setSelectedCarId = useCallback((id: string | null) => {
+    setSelectedCarIdState(id);
+    saveSelectedCarId(id);
+  }, []);
 
   const addCar = useCallback((car: Omit<Car, 'id'>) => {
     const newCar: Car = {
@@ -79,6 +109,14 @@ export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updated = prev.filter(c => c.id !== id);
       saveCars(updated);
       return updated;
+    });
+    // Clear selection if the deleted car was selected
+    setSelectedCarIdState(prev => {
+      if (prev === id) {
+        saveSelectedCarId(null);
+        return null;
+      }
+      return prev;
     });
   }, []);
 
