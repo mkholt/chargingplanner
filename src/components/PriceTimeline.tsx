@@ -14,9 +14,10 @@ import {
   SelectedHourDetail,
   TimelineBar,
 } from '@/components/timeline';
+import type { PriceSlot } from '@/utils';
 
 type Props = {
-  prices: number[];
+  slots: PriceSlot[];
   startDate: Date;
   chargingStart?: number;
   chargingEnd?: number;
@@ -27,7 +28,7 @@ type Props = {
 };
 
 export const PriceTimeline: React.FC<Props> = ({
-  prices,
+  slots,
   startDate,
   chargingStart = -1,
   chargingEnd = -1,
@@ -37,13 +38,14 @@ export const PriceTimeline: React.FC<Props> = ({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  if (!prices.length) return null;
+  if (!slots.length) return null;
 
+  const prices = slots.map(s => s.total);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
   // Build interval data (each entry represents one interval - 15m or 1h)
-  const hourData: HourData[] = prices.map((price, index) => {
+  const hourData: HourData[] = slots.map((slot, index) => {
     const date = new Date(startDate);
     date.setMinutes(date.getMinutes() + index * intervalMinutes, 0, 0);
     const isCharging = index >= chargingStart && index < chargingEnd;
@@ -52,10 +54,11 @@ export const PriceTimeline: React.FC<Props> = ({
       index,
       hour: date.getHours(),
       minute: date.getMinutes(),
-      price,
+      price: slot.total,
       isCharging,
       date,
       dayLabel: getDayLabel(date),
+      details: slot.details,
     };
   });
 

@@ -2,11 +2,13 @@ import type { PricesApiResponse } from '@/types';
 
 import { MS_PER_DAY, MS_PER_MINUTE } from './constants';
 import { getLocalDateString } from './dateUtils';
-import { mapApiResponseToPrices } from './priceMapper';
+import { mapApiResponseToPrices, type PriceSlot } from './priceMapper';
+
+const EMPTY_SLOT: PriceSlot = { total: 0 };
 
 export interface TimelineData {
-  /** All prices from now to end of available data */
-  prices: number[];
+  /** All price slots from now to end of available data */
+  slots: PriceSlot[];
   /** Start time of the timeline (truncated to current interval) */
   startDate: Date;
   /** Index of charging interval start within the timeline */
@@ -40,23 +42,23 @@ export function buildTimeline(
 
   const now = new Date();
 
-  // Convert API response to price map - resolution is detected from API response
-  const { pricesByDate, resolution, intervalsPerDay } = mapApiResponseToPrices(priceData);
+  // Convert API response to price slots - resolution is detected from API response
+  const { slotsByDate, resolution, intervalsPerDay } = mapApiResponseToPrices(priceData);
 
   const intervalMinutes = resolution === '15m' ? 15 : 60;
   const msPerInterval = intervalMinutes * MS_PER_MINUTE;
 
-  // Gather prices for today and tomorrow
+  // Gather slots for today and tomorrow
   const today = getLocalDateString(now);
   const tomorrowDate = new Date(now.getTime() + MS_PER_DAY);
   const tomorrow = getLocalDateString(tomorrowDate);
 
-  const todayPrices = pricesByDate.get(today) || [];
-  const tomorrowPrices = pricesByDate.get(tomorrow) || [];
+  const todaySlots = slotsByDate.get(today) || new Array(intervalsPerDay).fill(EMPTY_SLOT);
+  const tomorrowSlots = slotsByDate.get(tomorrow) || new Array(intervalsPerDay).fill(EMPTY_SLOT);
 
-  const allPrices = [...todayPrices, ...tomorrowPrices];
+  const allSlots = [...todaySlots, ...tomorrowSlots];
 
-  if (allPrices.length === 0) {
+  if (allSlots.length === 0) {
     return null;
   }
 
@@ -70,7 +72,7 @@ export function buildTimeline(
   const nowIntervalIdx =
     (now.getDate() - timelineAllStart.getDate()) * intervalsPerDay +
     Math.floor(minutesSinceMidnight / intervalMinutes);
-  const timelinePrices = allPrices.slice(nowIntervalIdx);
+  const timelineSlots = allSlots.slice(nowIntervalIdx);
 
   // Calculate the actual start time of our sliced timeline
   const timelineStart = new Date(timelineAllStart);
@@ -87,7 +89,7 @@ export function buildTimeline(
   );
 
   return {
-    prices: timelinePrices,
+    slots: timelineSlots,
     startDate: timelineStart,
     chargingStartIdx,
     chargingEndIdx,

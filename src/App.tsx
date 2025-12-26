@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import {
   FluentProvider,
@@ -17,13 +17,6 @@ import {
   usePriceSettings,
 } from '@/contexts';
 import { usePricesQuery } from '@/hooks';
-import type { PricesApiResponse } from '@/types';
-import {
-  buildTimeline,
-  findOptimalChargingWindow,
-  MS_PER_MINUTE,
-  type ChargingResult,
-} from '@/utils';
 
 type FormInput = {
   startPercent: number;
@@ -33,84 +26,6 @@ type FormInput = {
   earliest: string;
   latest: string;
 };
-
-type CalculationResults = {
-  result: ChargingResult | null;
-  selectedDate: string;
-  intervalPrices: number[];
-  intervalStart: Date | null;
-  intervalMinutes: number;
-  chargingSpeed: number | undefined;
-};
-
-function calculateResults(
-  input: FormInput | null,
-  priceData: PricesApiResponse | undefined
-): CalculationResults {
-  const emptyResults: CalculationResults = {
-    result: null,
-    selectedDate: '',
-    intervalPrices: [],
-    intervalStart: null,
-    intervalMinutes: 60,
-    chargingSpeed: undefined,
-  };
-
-  if (!input || !priceData) {
-    return emptyResults;
-  }
-
-  const earliestDate = new Date(input.earliest);
-  const latestDate = new Date(input.latest);
-
-  // Build timeline of prices from now to end of available data
-  // Resolution is determined by the API response (based on aggregation param we sent)
-  const timeline = buildTimeline(earliestDate, latestDate, priceData);
-  if (!timeline) {
-    return { ...emptyResults, chargingSpeed: input.chargingSpeed };
-  }
-
-  // Validate interval duration using the timeline's interval size
-  const msPerInterval = timeline.intervalMinutes * MS_PER_MINUTE;
-  const intervalCount = Math.floor((latestDate.getTime() - earliestDate.getTime()) / msPerInterval) + 1;
-  if (intervalCount <= 0) {
-    return { ...emptyResults, chargingSpeed: input.chargingSpeed };
-  }
-
-  // Extract prices for the charging interval only
-  const chargingIntervalPrices = timeline.prices.slice(
-    timeline.chargingStartIdx,
-    timeline.chargingEndIdx
-  );
-
-  // Find optimal charging window
-  const calcResult = findOptimalChargingWindow({
-    startPercent: input.startPercent,
-    endPercent: input.endPercent,
-    batterySize: input.batterySize,
-    chargingSpeed: input.chargingSpeed,
-    prices: chargingIntervalPrices,
-    intervalMinutes: timeline.intervalMinutes,
-  });
-
-  // Adjust result indices to be relative to the full timeline
-  const adjustedResult = calcResult
-    ? {
-        ...calcResult,
-        startIndex: calcResult.startIndex + timeline.chargingStartIdx,
-        endIndex: calcResult.endIndex + timeline.chargingStartIdx,
-      }
-    : null;
-
-  return {
-    result: adjustedResult,
-    selectedDate: `${earliestDate.toLocaleString()} - ${latestDate.toLocaleString()}`,
-    intervalPrices: timeline.prices,
-    intervalStart: timeline.startDate,
-    intervalMinutes: timeline.intervalMinutes,
-    chargingSpeed: input.chargingSpeed,
-  };
-}
 
 const AppContent: React.FC = () => {
   // UI state
@@ -124,13 +39,6 @@ const AppContent: React.FC = () => {
 
   // Track form input
   const [formInput, setFormInput] = useState<FormInput | null>(null);
-
-  // Calculate results based on current input and price data
-  // Aggregation is handled by the API, so we don't need to pass it here
-  const calculationResults = useMemo(
-    () => calculateResults(formInput, priceData),
-    [formInput, priceData]
-  );
 
   const handleSubmit = useCallback((input: FormInput) => {
     setFormInput(input);
@@ -205,12 +113,8 @@ const AppContent: React.FC = () => {
                   </div>
                 )}
                 <Results
-                  result={calculationResults.result}
-                  date={calculationResults.selectedDate}
-                  intervalPrices={calculationResults.intervalPrices}
-                  intervalStart={calculationResults.intervalStart}
-                  intervalMinutes={calculationResults.intervalMinutes}
-                  chargingSpeed={calculationResults.chargingSpeed}
+                  formInput={formInput}
+                  priceData={priceData}
                 />
               </div>
             </div>

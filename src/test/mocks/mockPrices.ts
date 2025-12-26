@@ -8,52 +8,115 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
+// Fixed tariff values (based on real data from prices.json)
+const FIXED_TARIFFS = {
+  surcharge: { value: 0.096, vat: 0.024, total: 0.12 },
+  systemTariff: { value: 0.074, vat: 0.0185, total: 0.0925 },
+  netTariff: { value: 0.061, vat: 0.01525, total: 0.07625 },
+  electricityTax: { value: 0.72, vat: 0.18, total: 0.9 },
+};
+
+// Distribution tariffs vary by time of day (based on real data)
+const DISTRIBUTION_TARIFFS = {
+  night: { value: 0.068049, vat: 0.017012, total: 0.085061 },   // 00:00-06:00, 21:00-00:00
+  day: { value: 0.204148, vat: 0.051037, total: 0.255185 },     // 06:00-17:00, 20:00-21:00
+  peak: { value: 0.612445, vat: 0.153111, total: 0.765556 },    // 17:00-20:00
+};
+
+function getDistributionTariff(hour: number): typeof DISTRIBUTION_TARIFFS.night {
+  if (hour >= 0 && hour < 6) return DISTRIBUTION_TARIFFS.night;
+  if (hour >= 6 && hour < 17) return DISTRIBUTION_TARIFFS.day;
+  if (hour >= 17 && hour < 20) return DISTRIBUTION_TARIFFS.peak;
+  if (hour >= 20 && hour < 21) return DISTRIBUTION_TARIFFS.day;
+  return DISTRIBUTION_TARIFFS.night; // 21:00-00:00
+}
+
 /**
- * Generate a realistic 15-minute price based on time of day and price area.
- * Prices range from ~1.50-2.50 kr/kWh with:
- * - Lower prices at night (00:00-06:00)
- * - Higher prices during peak hours (17:00-20:00)
- * - DK2 (East Denmark) is typically ~5-10% more expensive than DK1 (West Denmark)
+ * Generate a realistic spot price (electricity) based on time of day.
  */
-function generate15mPrice(hour: number, quarter: number, daySeed: number, priceArea: PriceArea = 'DK1'): number {
-  const basePrice = 2.0; // Base price in kr/kWh
+function generateSpotPrice(hour: number, quarter: number, daySeed: number, priceArea: PriceArea = 'DK1'): { value: number; vat: number; total: number } {
+  const basePrice = 0.65; // Base spot price in kr/kWh (excluding VAT)
 
   // Time-of-day adjustment
   let adjustment = 0;
   if (hour >= 0 && hour < 6) {
-    // Night: cheaper (-0.30 to -0.50)
-    adjustment = -0.40;
-  } else if (hour >= 6 && hour < 9) {
-    // Morning ramp-up
     adjustment = -0.10;
+  } else if (hour >= 6 && hour < 9) {
+    adjustment = 0.05;
   } else if (hour >= 9 && hour < 17) {
-    // Daytime: moderate
     adjustment = 0.10;
   } else if (hour >= 17 && hour < 21) {
-    // Peak evening: expensive (+0.30 to +0.50)
-    adjustment = 0.40;
+    adjustment = 0.20;
   } else {
-    // Late evening: settling down
     adjustment = 0.05;
   }
 
-  // Add some random variation (-0.15 to +0.15) - different seed per quarter
-  // Use different seed offset for DK2 to get different random pattern
+  // Random variation
   const areaSeedOffset = priceArea === 'DK2' ? 1000000 : 0;
-  const randomVariation = (seededRandom(daySeed + hour * 4 + quarter + areaSeedOffset) - 0.5) * 0.30;
+  const randomVariation = (seededRandom(daySeed + hour * 4 + quarter + areaSeedOffset) - 0.5) * 0.20;
 
-  // DK2 is typically ~8% more expensive than DK1
+  // DK2 is typically ~8% more expensive
   const areaMultiplier = priceArea === 'DK2' ? 1.08 : 1.0;
 
-  const price = (basePrice + adjustment + randomVariation) * areaMultiplier;
+  const value = Math.max(0.40, Math.min(1.10, (basePrice + adjustment + randomVariation) * areaMultiplier));
+  const vat = value * 0.25;
+  const total = value + vat;
 
-  // Clamp to realistic range and round to 6 decimal places
-  return Math.round(Math.max(1.50, Math.min(2.70, price)) * 1000000) / 1000000;
+  return {
+    value: Math.round(value * 1000000) / 1000000,
+    vat: Math.round(vat * 1000000) / 1000000,
+    total: Math.round(total * 1000000) / 1000000,
+  };
+}
+
+type PriceDetails = NonNullable<PriceEntry['details']>;
+
+/**
+ * Generate full price breakdown for an interval.
+ */
+function generatePriceDetails(hour: number, quarter: number, daySeed: number, priceArea: PriceArea = 'DK1'): { total: number; details: PriceDetails } {
+  const electricity = generateSpotPrice(hour, quarter, daySeed, priceArea);
+  const distribution = getDistributionTariff(hour);
+
+  // Calculate total (sum of all components)
+  const totalValue =
+    electricity.value +
+    FIXED_TARIFFS.surcharge.value +
+    FIXED_TARIFFS.systemTariff.value +
+    FIXED_TARIFFS.netTariff.value +
+    FIXED_TARIFFS.electricityTax.value +
+    distribution.value;
+
+  const totalVat =
+    electricity.vat +
+    FIXED_TARIFFS.surcharge.vat +
+    FIXED_TARIFFS.systemTariff.vat +
+    FIXED_TARIFFS.netTariff.vat +
+    FIXED_TARIFFS.electricityTax.vat +
+    distribution.vat;
+
+  const total = totalValue + totalVat;
+
+  const details: PriceDetails = {
+    electricity: { ...electricity, unit: 'kr/kWh' },
+    surcharge: { ...FIXED_TARIFFS.surcharge, unit: 'kr/kWh' },
+    transmission: {
+      systemTariff: { ...FIXED_TARIFFS.systemTariff, unit: 'kr/kWh' },
+      netTariff: { ...FIXED_TARIFFS.netTariff, unit: 'kr/kWh' },
+    },
+    electricityTax: { ...FIXED_TARIFFS.electricityTax, unit: 'kr/kWh' },
+    distribution: { ...distribution, unit: 'kr/kWh' },
+  };
+
+  return {
+    total: Math.round(total * 1000000) / 1000000,
+    details,
+  };
 }
 
 /**
  * Generate mock API response with 48 hours of price data (today + tomorrow).
- * Always generates 15-minute resolution data.
+ * Always generates 15-minute resolution data with full price breakdown.
  */
 export function getMockApiResponse(priceArea: PriceArea = 'DK1'): PricesApiResponse {
   const now = new Date();
@@ -69,12 +132,15 @@ export function getMockApiResponse(priceArea: PriceArea = 'DK1'): PricesApiRespo
       const date = new Date(today);
       date.setHours(hour, quarter * 15, 0, 0);
 
+      const { total, details } = generatePriceDetails(hour, quarter, todaySeed, priceArea);
+
       prices.push({
         date: date.toISOString(),
         price: {
-          total: generate15mPrice(hour, quarter, todaySeed, priceArea),
+          total,
           unit: 'kr/kWh',
         },
+        details,
         forecast: false,
         resolution: '15m',
       });
@@ -88,12 +154,15 @@ export function getMockApiResponse(priceArea: PriceArea = 'DK1'): PricesApiRespo
       const date = new Date(tomorrow);
       date.setHours(hour, quarter * 15, 0, 0);
 
+      const { total, details } = generatePriceDetails(hour, quarter, tomorrowSeed, priceArea);
+
       prices.push({
         date: date.toISOString(),
         price: {
-          total: generate15mPrice(hour, quarter, tomorrowSeed, priceArea),
+          total,
           unit: 'kr/kWh',
         },
+        details,
         forecast: false,
         resolution: '15m',
       });
