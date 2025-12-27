@@ -1,29 +1,31 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { CarImportResultDialog, ImportPreviewDialog } from '@/components/sync';
 import { useCars, usePriceSettings } from '@/contexts';
 import { mergeCars, parseShareableUrl, type MergeResult, type SyncData } from '@/utils';
 
-/** Check URL hash for sync data and clear it */
-function getInitialDataFromUrl(): SyncData | null {
-  const hash = window.location.hash;
-  if (!hash.startsWith('#sync=')) return null;
-
-  const parsed = parseShareableUrl(window.location.href);
-  if (parsed && (parsed.cars.length > 0 || parsed.settings)) {
-    // Clear the hash from URL without triggering a reload
-    window.history.replaceState(null, '', window.location.pathname);
-    return parsed;
-  }
-  return null;
-}
-
 export const SyncLinkHandler: React.FC = () => {
   const { cars, addCar } = useCars();
   const { applySettings } = usePriceSettings();
 
-  // Use lazy initialization to read URL on first render
-  const [dataToImport, setDataToImport] = useState<SyncData | null>(getInitialDataFromUrl);
+  const [dataToImport, setDataToImport] = useState<SyncData | null>(null);
+
+  // Check URL hash for sync data on mount (async due to compression)
+  useEffect(() => {
+    async function checkUrl() {
+      const hash = window.location.hash;
+      if (!hash.startsWith('#sync=')) return;
+
+      const parsed = await parseShareableUrl(window.location.href);
+      if (parsed && (parsed.cars.length > 0 || parsed.settings)) {
+        // Clear the hash from URL without triggering a reload
+        window.history.replaceState(null, '', window.location.pathname);
+        setDataToImport(parsed);
+      }
+    }
+
+    checkUrl();
+  }, []);
   const [importResult, setImportResult] = useState<MergeResult | null>(null);
 
   const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {

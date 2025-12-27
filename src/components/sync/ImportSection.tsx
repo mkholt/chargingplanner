@@ -33,10 +33,10 @@ export const ImportSection: React.FC = () => {
   const [previewData, setPreviewData] = useState<SyncData | null>(null);
   const [importResult, setImportResult] = useState<MergeResult | null>(null);
 
-  const handleParse = (input: string) => {
+  const handleParse = async (input: string) => {
     setError(null);
 
-    const parsed = parseAnyFormat(input);
+    const parsed = await parseAnyFormat(input);
     if (!parsed || (parsed.cars.length === 0 && !parsed.settings)) {
       setError('Could not parse data. Make sure you copied the full code or link.');
       return;
@@ -46,11 +46,11 @@ export const ImportSection: React.FC = () => {
   };
 
   const handleScan = (data: string) => {
-    handleParse(data);
+    void handleParse(data);
   };
 
   const handlePasteSubmit = () => {
-    handleParse(pasteValue);
+    void handleParse(pasteValue);
   };
 
   const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {

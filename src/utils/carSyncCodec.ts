@@ -1,21 +1,8 @@
-import type { AggregationMethod, AggregationSize, Car, PriceArea, PriceSettings } from '@/contexts';
+import type { Car, PriceSettings } from '@/contexts';
 
 // =============================================================================
 // Types
 // =============================================================================
-
-// Ultra-compact tuple format: [cars[], postalCode?, supplierId?, companyId?, productId?, priceArea?, aggSize?, aggMethod?]
-type CarTuple = [string, number, number]; // [name, batterySize, maxPower]
-type SyncTuple = [
-  CarTuple[],  // cars
-  number?,     // postalCode
-  string?,     // supplierId
-  string?,     // companyId
-  string?,     // productId
-  string?,     // priceArea ('DK1' | 'DK2')
-  string?,     // aggregationSize ('15m' | '1h')
-  string?,     // aggregationMethod ('mean' | 'min' | 'max')
-];
 
 export type SyncData = {
   cars: Omit<Car, 'id'>[];
@@ -25,29 +12,97 @@ export type SyncData = {
 export type SyncInputFormat = 'url' | 'code' | 'raw' | 'unknown';
 
 // =============================================================================
-// URL-safe base64 encoding/decoding
+// Compression (using browser Compression Streams API)
 // =============================================================================
 
-function toUrlSafeBase64(str: string): string {
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function compress(data: string): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const inputStream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(data));
+      controller.close();
+    },
+  });
+
+  const compressedStream = inputStream.pipeThrough(new CompressionStream('deflate-raw'));
+  const reader = compressedStream.getReader();
+
+  const chunks: Uint8Array[] = [];
+  let totalLength = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    totalLength += value.length;
+  }
+
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return result;
 }
 
-function fromUrlSafeBase64(str: string): string {
+async function decompress(data: Uint8Array): Promise<string> {
+  const inputStream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(data);
+      controller.close();
+    },
+  });
+
+  const decompressedStream = inputStream.pipeThrough(new DecompressionStream('deflate-raw'));
+  const reader = decompressedStream.getReader();
+  const decoder = new TextDecoder();
+
+  let result = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    result += decoder.decode(value, { stream: true });
+  }
+  result += decoder.decode();
+
+  return result;
+}
+
+// =============================================================================
+// URL-safe Base64 encoding/decoding (for binary data)
+// =============================================================================
+
+function toUrlSafeBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromUrlSafeBase64(str: string): Uint8Array {
   let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
   while (b64.length % 4) b64 += '=';
-  return atob(b64);
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 // =============================================================================
 // Validation
 // =============================================================================
 
-function validateCarTuple(item: unknown, index: number): Omit<Car, 'id'> {
-  if (!Array.isArray(item) || item.length !== 3) {
-    throw new Error(`Invalid car at index ${index}: expected [name, batterySize, maxPower]`);
+function validateCar(car: unknown, index: number): Omit<Car, 'id'> {
+  if (typeof car !== 'object' || car === null) {
+    throw new Error(`Invalid car at index ${index}: expected object`);
   }
 
-  const [name, batterySize, maxPower] = item;
+  const { name, batterySize, maxPower } = car as Record<string, unknown>;
 
   if (typeof name !== 'string' || !name.trim()) {
     throw new Error(`Invalid car name at index ${index}`);
@@ -66,95 +121,103 @@ function validateCarTuple(item: unknown, index: number): Omit<Car, 'id'> {
   };
 }
 
-function isValidPriceArea(value: unknown): value is PriceArea {
-  return value === 'DK1' || value === 'DK2';
-}
-
-function isValidAggregationSize(value: unknown): value is AggregationSize {
-  return value === '15m' || value === '1h';
-}
-
-function isValidAggregationMethod(value: unknown): value is AggregationMethod {
-  return value === 'mean' || value === 'min' || value === 'max';
-}
-
-function validateSyncTuple(data: unknown): SyncData {
-  if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('Invalid sync data: expected non-empty array');
+function validateSettings(settings: unknown): PriceSettings | undefined {
+  if (settings === undefined || settings === null) {
+    return undefined;
   }
 
-  const [carTuples, postalCode, supplierId, companyId, productId, priceArea, aggSize, aggMethod] = data as SyncTuple;
-
-  if (!Array.isArray(carTuples)) {
-    throw new Error('Invalid sync data: first element must be cars array');
+  if (typeof settings !== 'object') {
+    throw new Error('Invalid settings: expected object');
   }
 
-  const cars = carTuples.map((tuple, i) => validateCarTuple(tuple, i));
+  const s = settings as Record<string, unknown>;
 
-  // Build settings if any setting values are present
-  const hasSettings = postalCode !== undefined ||
-    supplierId !== undefined ||
-    companyId !== undefined ||
-    productId !== undefined ||
-    priceArea !== undefined ||
-    aggSize !== undefined ||
-    aggMethod !== undefined;
+  // Validate types (allow nulls for optional fields)
+  if (s.postalCode !== null && s.postalCode !== undefined && typeof s.postalCode !== 'number') {
+    throw new Error('Invalid settings: postalCode must be number or null');
+  }
+  if (s.supplierId !== null && s.supplierId !== undefined && typeof s.supplierId !== 'string') {
+    throw new Error('Invalid settings: supplierId must be string or null');
+  }
+  if (s.companyId !== null && s.companyId !== undefined && typeof s.companyId !== 'string') {
+    throw new Error('Invalid settings: companyId must be string or null');
+  }
+  if (s.productId !== null && s.productId !== undefined && typeof s.productId !== 'string') {
+    throw new Error('Invalid settings: productId must be string or null');
+  }
 
-  const settings: PriceSettings | undefined = hasSettings ? {
-    postalCode: typeof postalCode === 'number' ? postalCode : null,
-    supplierId: typeof supplierId === 'string' ? supplierId : null,
-    companyId: typeof companyId === 'string' ? companyId : null,
-    productId: typeof productId === 'string' ? productId : null,
-    priceArea: isValidPriceArea(priceArea) ? priceArea : 'DK1',
-    aggregationSize: isValidAggregationSize(aggSize) ? aggSize : '1h',
-    aggregationMethod: isValidAggregationMethod(aggMethod) ? aggMethod : 'mean',
-  } : undefined;
+  // Validate enums
+  const validPriceAreas = ['DK1', 'DK2'];
+  const validAggSizes = ['15m', '1h'];
+  const validAggMethods = ['mean', 'min', 'max'];
 
-  return { cars, settings };
+  if (s.priceArea !== null && s.priceArea !== undefined && !validPriceAreas.includes(s.priceArea as string)) {
+    throw new Error('Invalid settings: priceArea must be DK1 or DK2');
+  }
+  if (s.aggregationSize !== undefined && !validAggSizes.includes(s.aggregationSize as string)) {
+    throw new Error('Invalid settings: aggregationSize must be 15m or 1h');
+  }
+  if (s.aggregationMethod !== undefined && !validAggMethods.includes(s.aggregationMethod as string)) {
+    throw new Error('Invalid settings: aggregationMethod must be mean, min, or max');
+  }
+
+  return {
+    postalCode: (s.postalCode as number) ?? null,
+    supplierId: (s.supplierId as string) ?? null,
+    companyId: (s.companyId as string) ?? null,
+    productId: (s.productId as string) ?? null,
+    priceArea: (s.priceArea as PriceSettings['priceArea']) ?? 'DK1',
+    aggregationSize: (s.aggregationSize as PriceSettings['aggregationSize']) ?? '1h',
+    aggregationMethod: (s.aggregationMethod as PriceSettings['aggregationMethod']) ?? 'mean',
+  };
+}
+
+function validateSyncData(data: unknown): SyncData {
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Invalid sync data: expected object');
+  }
+
+  const { cars, settings } = data as Record<string, unknown>;
+
+  if (!Array.isArray(cars)) {
+    throw new Error('Invalid sync data: cars must be an array');
+  }
+
+  return {
+    cars: cars.map((car, i) => validateCar(car, i)),
+    settings: validateSettings(settings),
+  };
 }
 
 // =============================================================================
 // Encoding
 // =============================================================================
 
-export function encodeSyncData(cars: Car[], settings?: PriceSettings | null): string {
-  const carTuples: CarTuple[] = cars.map(({ name, batterySize, maxPower }) =>
-    [name, batterySize, maxPower]
-  );
+export async function encodeSyncData(cars: Car[], settings?: PriceSettings | null): Promise<string> {
+  const data: SyncData = {
+    cars: cars.map(({ name, batterySize, maxPower }) => ({ name, batterySize, maxPower })),
+  };
 
-  const tuple: SyncTuple = [carTuples];
-
-  // Add settings if present (in order, trailing undefined values omitted by JSON)
-  if (settings) {
-    if (settings.postalCode) tuple[1] = settings.postalCode;
-    if (settings.supplierId) tuple[2] = settings.supplierId;
-    if (settings.companyId) tuple[3] = settings.companyId;
-    if (settings.productId) tuple[4] = settings.productId;
-    // Only include non-default priceArea (DK1 is default)
-    if (settings.priceArea && settings.priceArea !== 'DK1') {
-      tuple[5] = settings.priceArea;
-    }
-    // Only include non-default aggregation settings
-    if (settings.aggregationSize && settings.aggregationSize !== '1h') {
-      tuple[6] = settings.aggregationSize;
-    }
-    if (settings.aggregationMethod && settings.aggregationMethod !== 'mean') {
-      tuple[7] = settings.aggregationMethod;
-    }
+  // Only include settings if there are meaningful values
+  if (settings && (settings.postalCode || settings.supplierId || settings.companyId || settings.productId)) {
+    data.settings = settings;
   }
 
-  return toUrlSafeBase64(JSON.stringify(tuple));
+  const json = JSON.stringify(data);
+  const compressed = await compress(json);
+  return toUrlSafeBase64(compressed);
 }
 
 // =============================================================================
 // Decoding
 // =============================================================================
 
-export function decodeSyncData(encoded: string): SyncData {
+export async function decodeSyncData(encoded: string): Promise<SyncData> {
   try {
-    const json = fromUrlSafeBase64(encoded);
+    const compressed = fromUrlSafeBase64(encoded);
+    const json = await decompress(compressed);
     const data = JSON.parse(json);
-    return validateSyncTuple(data);
+    return validateSyncData(data);
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Failed to decode sync data: ${error.message}`);
@@ -169,12 +232,11 @@ export function decodeSyncData(encoded: string): SyncData {
 
 const MAX_URL_LENGTH = 2000;
 
-export function generateShareableUrl(cars: Car[], settings?: PriceSettings | null): string | null {
-  const encoded = encodeSyncData(cars, settings);
+export async function generateShareableUrl(cars: Car[], settings?: PriceSettings | null): Promise<string | null> {
+  const encoded = await encodeSyncData(cars, settings);
   const baseUrl = window.location.origin + window.location.pathname;
   const url = `${baseUrl}#sync=${encoded}`;
 
-  // Return null if URL is too long
   if (url.length > MAX_URL_LENGTH) {
     return null;
   }
@@ -182,7 +244,7 @@ export function generateShareableUrl(cars: Car[], settings?: PriceSettings | nul
   return url;
 }
 
-export function parseShareableUrl(url: string): SyncData | null {
+export async function parseShareableUrl(url: string): Promise<SyncData | null> {
   try {
     const urlObj = new URL(url);
     const hash = urlObj.hash;
@@ -191,8 +253,8 @@ export function parseShareableUrl(url: string): SyncData | null {
       return null;
     }
 
-    const encoded = hash.slice(6); // Remove '#sync='
-    return decodeSyncData(encoded);
+    const encoded = hash.slice(6);
+    return await decodeSyncData(encoded);
   } catch {
     return null;
   }
@@ -204,11 +266,12 @@ export function parseShareableUrl(url: string): SyncData | null {
 
 const SYNC_CODE_PREFIX = 'EV:';
 
-export function generateSyncCode(cars: Car[], settings?: PriceSettings | null): string {
-  return SYNC_CODE_PREFIX + encodeSyncData(cars, settings);
+export async function generateSyncCode(cars: Car[], settings?: PriceSettings | null): Promise<string> {
+  const encoded = await encodeSyncData(cars, settings);
+  return SYNC_CODE_PREFIX + encoded;
 }
 
-export function parseSyncCode(code: string): SyncData | null {
+export async function parseSyncCode(code: string): Promise<SyncData | null> {
   const trimmed = code.trim();
 
   if (!trimmed.startsWith(SYNC_CODE_PREFIX)) {
@@ -217,7 +280,7 @@ export function parseSyncCode(code: string): SyncData | null {
 
   try {
     const encoded = trimmed.slice(SYNC_CODE_PREFIX.length);
-    return decodeSyncData(encoded);
+    return await decodeSyncData(encoded);
   } catch {
     return null;
   }
@@ -238,16 +301,15 @@ export function detectInputFormat(input: string): SyncInputFormat {
     return 'code';
   }
 
-  // Try parsing as raw base64
-  try {
-    decodeSyncData(trimmed);
+  // Assume raw base64 if it looks like valid base64
+  if (/^[A-Za-z0-9_-]+$/.test(trimmed) && trimmed.length > 10) {
     return 'raw';
-  } catch {
-    return 'unknown';
   }
+
+  return 'unknown';
 }
 
-export function parseAnyFormat(input: string): SyncData | null {
+export async function parseAnyFormat(input: string): Promise<SyncData | null> {
   const format = detectInputFormat(input);
 
   switch (format) {
@@ -257,7 +319,7 @@ export function parseAnyFormat(input: string): SyncData | null {
       return parseSyncCode(input);
     case 'raw':
       try {
-        return decodeSyncData(input.trim());
+        return await decodeSyncData(input.trim());
       } catch {
         return null;
       }
@@ -267,7 +329,7 @@ export function parseAnyFormat(input: string): SyncData | null {
 }
 
 // =============================================================================
-// Merge Logic
+// Merge Logic (unchanged - still synchronous)
 // =============================================================================
 
 export type MergeResult = {

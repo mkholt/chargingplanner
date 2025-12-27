@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   Button,
@@ -56,12 +56,30 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
   const hasSettings = hasAnySettings(priceSettings);
   const settingsToInclude = includeSettings && hasSettings ? priceSettings : null;
 
-  // Generate export data
-  const exportData = useMemo(() => {
-    const qrData = encodeSyncData(cars, settingsToInclude);
-    const shareUrl = generateShareableUrl(cars, settingsToInclude);
-    const syncCode = generateSyncCode(cars, settingsToInclude);
-    return { qrData, shareUrl, syncCode };
+  // Generate export data (async due to compression)
+  const [exportData, setExportData] = useState<{
+    qrData: string;
+    shareUrl: string | null;
+    syncCode: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function generate() {
+      const [qrData, shareUrl, syncCode] = await Promise.all([
+        encodeSyncData(cars, settingsToInclude),
+        generateShareableUrl(cars, settingsToInclude),
+        generateSyncCode(cars, settingsToInclude),
+      ]);
+
+      if (!cancelled) {
+        setExportData({ qrData, shareUrl, syncCode });
+      }
+    }
+
+    generate();
+    return () => { cancelled = true; };
   }, [cars, settingsToInclude]);
 
   const handleCopy = async (text: string) => {
@@ -86,6 +104,14 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     return (
       <div style={{ textAlign: 'center', padding: 16, color: tokens.colorNeutralForeground3 }}>
         <Text size={200}>No data to export. Add a car or configure settings first.</Text>
+      </div>
+    );
+  }
+
+  if (!exportData) {
+    return (
+      <div style={{ textAlign: 'center', padding: 16, color: tokens.colorNeutralForeground3 }}>
+        <Text size={200}>Generating...</Text>
       </div>
     );
   }
