@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import {
+  Button,
   Card,
   Text,
   tokens,
@@ -38,6 +39,8 @@ type FormInput = {
 type Props = {
   formInput: FormInput | null;
   priceData: PricesApiResponse | undefined;
+  priceError: Error | null;
+  onOpenSettings?: () => void;
 };
 
 type CalculationError =
@@ -176,6 +179,8 @@ function getErrorMessage(error: CalculationError): string {
 export const Results: React.FC<Props> = ({
   formInput,
   priceData,
+  priceError,
+  onOpenSettings,
 }) => {
   const { cars, selectedCarId } = useCars();
   const { resolved: priceSettings } = usePriceSettings();
@@ -217,6 +222,62 @@ export const Results: React.FC<Props> = ({
   const subtitle = selectedCar
     ? `${selectedCar.name} · ${priceSource}`
     : priceSource;
+
+  // Show error state when price data failed to load
+  if (priceError) {
+    return (
+      <Card style={{
+        padding: 16,
+        background: tokens.colorNeutralBackground2,
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <CalendarClock24Regular />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Text weight="semibold" size={400} style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
+              Charging Plan
+            </Text>
+            <Text size={200} style={{ color: secondary }}>
+              {subtitle}
+            </Text>
+          </div>
+        </div>
+        <div
+          data-testid="price-error"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            padding: 16,
+            background: tokens.colorPaletteRedBackground1,
+            borderRadius: 6,
+            border: `1px solid ${tokens.colorPaletteRedBorder1}`,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1, flexShrink: 0 }} />
+            <div>
+              <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1, display: 'block' }}>
+                Pricing data unavailable
+              </Text>
+              <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                Could not load prices for the selected product. Try selecting a different supplier or product.
+              </Text>
+            </div>
+          </div>
+          {onOpenSettings && (
+            <Button
+              appearance="primary"
+              size="small"
+              onClick={onOpenSettings}
+            >
+              Open Settings
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }
 
   if (!slots.length || !intervalStart) {
     return (

@@ -25,10 +25,10 @@ describe('encodeSyncData / decodeSyncData', () => {
       expect(decoded.cars[1]).toEqual({ name: 'VW ID.4', batterySize: 77, maxPower: 11 });
     });
 
-    it('preserves settings through encoding and decoding', async () => {
+    it('preserves settings through encoding and decoding (except location for privacy)', async () => {
       const cars: Car[] = [{ id: '1', name: 'Test Car', batterySize: 50, maxPower: 7 }];
       const settings: PriceSettings = {
-        postalCode: 8000,
+        location: 8000, // Will not be synced for privacy
         supplierId: 'supplier-1',
         companyId: 'company-1',
         productId: 'product-1',
@@ -40,7 +40,11 @@ describe('encodeSyncData / decodeSyncData', () => {
       const encoded = await encodeSyncData(cars, settings);
       const decoded = await decodeSyncData(encoded);
 
-      expect(decoded.settings).toEqual(settings);
+      // Location should always be null after decoding (not synced for privacy)
+      expect(decoded.settings).toEqual({
+        ...settings,
+        location: null,
+      });
     });
 
     it('handles empty car list', async () => {
@@ -54,7 +58,7 @@ describe('encodeSyncData / decodeSyncData', () => {
     it('omits settings when only defaults are present', async () => {
       const cars: Car[] = [{ id: '1', name: 'Test', batterySize: 50, maxPower: 7 }];
       const settings: PriceSettings = {
-        postalCode: null,
+        location: null,
         supplierId: null,
         companyId: null,
         productId: null,

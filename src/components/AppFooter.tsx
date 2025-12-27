@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 import {
+  Badge,
   Button,
   Dialog,
   DialogBody,
@@ -12,10 +13,23 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Dismiss24Regular, DrinkCoffee16Regular } from '@fluentui/react-icons';
+import { Delete20Regular, Dismiss24Regular, DrinkCoffee16Regular } from '@fluentui/react-icons';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { priceQueryKeys, usePricesQuery } from '@/hooks';
 
 export const AppFooter: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { data: priceResult } = usePricesQuery();
+  const isMockedData = priceResult?.isMocked;
   const [open, setOpen] = useState(false);
+  const [cacheCleared, setCacheCleared] = useState(false);
+
+  const handleClearCache = () => {
+    queryClient.removeQueries({ queryKey: priceQueryKeys.all });
+    setCacheCleared(true);
+    setTimeout(() => setCacheCleared(false), 2000);
+  };
 
   return (
     <footer
@@ -74,6 +88,13 @@ export const AppFooter: React.FC = () => {
                       Strømligning.dk
                     </Link>
                   </Text>
+                  {isMockedData && (
+                    <div style={{ marginTop: 8 }}>
+                      <Badge appearance="filled" color="warning">
+                        Using mock data
+                      </Badge>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -90,6 +111,21 @@ export const AppFooter: React.FC = () => {
                       View on GitHub
                     </Link>
                   </Text>
+                </div>
+
+                <div>
+                  <Text weight="semibold" block style={{ marginBottom: 4 }}>
+                    Cache
+                  </Text>
+                  <Button
+                    appearance="secondary"
+                    size="small"
+                    icon={<Delete20Regular />}
+                    onClick={handleClearCache}
+                    disabled={cacheCleared}
+                  >
+                    {cacheCleared ? 'Cache cleared!' : 'Clear price cache'}
+                  </Button>
                 </div>
 
                 <Text

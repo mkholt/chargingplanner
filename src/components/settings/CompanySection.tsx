@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 
 import {
-  Dropdown,
+  Combobox,
   Option,
   Spinner,
   Text,
@@ -9,10 +9,10 @@ import {
 } from '@fluentui/react-components';
 import {
   Building20Regular,
-  Box20Regular,
   LeafOne20Regular,
 } from '@fluentui/react-icons';
 
+import { SelectionCard } from '@/components/settings';
 import { usePriceSettings } from '@/contexts';
 import { useCompaniesQuery } from '@/hooks';
 
@@ -21,6 +21,15 @@ export const CompanySection: React.FC = () => {
   const { priceArea, company, product } = resolved;
 
   const { data: companies = [], isLoading } = useCompaniesQuery(priceArea);
+  const [query, setQuery] = useState('');
+
+  // Sort alphabetically and filter by search query
+  const filteredCompanies = useMemo(() => {
+    const sorted = [...companies].sort((a, b) => a.name.localeCompare(b.name, 'da'));
+    if (!query.trim()) return sorted;
+    const q = query.toLowerCase();
+    return sorted.filter(c => c.name.toLowerCase().includes(q));
+  }, [companies, query]);
 
   if (isLoading) {
     return (
@@ -35,28 +44,27 @@ export const CompanySection: React.FC = () => {
       </div>
     );
   }
-  const companyDisplayValue = company?.name ?? 'Select supplier';
-
-  const productDisplayValue = product
-    ? `${product.name}${product.isGreen ? ' 🌱' : ''}`
-    : 'Select product';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Text weight="semibold">Electricity Supplier (Elselskab)</Text>
 
-      {/* Supplier dropdown */}
+      {/* Supplier combobox with search */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Building20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
-        <Dropdown
-          value={companyDisplayValue}
+        <Combobox
+          value={query || company?.name || ''}
+          selectedOptions={company ? [company.id] : []}
           onOptionSelect={(_, data) => {
             setCompanyId(data.optionValue ?? null);
+            setQuery('');
           }}
-          placeholder="Select supplier"
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search or select supplier"
           style={{ flex: 1 }}
+          freeform
         >
-          {companies.map(c => (
+          {filteredCompanies.map(c => (
             <Option key={c.id} value={c.id} text={c.name}>
               <div>
                 <div>{c.name}</div>
@@ -66,68 +74,25 @@ export const CompanySection: React.FC = () => {
               </div>
             </Option>
           ))}
-        </Dropdown>
+        </Combobox>
       </div>
 
-      {/* Product dropdown - only shown when company is selected */}
+      {/* Product cards - only shown when company is selected */}
       {company && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Box20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
-            <Dropdown
-              value={productDisplayValue}
-              onOptionSelect={(_, data) => {
-                setProductId(data.optionValue ?? null);
-              }}
-              placeholder="Select product"
-              style={{ flex: 1 }}
-            >
-              {company.products.map(p => (
-                <Option key={p.id} value={p.id} text={p.name}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {p.isGreen && (
-                      <LeafOne20Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
-                    )}
-                    <div>
-                      <div>{p.name}</div>
-                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                        +{p.surcharge.toFixed(2)} kr/kWh · {p.subscriptionMonthly} kr/md
-                      </Text>
-                    </div>
-                  </div>
-                </Option>
-              ))}
-            </Dropdown>
-          </div>
-
-          {/* Selected product details */}
-          {product && (
-            <div
-              style={{
-                padding: 12,
-                background: tokens.colorNeutralBackground3,
-                border: `1px solid ${tokens.colorNeutralStroke1}`,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              {product.isGreen && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {company.products.map(p => (
+            <SelectionCard
+              key={p.id}
+              title={p.name}
+              subtitle={`+${p.surcharge.toFixed(2)} kr/kWh · ${p.subscriptionMonthly} kr/md`}
+              icon={p.isGreen ? (
                 <LeafOne20Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
-              )}
-              <div>
-                <Text weight="semibold" style={{ display: 'block' }}>
-                  {company.name} - {product.name}
-                </Text>
-                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                  Surcharge: +{product.surcharge.toFixed(2)} kr/kWh · Monthly: {product.subscriptionMonthly} kr
-                  {product.isGreen && ' · Green energy'}
-                </Text>
-              </div>
-            </div>
-          )}
-        </>
+              ) : undefined}
+              isSelected={product?.id === p.id}
+              onClick={() => setProductId(p.id)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

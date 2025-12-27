@@ -7,7 +7,7 @@ import { stubLocalStorage } from '@/test/utils/testUtils';
 // Mock the hooks that PriceSettingsContext depends on
 vi.mock('@/hooks', () => ({
   useSuppliersQuery: vi.fn(() => ({ data: [], isLoading: false })),
-  useSuppliersByPostalCodeQuery: vi.fn(() => ({ data: [], isLoading: false })),
+  useSuppliersByLocationQuery: vi.fn(() => ({ data: [], isLoading: false })),
   useCompaniesQuery: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
@@ -42,7 +42,7 @@ describe('PriceSettingsContext', () => {
     it('starts with default settings when localStorage is empty', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
-      expect(result.current.settings.postalCode).toBeNull();
+      expect(result.current.settings.location).toBeNull();
       expect(result.current.settings.supplierId).toBeNull();
       expect(result.current.settings.companyId).toBeNull();
       expect(result.current.settings.productId).toBeNull();
@@ -53,7 +53,7 @@ describe('PriceSettingsContext', () => {
 
     it('loads settings from localStorage on init', () => {
       const savedSettings: PriceSettings = {
-        postalCode: 8000,
+        location: 8000,
         supplierId: 'supplier-1',
         companyId: null,
         productId: null,
@@ -65,14 +65,14 @@ describe('PriceSettingsContext', () => {
 
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
-      expect(result.current.settings.postalCode).toBe(8000);
+      expect(result.current.settings.location).toBe(8000);
       expect(result.current.settings.priceArea).toBe('DK2');
       expect(result.current.settings.aggregationSize).toBe('15m');
     });
   });
 
-  describe('setPostalCode', () => {
-    it('updates postal code and clears dependent selections', () => {
+  describe('setLocation', () => {
+    it('updates location and clears dependent selections', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       // First set supplier/company/product
@@ -82,22 +82,32 @@ describe('PriceSettingsContext', () => {
         result.current.setProductId('product-1');
       });
 
-      // Then change postal code
+      // Then change location (postal code)
       act(() => {
-        result.current.setPostalCode(8000);
+        result.current.setLocation(8000);
       });
 
-      expect(result.current.settings.postalCode).toBe(8000);
+      expect(result.current.settings.location).toBe(8000);
       expect(result.current.settings.supplierId).toBeNull();
       expect(result.current.settings.companyId).toBeNull();
       expect(result.current.settings.productId).toBeNull();
+    });
+
+    it('accepts GPS coordinates', () => {
+      const { result } = renderHook(() => usePriceSettings(), { wrapper });
+
+      act(() => {
+        result.current.setLocation({ lat: 55.6761, long: 12.5683 });
+      });
+
+      expect(result.current.settings.location).toEqual({ lat: 55.6761, long: 12.5683 });
     });
 
     it('persists to localStorage', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       act(() => {
-        result.current.setPostalCode(2100);
+        result.current.setLocation(2100);
       });
 
       expect(localStorage.setItem).toHaveBeenCalledWith(
@@ -197,7 +207,7 @@ describe('PriceSettingsContext', () => {
 
       // Set some values
       act(() => {
-        result.current.setPostalCode(8000);
+        result.current.setLocation(8000);
         result.current.setPriceArea('DK2');
         result.current.setAggregationSize('15m');
       });
@@ -207,7 +217,7 @@ describe('PriceSettingsContext', () => {
         result.current.clearAll();
       });
 
-      expect(result.current.settings.postalCode).toBeNull();
+      expect(result.current.settings.location).toBeNull();
       expect(result.current.settings.priceArea).toBe('DK1');
       expect(result.current.settings.aggregationSize).toBe('1h');
     });
@@ -218,7 +228,7 @@ describe('PriceSettingsContext', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       const newSettings: PriceSettings = {
-        postalCode: 5000,
+        location: 5000,
         supplierId: 'sup-1',
         companyId: 'comp-1',
         productId: 'prod-1',

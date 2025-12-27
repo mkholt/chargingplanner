@@ -74,7 +74,7 @@ const ImportPreviewDialogContent: React.FC<{
       ? findProductById(companies, settings.productId)
       : null;
 
-    return { supplier, company, product, postalCode: settings.postalCode };
+    return { supplier, company, product };
   }, [settings, suppliers, companies]);
 
   const toggleCar = (index: number) => {
@@ -195,12 +195,9 @@ const ImportPreviewDialogContent: React.FC<{
                       marginLeft: 28,
                     }}
                   >
-                    {resolvedSettings.postalCode && (
+                    {resolvedSettings.supplier && (
                       <Text size={200} style={{ display: 'block' }}>
-                        Postal code: {resolvedSettings.postalCode}
-                        {resolvedSettings.supplier && (
-                          <> → {resolvedSettings.supplier.name} ({resolvedSettings.supplier.priceArea})</>
-                        )}
+                        Grid operator: {resolvedSettings.supplier.name} ({resolvedSettings.supplier.priceArea})
                       </Text>
                     )}
                     {resolvedSettings.company && (

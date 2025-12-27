@@ -35,7 +35,9 @@ const AppContent: React.FC = () => {
   const { resolved: priceSettings } = usePriceSettings();
 
   // Fetch price data using TanStack Query
-  const { data: priceData, dataUpdatedAt, isFetching, refresh } = usePricesQuery();
+  const { data: priceResult, dataUpdatedAt, isFetching, isError, error, refresh } = usePricesQuery();
+  const priceData = priceResult?.data;
+  const priceError = isError ? error : null;
 
   // Track form input
   const [formInput, setFormInput] = useState<FormInput | null>(null);
@@ -115,6 +117,8 @@ const AppContent: React.FC = () => {
                 <Results
                   formInput={formInput}
                   priceData={priceData}
+                  priceError={priceError}
+                  onOpenSettings={() => setSettingsOpen(true)}
                 />
               </div>
             </div>

@@ -1,4 +1,4 @@
-import type { Car, PriceSettings } from '@/contexts';
+import { type Car, type PriceSettings } from '@/contexts';
 
 // =============================================================================
 // Types
@@ -133,9 +133,7 @@ function validateSettings(settings: unknown): PriceSettings | undefined {
   const s = settings as Record<string, unknown>;
 
   // Validate types (allow nulls for optional fields)
-  if (s.postalCode !== null && s.postalCode !== undefined && typeof s.postalCode !== 'number') {
-    throw new Error('Invalid settings: postalCode must be number or null');
-  }
+  // Note: location is not synced for privacy reasons
   if (s.supplierId !== null && s.supplierId !== undefined && typeof s.supplierId !== 'string') {
     throw new Error('Invalid settings: supplierId must be string or null');
   }
@@ -162,7 +160,8 @@ function validateSettings(settings: unknown): PriceSettings | undefined {
   }
 
   return {
-    postalCode: (s.postalCode as number) ?? null,
+    // Location is not synced for privacy reasons - always null on import
+    location: null,
     supplierId: (s.supplierId as string) ?? null,
     companyId: (s.companyId as string) ?? null,
     productId: (s.productId as string) ?? null,
@@ -199,8 +198,12 @@ export async function encodeSyncData(cars: Car[], settings?: PriceSettings | nul
   };
 
   // Only include settings if there are meaningful values
-  if (settings && (settings.postalCode || settings.supplierId || settings.companyId || settings.productId)) {
-    data.settings = settings;
+  // Note: Location is NOT synced for privacy reasons
+  if (settings && (settings.supplierId || settings.companyId || settings.productId)) {
+    // Exclude location from synced settings for privacy
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { location, ...settingsWithoutLocation } = settings;
+    data.settings = { ...settingsWithoutLocation, location: null };
   }
 
   const json = JSON.stringify(data);

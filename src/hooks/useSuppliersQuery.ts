@@ -9,13 +9,41 @@ import {
 import type { PriceArea, SuppliersApiResponse, SuppliersFindApiResponse } from '@/types';
 import { QUERY_TIMING, USE_MOCK_API } from '@/utils';
 
+// ============ Types ============
+
+/** GPS coordinates */
+export type Coordinates = { lat: number; long: number };
+
+/** Location can be a postal code (number), GPS coordinates, or null (not set) */
+export type Location = number | Coordinates | null;
+
+/** Type guard: check if location is GPS coordinates */
+export function isCoordinates(location: Location): location is Coordinates {
+  return location !== null && typeof location === 'object' && 'lat' in location && 'long' in location;
+}
+
+/** Type guard: check if location is a postal code */
+export function isPostalCode(location: Location): location is number {
+  return typeof location === 'number';
+}
+
+// ============ Query Keys ============
+
 // Query key factory for suppliers
 // All suppliers have no dependencies
-// Finding by postal code depends on the postal code
+// Finding by location depends on those values
 export const supplierQueryKeys = {
   all: ['suppliers'] as const,
   list: () => ['suppliers', 'list'] as const,
-  find: (postalCode: number) => ['suppliers', 'find', { postalCode }] as const,
+  findByLocation: (location: Location) => {
+    if (isCoordinates(location)) {
+      return ['suppliers', 'find', { lat: location.lat, long: location.long }] as const;
+    }
+    if (isPostalCode(location)) {
+      return ['suppliers', 'find', { postalCode: location }] as const;
+    }
+    return ['suppliers', 'find', null] as const;
+  },
 };
 
 /**
@@ -67,24 +95,48 @@ export function useSuppliersQuery(enabled = true) {
 }
 
 /**
- * Find suppliers by postal code.
- * Returns an array since a postal code can have multiple grid operators.
- * Result is cached per postal code.
+ * Find suppliers by location (postal code or GPS coordinates).
+ * Returns an array since a location can have multiple grid operators.
+ * Result is cached per location.
  */
-export function useSuppliersByPostalCodeQuery(postalCode: number | null) {
+export function useSuppliersByLocationQuery(location: Location) {
   return useQuery({
-    queryKey: supplierQueryKeys.find(postalCode ?? 0),
+    queryKey: supplierQueryKeys.findByLocation(location),
     queryFn: async (): Promise<Supplier[]> => {
       if (USE_MOCK_API) {
         await new Promise(resolve => setTimeout(resolve, 100));
-        const found = findSupplierByPostalCodeMock(postalCode!);
-        // Mock returns single supplier, wrap in array for consistency
-        return found ? [found] : [];
+
+        if (isPostalCode(location)) {
+          const found = findSupplierByPostalCodeMock(location);
+          return found ? [found] : [];
+        }
+
+        if (isCoordinates(location)) {
+          // For mock, return a default supplier based on longitude (rough DK1/DK2 split)
+          // East of ~12° longitude is DK2, west is DK1
+          const isDK2 = location.long > 12;
+          const mockSuppliers = getMockSuppliers();
+          const found = mockSuppliers.find(s => s.priceArea === (isDK2 ? 'DK2' : 'DK1'));
+          return found ? [found] : [];
+        }
+
+        return [];
       }
-      const result = await findSupplier({ postalCode: postalCode! });
-      return mapApiFindSuppliers(result ?? []);
+
+      // Real API call
+      if (isPostalCode(location)) {
+        const result = await findSupplier({ postalCode: location });
+        return mapApiFindSuppliers(result ?? []);
+      }
+
+      if (isCoordinates(location)) {
+        const result = await findSupplier({ lat: location.lat, long: location.long });
+        return mapApiFindSuppliers(result ?? []);
+      }
+
+      return [];
     },
-    enabled: postalCode !== null && postalCode >= 1000 && postalCode <= 9999,
+    enabled: location !== null && (isCoordinates(location) || (isPostalCode(location) && location >= 1000 && location <= 9999)),
     staleTime: QUERY_TIMING.static.staleTime,
     gcTime: QUERY_TIMING.static.gcTime,
   });

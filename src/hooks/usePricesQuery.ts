@@ -11,6 +11,12 @@ export const priceQueryKeys = {
   byParams: (params: FetchPricesParams) => ['prices', params] as const,
 };
 
+// Wrapper type that includes whether data is mocked
+export type PriceQueryResult<T> = {
+  data: T;
+  isMocked: boolean;
+};
+
 export function usePricesQuery() {
   const { resolved } = usePriceSettings();
   const queryClient = useQueryClient();
@@ -42,13 +48,19 @@ export function usePricesQuery() {
 
   const query = useQuery({
     queryKey: priceQueryKeys.byParams(queryParams),
-    queryFn: async () => {
+    queryFn: async (): Promise<PriceQueryResult<Awaited<ReturnType<typeof fetchPrices>>>> => {
       if (USE_MOCK_API) {
         // Simulate network delay for realistic testing
         await new Promise(resolve => setTimeout(resolve, 300));
-        return getMockApiResponse(effectivePriceArea);
+        return {
+          data: getMockApiResponse(effectivePriceArea),
+          isMocked: true,
+        };
       }
-      return fetchPrices(queryParams);
+      return {
+        data: await fetchPrices(queryParams),
+        isMocked: false,
+      };
     },
     staleTime: QUERY_TIMING.prices.staleTime,
     gcTime: QUERY_TIMING.prices.gcTime,

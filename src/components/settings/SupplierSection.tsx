@@ -1,31 +1,46 @@
 import React, { useState } from 'react';
 
 import {
-  Dropdown,
+  Button,
   Input,
-  Option,
   Spinner,
   Text,
   tokens,
+  Tooltip,
 } from '@fluentui/react-components';
-import { Location20Regular, Building20Regular } from '@fluentui/react-icons';
+import { Location20Regular, MyLocation20Regular } from '@fluentui/react-icons';
 
-import { usePriceSettings } from '@/contexts';
+import { SelectionCard } from '@/components/settings';
+import { isCoordinates, isPostalCode, usePriceSettings } from '@/contexts';
 import { isValidPostalCode } from '@/data';
 
 export const SupplierSection: React.FC = () => {
-  const { resolved, setPostalCode, setSupplierId } = usePriceSettings();
-  const { postalCode, availableSuppliers, supplier, isLoading } = resolved;
+  const { resolved, setLocation, setSupplierId } = usePriceSettings();
+  const { location, availableSuppliers, supplier, isLoading } = resolved;
+
+  // Extract postal code from location for display in input
+  const postalCode = isPostalCode(location) ? location : null;
+  const isUsingGps = isCoordinates(location);
 
   const [inputValue, setInputValue] = useState(postalCode?.toString() ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  // Suppliers are resolved in context based on location
+  // If no location is set but we have a saved supplier, show that supplier
+  const displayedSuppliers = availableSuppliers.length > 0
+    ? availableSuppliers
+    : supplier ? [supplier] : [];
+  const isLoadingSuppliers = isLoading;
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
     setError(null);
+    setLocationError(null);
 
     if (!value.trim()) {
-      setPostalCode(null);
+      setLocation(null);
       return;
     }
 
@@ -40,11 +55,47 @@ export const SupplierSection: React.FC = () => {
       return;
     }
 
-    setPostalCode(parsed);
+    setLocation(parsed);
   };
 
-  const showSupplierDropdown = availableSuppliers.length > 1;
-  const supplierDisplayValue = supplier?.name ?? 'Select grid operator';
+  const handleGpsClick = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(null);
+    setError(null);
+    setInputValue(''); // Clear postal code input
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          long: position.coords.longitude,
+        });
+        setIsLocating(false);
+      },
+      (err) => {
+        setIsLocating(false);
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setLocationError('Location access was denied');
+            break;
+          case err.POSITION_UNAVAILABLE:
+            setLocationError('Location information is unavailable');
+            break;
+          case err.TIMEOUT:
+            setLocationError('Location request timed out');
+            break;
+          default:
+            setLocationError('An unknown error occurred');
+        }
+      },
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -61,6 +112,15 @@ export const SupplierSection: React.FC = () => {
           max={9999}
           style={{ flex: 1 }}
         />
+        <Tooltip content="Use my location" relationship="label">
+          <Button
+            icon={isLocating ? <Spinner size="tiny" /> : <MyLocation20Regular />}
+            appearance="subtle"
+            onClick={handleGpsClick}
+            disabled={isLocating}
+            aria-label="Use my location"
+          />
+        </Tooltip>
       </div>
 
       {error && (
@@ -69,7 +129,19 @@ export const SupplierSection: React.FC = () => {
         </Text>
       )}
 
-      {isLoading && postalCode && !error && (
+      {locationError && (
+        <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+          {locationError}
+        </Text>
+      )}
+
+      {isUsingGps && !isLoadingSuppliers && (
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          Using GPS location
+        </Text>
+      )}
+
+      {isLoadingSuppliers && location !== null && !error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Spinner size="tiny" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
@@ -78,60 +150,25 @@ export const SupplierSection: React.FC = () => {
         </div>
       )}
 
-      {/* Multiple suppliers - show dropdown with prompt */}
-      {!isLoading && showSupplierDropdown && (
-        <>
-          <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
-            Multiple grid operators serve this area. Please select one:
-          </Text>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Building20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
-            <Dropdown
-              value={supplierDisplayValue}
-              onOptionSelect={(_, data) => {
-                setSupplierId(data.optionValue ?? null);
-              }}
-              placeholder="Select grid operator"
-              style={{ flex: 1 }}
-            >
-              {availableSuppliers.map(s => (
-                <Option key={s.id} value={s.id} text={s.name}>
-                  <div>
-                    <div>{s.name}</div>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      {s.companyName}
-                    </Text>
-                  </div>
-                </Option>
-              ))}
-            </Dropdown>
-          </div>
-        </>
-      )}
-
-      {/* Single supplier auto-selected - show info card */}
-      {!isLoading && !showSupplierDropdown && supplier && (
-        <div
-          style={{
-            padding: 12,
-            background: tokens.colorNeutralBackground3,
-            border: `1px solid ${tokens.colorNeutralStroke1}`,
-            borderRadius: 8,
-          }}
-        >
-          <Text weight="semibold" style={{ display: 'block' }}>
-            {supplier.name}
-          </Text>
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            {supplier.companyName} · {supplier.priceArea === 'DK1' ? 'Vestdanmark' : 'Østdanmark'}
-          </Text>
+      {/* Supplier cards */}
+      {!isLoadingSuppliers && displayedSuppliers.length > 0 && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {displayedSuppliers.map(s => (
+            <SelectionCard
+              key={s.id}
+              title={s.name}
+              subtitle={`${s.companyName} · ${s.priceArea === 'DK1' ? 'Vestdanmark' : 'Østdanmark'}`}
+              isSelected={supplier?.id === s.id}
+              onClick={() => setSupplierId(s.id)}
+            />
+          ))}
         </div>
       )}
 
       {/* No suppliers found */}
-      {!isLoading && postalCode && !error && availableSuppliers.length === 0 && (
+      {!isLoadingSuppliers && location !== null && !error && !locationError && displayedSuppliers.length === 0 && (
         <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
-          No grid operator found for postal code {postalCode}
+          No grid operator found {postalCode ? `for postal code ${postalCode}` : 'at your location'}
         </Text>
       )}
     </div>
