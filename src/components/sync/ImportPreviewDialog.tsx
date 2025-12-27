@@ -133,7 +133,7 @@ const ImportPreviewDialogContent: React.FC<{
 
                   return (
                     <div
-                      key={i}
+                      key={car.name}
                       style={{
                         padding: '8px 12px',
                         background: isDuplicate

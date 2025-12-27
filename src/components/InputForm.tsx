@@ -43,15 +43,16 @@ export const InputForm: React.FC<Props> = ({
   const { cars, selectedCarId, setSelectedCarId } = useCars();
   const { batterySize, chargingSpeed, setBatterySize, setChargingSpeed } = useChargingForm();
 
-  const now = new Date();
-  const tomorrow7am = new Date(now);
-  tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
-  tomorrow7am.setHours(7, 0, 0, 0);
-
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
-  const [earliest, setEarliest] = useState(toDateTimeLocalString(now));
-  const [latest, setLatest] = useState(toDateTimeLocalString(tomorrow7am));
+  const [earliest, setEarliest] = useState(() => toDateTimeLocalString(new Date()));
+  const [latest, setLatest] = useState(() => {
+    const now = new Date();
+    const tomorrow7am = new Date(now);
+    tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
+    tomorrow7am.setHours(7, 0, 0, 0);
+    return toDateTimeLocalString(tomorrow7am);
+  });
 
   // Handle car selection - update form values via context
   const handleCarSelect = (car: Car) => {
