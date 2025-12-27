@@ -1,54 +1,44 @@
-# React + TypeScript + Vite
+# EV Charging Planner
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React application that helps users find the cheapest time window to charge their electric vehicle based on hourly electricity prices from Danish energy suppliers.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Calculate optimal charging windows based on real-time electricity prices
+- Save and manage multiple car profiles (battery size, charging speed)
+- GPS or postal code lookup for grid operator detection
+- Searchable electricity supplier selection
+- QR code and sync code sharing for car profiles
+- PWA support for offline access
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React 19** with TypeScript
+- **Vite** for development and building
+- **Fluent UI React** components
+- **TanStack Query** for data fetching and caching
+- **Vitest** for unit testing
+- **Playwright** for E2E testing
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Development
+
+```bash
+npm install      # Install dependencies
+npm run dev      # Start development server
+npm run build    # Build for production (runs tests first)
+npm run test     # Run unit tests
+npm run test:e2e # Run E2E tests
+npm run lint     # Run ESLint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## API
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Price data is fetched from [stromligning.dk](https://stromligning.dk).
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+npm run codegen:api  # Regenerate API types from swagger
 ```
+
+## License
+
+MIT
