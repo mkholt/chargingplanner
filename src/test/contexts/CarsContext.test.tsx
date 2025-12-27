@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { renderHook, act } from '@testing-library/react';
 import { CarsProvider, useCars, type Car } from '@/contexts/CarsContext';
 import { stubLocalStorage } from '@/test/utils/testUtils';

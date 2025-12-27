@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+
 import { findOptimalChargingWindow, type ChargingInput } from '@/utils/chargingCalculator';
 
 describe('findOptimalChargingWindow', () => {

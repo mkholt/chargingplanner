@@ -285,7 +285,7 @@ export const Results: React.FC<Props> = ({
             color: text,
           }}
         >
-          <div>
+          <div data-testid="result-start">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Play16Regular />
               <Text size={200} style={{ color: secondary }}>Start</Text>
@@ -303,7 +303,7 @@ export const Results: React.FC<Props> = ({
               })()}
             </div>
           </div>
-          <div>
+          <div data-testid="result-end">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Stop16Regular />
               <Text size={200} style={{ color: secondary }}>End</Text>
@@ -321,7 +321,7 @@ export const Results: React.FC<Props> = ({
               })()}
             </div>
           </div>
-          <div>
+          <div data-testid="result-duration">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Clock16Regular />
               <Text size={200} style={{ color: secondary }}>Duration</Text>
@@ -330,7 +330,7 @@ export const Results: React.FC<Props> = ({
               {formatDuration(result.durationHours)}
             </div>
           </div>
-          <div>
+          <div data-testid="result-energy">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Flash16Regular />
               <Text size={200} style={{ color: secondary }}>Energy</Text>
@@ -339,7 +339,7 @@ export const Results: React.FC<Props> = ({
               {result.energyNeeded.toFixed(1)} kWh
             </div>
           </div>
-          <div>
+          <div data-testid="result-cost">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Money16Regular />
               <Text size={200} style={{ color: secondary }}>Est. Cost</Text>
@@ -352,6 +352,7 @@ export const Results: React.FC<Props> = ({
       )}
       {!result && error && error.type !== 'no_input' && (
         <div
+          data-testid="result-error"
           style={{
             display: 'flex',
             alignItems: 'flex-start',

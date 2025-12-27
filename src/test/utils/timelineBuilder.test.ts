@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { buildTimeline } from '@/utils/timelineBuilder';
 import { getMockApiResponse } from '@/test/mocks/mockPrices';
 

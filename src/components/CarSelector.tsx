@@ -71,6 +71,7 @@ export const CarSelector: React.FC<Props> = ({
     >
       <VehicleCar20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
       <Dropdown
+        data-testid="car-selector"
         value={displayValue}
         onOptionSelect={(_ev, data) => {
           const car = cars.find(c => c.id === data.optionValue);

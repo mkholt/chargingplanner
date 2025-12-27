@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PriceSettingsProvider, usePriceSettings, type PriceSettings } from '@/contexts/PriceSettingsContext';

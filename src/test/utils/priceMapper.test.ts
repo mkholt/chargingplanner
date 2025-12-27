@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+
 import { mapApiResponseToPrices, getPriceUnit } from '@/utils/priceMapper';
 import type { PricesApiResponse } from '@/types';
 
