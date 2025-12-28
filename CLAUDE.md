@@ -7,9 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev           # Start development server (Vite)
 npm run build         # TypeScript check + production build (runs lint & tests first)
-npm run test          # Run tests (runs lint first via pretest)
-npm run test:watch    # Run tests in watch mode (no linting)
-npm run test:coverage # Run tests with coverage report
+npm run test          # Run unit tests (runs lint first via pretest)
+npm run test:watch    # Run unit tests in watch mode (no linting)
+npm run test:coverage # Run unit tests with coverage report
+npm run test:e2e      # Run E2E tests (starts dev server automatically)
+npm run test:e2e:ui   # Run E2E tests with Playwright UI
+npm run test:e2e:headed # Run E2E tests in headed browser mode
 npm run lint          # Run ESLint
 npm run preview       # Preview production build
 npm run codegen:api   # Generate API types from stromligning.dk swagger
@@ -46,3 +49,53 @@ Folders are barelled, and imports must always be from the folder not the specifi
 - **UI Framework**: Fluent UI React Components (`@fluentui/react-components`)
 - **State**: React useState with localStorage for car persistence
 - **Styling**: Inline styles with Fluent UI tokens for theming (dark theme)
+
+## Testing
+
+Two testing frameworks are implemented, both using MSW (Mock Service Worker) for API mocking.
+
+### MSW (Shared API Mocking)
+
+Located in `src/test/mocks/`. Provides consistent mock API responses for both unit and E2E tests.
+
+- `handlers.ts` - API request handlers (add new endpoints here)
+- `server.ts` - Node.js server for unit tests (Vitest)
+- `browser.ts` - Browser service worker for E2E tests (Playwright)
+
+When `VITE_USE_MOCK_API=true`, the app starts the MSW service worker in `main.tsx`, intercepting all API calls.
+
+### Unit Tests (Vitest + React Testing Library)
+
+Located in `src/test/`. Uses Vitest with jsdom environment for component and utility testing.
+
+**Structure:**
+- `src/test/setup.ts` - Test setup with MSW server initialization
+- `src/test/utils/` - Unit tests for utility functions
+- `src/test/hooks/` - Tests for React hooks
+- `src/test/contexts/` - Tests for React contexts
+
+**Writing unit tests:**
+- Place tests in `src/test/` mirroring the source structure
+- Use `*.test.ts` or `*.test.tsx` extension
+- Import from `@testing-library/react` for component testing
+
+### E2E Tests (Playwright)
+
+Located in `e2e/`. Uses Playwright for browser-based end-to-end testing.
+
+**Structure:**
+- `e2e/playwright.config.ts` - Playwright configuration (runs on port 5174 with mock API)
+- `e2e/tests/` - Test spec files (`*.spec.ts`)
+- `e2e/pages/` - Page Object Model classes for UI interaction
+- `e2e/fixtures/` - Test fixtures and localStorage helpers
+
+**Page Objects:**
+- `app.page.ts` - Main app interactions
+- `input-form.page.ts` - Input form interactions
+- `results.page.ts` - Results section interactions
+- `settings-dialog.page.ts` - Settings dialog interactions
+
+**Writing E2E tests:**
+- Place tests in `e2e/tests/` with `*.spec.ts` extension
+- Use Page Object classes for UI interactions
+- Tests run in parallel on Chromium and Mobile Chrome by default

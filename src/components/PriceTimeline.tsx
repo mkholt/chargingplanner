@@ -117,15 +117,35 @@ export const PriceTimeline: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Timeline bars */}
+      {/* Timeline bars with day-shift markers */}
       <div
         style={{
+          position: 'relative',
           display: 'flex',
           gap: 2,
           height: 80,
           alignItems: 'flex-end',
         }}
       >
+        {/* Day-shift vertical lines */}
+        {dayBoundaries.slice(1).map((boundary) => {
+          const leftPercent = (boundary.startIndex / hourData.length) * 100;
+          return (
+            <div
+              key={`day-shift-${boundary.label}`}
+              style={{
+                position: 'absolute',
+                left: `${leftPercent}%`,
+                top: 0,
+                bottom: 0,
+                width: 0,
+                borderLeft: `2px dashed ${tokens.colorNeutralForeground3}`,
+                zIndex: 1,
+                pointerEvents: 'none',
+              }}
+            />
+          );
+        })}
         {hourData.map((data) => {
           const color = getPriceColor(data.price, minPrice, maxPrice);
           const isSelected = selectedIndex === data.index;
