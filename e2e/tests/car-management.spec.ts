@@ -94,10 +94,8 @@ test.describe('Car Management', () => {
 
     // Select VW ID.4
     await appPage.selectCar('VW ID.4');
-    await page.waitForTimeout(100);
 
-    // Battery size should update to 77 kWh
-    batterySize = await inputFormPage.getBatterySize();
-    expect(batterySize).toBe(77);
+    // Battery size should update to 77 kWh (use toHaveValue which auto-waits)
+    await expect(inputFormPage.batterySizeInput).toHaveValue('77');
   });
 });

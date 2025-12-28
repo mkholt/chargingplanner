@@ -54,8 +54,8 @@ export class SettingsDialogPage {
     await powerInput.fill(`${maxPower}`);
     // Click on the name input to blur the combobox and close its dropdown
     await this.page.getByPlaceholder('Car name').click();
-    // Wait for dropdown to close and DOM to stabilize
-    await this.page.waitForTimeout(100);
+    // Wait for any dropdown listbox to close
+    await expect(this.page.getByRole('listbox')).not.toBeVisible();
   }
 
   async saveNewCar(): Promise<void> {
@@ -70,8 +70,8 @@ export class SettingsDialogPage {
     await this.clickAddCarCard();
     await this.fillCarForm(name, batterySize, maxPower);
     await this.saveNewCar();
-    // Wait for the card to appear
-    await this.page.waitForTimeout(100);
+    // Wait for the car card to appear with the new name
+    await expect(this.page.getByText(name, { exact: true })).toBeVisible();
   }
 
   async editCar(
@@ -124,8 +124,11 @@ export class SettingsDialogPage {
     await this.switchToElectricityTab();
     const input = this.page.getByPlaceholder(/postal code/i);
     await input.fill(String(code));
-    // Wait for supplier lookup
-    await this.page.waitForTimeout(300);
+    // Wait for supplier lookup to complete (supplier name appears)
+    // Valid postal codes will show a supplier like Radius, Norlys, N1, etc.
+    if (code >= 1000 && code <= 9999) {
+      await expect(this.page.getByText(/Radius|Norlys|N1|TREFOR|EWII|Dinel|Elektrus|Ikast|RAH|Hammel|Hurup/i).first()).toBeVisible();
+    }
   }
 
   async getPostalCodeValue(): Promise<string> {

@@ -35,10 +35,8 @@ test.describe('Price Settings', () => {
     await appPage.openSettings();
 
     // Enter Aarhus postal code (DK1 region)
+    // setPostalCode already waits for supplier to appear
     await settingsDialogPage.setPostalCode(POSTAL_CODES.AARHUS);
-
-    // Wait for suppliers to load
-    await page.waitForTimeout(400);
 
     // Should be able to see company options for DK1
     // The mock data includes companies like NRGi for DK1

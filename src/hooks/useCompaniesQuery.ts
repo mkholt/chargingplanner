@@ -2,9 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { fetchCompanies, type FetchCompaniesParams } from '@/api';
 import type { Company } from '@/data';
-import { getMockCompanies } from '@/test/mocks/mockCompanies';
 import type { CompaniesApiResponse, PriceArea } from '@/types';
-import { QUERY_TIMING, USE_MOCK_API } from '@/utils';
+import { QUERY_TIMING } from '@/utils';
 
 // Query key factory for companies
 // Companies depend only on region (priceArea)
@@ -68,10 +67,7 @@ export function useCompaniesQuery(priceArea: PriceArea | null) {
   return useQuery({
     queryKey: companyQueryKeys.byRegion(priceArea ?? 'DK1'),
     queryFn: async (): Promise<Company[]> => {
-      if (USE_MOCK_API) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return getMockCompanies(priceArea ?? 'DK1');
-      }
+      // MSW intercepts the request when USE_MOCK_API is true
       const params: FetchCompaniesParams = {
         region: priceArea ?? undefined,
       };

@@ -1,9 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { fetchPrices, type FetchPricesParams } from '@/api';
-import { type PriceArea, usePriceSettings } from '@/contexts';
-import { getMockApiResponse } from '@/test/mocks/mockPrices';
-import { getLocalDateString, QUERY_TIMING, USE_MOCK_API } from '@/utils';
+import { fetchPrices, USE_MOCK_API, type FetchPricesParams } from '@/api';
+import { usePriceSettings } from '@/contexts';
+import { getLocalDateString, QUERY_TIMING } from '@/utils';
 
 // Query key factory for type safety and consistency
 export const priceQueryKeys = {
@@ -43,23 +42,14 @@ export function usePricesQuery() {
     aggregationMethod: resolved.aggregationSize === '1h' ? resolved.aggregationMethod : undefined,
   };
 
-  // Use resolved priceArea for mock API (falls back to query param or default)
-  const effectivePriceArea: PriceArea = (queryParams.priceArea as PriceArea) ?? resolved.priceArea;
-
   const query = useQuery({
     queryKey: priceQueryKeys.byParams(queryParams),
     queryFn: async (): Promise<PriceQueryResult<Awaited<ReturnType<typeof fetchPrices>>>> => {
-      if (USE_MOCK_API) {
-        // Simulate network delay for realistic testing
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return {
-          data: getMockApiResponse(effectivePriceArea),
-          isMocked: true,
-        };
-      }
+      // MSW intercepts the request when USE_MOCK_API is true
+      const data = await fetchPrices(queryParams);
       return {
-        data: await fetchPrices(queryParams),
-        isMocked: false,
+        data,
+        isMocked: USE_MOCK_API,
       };
     },
     staleTime: QUERY_TIMING.prices.staleTime,

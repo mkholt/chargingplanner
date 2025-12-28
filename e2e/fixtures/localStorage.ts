@@ -7,7 +7,8 @@ import { LOCAL_STORAGE_KEYS, type Car, type PriceSettings } from './test-fixture
  */
 async function ensureOnOrigin(page: Page): Promise<void> {
   const url = page.url();
-  if (!url.startsWith('http://localhost:5173')) {
+  // E2E tests run on port 5174
+  if (!url.startsWith('http://localhost:5174')) {
     await page.goto('/');
   }
 }
@@ -43,10 +44,10 @@ export async function seedSelectedCar(page: Page, carId: string): Promise<void> 
 
 export async function seedPriceSettings(
   page: Page,
-  settings: Partial<PriceSettings>
+  settings: Partial<PriceSettings> & { postalCode?: number }
 ): Promise<void> {
   const defaults: PriceSettings = {
-    postalCode: null,
+    location: null,
     supplierId: null,
     companyId: null,
     productId: null,
@@ -54,10 +55,17 @@ export async function seedPriceSettings(
     aggregationSize: '1h',
     aggregationMethod: 'mean',
   };
+  // Support legacy postalCode parameter for backwards compatibility
+  const { postalCode, ...rest } = settings;
+  const settingsToSave = {
+    ...defaults,
+    ...rest,
+    location: rest.location ?? postalCode ?? null,
+  };
   await setLocalStorageItem(
     page,
     LOCAL_STORAGE_KEYS.PRICE_SETTINGS,
-    { ...defaults, ...settings }
+    settingsToSave
   );
 }
 

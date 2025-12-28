@@ -2,12 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { fetchSuppliers, findSupplier } from '@/api';
 import type { Supplier } from '@/data';
-import {
-  getMockSuppliers,
-  findSupplierByPostalCode as findSupplierByPostalCodeMock,
-} from '@/test/mocks/mockSuppliers';
 import type { PriceArea, SuppliersApiResponse, SuppliersFindApiResponse } from '@/types';
-import { QUERY_TIMING, USE_MOCK_API } from '@/utils';
+import { QUERY_TIMING } from '@/utils';
 
 // ============ Types ============
 
@@ -81,10 +77,7 @@ export function useSuppliersQuery(enabled = true) {
   return useQuery({
     queryKey: supplierQueryKeys.list(),
     queryFn: async (): Promise<Supplier[]> => {
-      if (USE_MOCK_API) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return getMockSuppliers();
-      }
+      // MSW intercepts the request when USE_MOCK_API is true
       const apiResponse = await fetchSuppliers();
       return mapApiSuppliers(apiResponse ?? []);
     },
@@ -103,27 +96,7 @@ export function useSuppliersByLocationQuery(location: Location) {
   return useQuery({
     queryKey: supplierQueryKeys.findByLocation(location),
     queryFn: async (): Promise<Supplier[]> => {
-      if (USE_MOCK_API) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        if (isPostalCode(location)) {
-          const found = findSupplierByPostalCodeMock(location);
-          return found ? [found] : [];
-        }
-
-        if (isCoordinates(location)) {
-          // For mock, return a default supplier based on longitude (rough DK1/DK2 split)
-          // East of ~12° longitude is DK2, west is DK1
-          const isDK2 = location.long > 12;
-          const mockSuppliers = getMockSuppliers();
-          const found = mockSuppliers.find(s => s.priceArea === (isDK2 ? 'DK2' : 'DK1'));
-          return found ? [found] : [];
-        }
-
-        return [];
-      }
-
-      // Real API call
+      // MSW intercepts the request when USE_MOCK_API is true
       if (isPostalCode(location)) {
         const result = await findSupplier({ postalCode: location });
         return mapApiFindSuppliers(result ?? []);

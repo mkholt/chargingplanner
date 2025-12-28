@@ -8,6 +8,7 @@ export class AppPage {
   readonly carSelectorDropdown: Locator;
   readonly addCarButton: Locator;
   readonly noCarMessage: Locator;
+  readonly priceAttribution: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -16,6 +17,7 @@ export class AppPage {
     this.carSelectorDropdown = page.getByTestId('car-selector');
     this.addCarButton = page.getByRole('button', { name: 'Add Car' });
     this.noCarMessage = page.getByText('No car saved');
+    this.priceAttribution = page.getByText('stromligning.dk');
   }
 
   async goto(): Promise<void> {
@@ -32,8 +34,8 @@ export class AppPage {
 
   async waitForAppReady(): Promise<void> {
     await expect(this.title).toBeVisible();
-    // Wait for mock API data to load (100-300ms mock delays)
-    await this.page.waitForTimeout(400);
+    // Wait for price data to load (indicated by attribution text appearing)
+    await expect(this.priceAttribution).toBeVisible();
   }
 
   async openSettings(): Promise<void> {

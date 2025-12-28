@@ -20,13 +20,16 @@ export type Car = {
   maxPower: number;
 };
 
+// Location can be a postal code (number), GPS coordinates, or null
+export type Location = number | { lat: number; long: number } | null;
+
 // Price settings type matching the app
 export type PriceSettings = {
-  postalCode: number | null;
+  location: Location;
   supplierId: string | null;
   companyId: string | null;
   productId: string | null;
-  priceArea: 'DK1' | 'DK2';
+  priceArea: 'DK1' | 'DK2' | null;
   aggregationSize: '15m' | '1h';
   aggregationMethod: 'mean' | 'min' | 'max';
 };

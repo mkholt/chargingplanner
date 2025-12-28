@@ -20,9 +20,6 @@ export const QUERY_TIMING = {
   },
 } as const;
 
-// API configuration
-export const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
-
 // Charging power options (shared between InputForm and CarManager)
 export const CHARGING_POWER_OPTIONS = [
   { label: "2.3 kW (Level 1)", value: 2.3 },

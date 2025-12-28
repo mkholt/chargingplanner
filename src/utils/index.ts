@@ -17,7 +17,6 @@ export {
   MS_PER_HOUR,
   MS_PER_MINUTE,
   QUERY_TIMING,
-  USE_MOCK_API,
 } from './constants';
 export { getLocalDateString, toDateTimeLocalString } from './dateUtils';
 export { getPriceUnit, mapApiResponseToPrices } from './priceMapper';
