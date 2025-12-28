@@ -9,21 +9,14 @@ import {
 } from '@fluentui/react-components';
 import { VehicleCar20Regular } from '@fluentui/react-icons';
 
-import type { Car } from '@/contexts';
+import { useCars } from '@/contexts';
 
 type Props = {
-  cars: Car[];
-  selectedCarId: string | null;
-  onSelect: (car: Car) => void;
   onAddCarClick?: () => void;
 };
 
-export const CarSelector: React.FC<Props> = ({
-  cars,
-  selectedCarId,
-  onSelect,
-  onAddCarClick,
-}) => {
+export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
+  const { cars, selectedCarId, setSelectedCarId } = useCars();
   const selectedCar = cars.find(c => c.id === selectedCarId);
 
   if (cars.length === 0) {
@@ -74,8 +67,9 @@ export const CarSelector: React.FC<Props> = ({
         data-testid="car-selector"
         value={displayValue}
         onOptionSelect={(_ev, data) => {
-          const car = cars.find(c => c.id === data.optionValue);
-          if (car) onSelect(car);
+          if (data.optionValue) {
+            setSelectedCarId(data.optionValue);
+          }
         }}
         style={{ flex: 1, minWidth: 0 }}
       >

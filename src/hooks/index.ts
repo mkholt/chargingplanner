@@ -1,4 +1,5 @@
 export { useCompaniesQuery, companyQueryKeys } from './useCompaniesQuery';
+export { useDebouncedCallback } from './useDebouncedCallback';
 export { usePricesQuery, priceQueryKeys, type PriceQueryResult } from './usePricesQuery';
 export {
   useSuppliersQuery,

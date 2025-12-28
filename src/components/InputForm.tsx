@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   Button,
@@ -21,89 +21,111 @@ import {
 import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
 import { LabeledFormField } from '@/components/ui';
-import { type Car, useCars, useChargingForm } from '@/contexts';
+import { type Car } from '@/contexts';
+import { useDebouncedCallback } from '@/hooks';
 import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
 
-type Props = {
-  onSettingsClick: () => void;
-  onSubmit: (input: {
-    startPercent: number;
-    endPercent: number;
-    batterySize: number;
-    chargingSpeed: number;
-    earliest: string; // ISO string
-    latest: string;   // ISO string
-  }) => void;
+type FormInput = {
+  startPercent: number;
+  endPercent: number;
+  batterySize: number;
+  chargingSpeed: number;
+  earliest: string;
+  latest: string;
 };
 
+type Props = {
+  selectedCar: Car | null;
+  onSettingsClick: () => void;
+  onSubmit: (input: FormInput) => void;
+};
+
+/** Get default latest time (tomorrow 7am, or today 7am if before 7am) */
+function getDefaultLatest(): string {
+  const now = new Date();
+  const target = new Date(now);
+  target.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
+  target.setHours(7, 0, 0, 0);
+  return toDateTimeLocalString(target);
+}
+
 export const InputForm: React.FC<Props> = ({
+  selectedCar,
   onSettingsClick,
   onSubmit,
 }) => {
-  const { cars, selectedCarId, setSelectedCarId } = useCars();
-  const { batterySize, chargingSpeed, setBatterySize, setChargingSpeed } = useChargingForm();
-
+  // Initialize form state from selected car (component remounts when car changes via key prop)
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
+  const [batterySize, setBatterySize] = useState(selectedCar?.batterySize ?? 60);
+  const [chargingSpeed, setChargingSpeed] = useState(selectedCar?.maxPower ?? 11);
   const [earliest, setEarliest] = useState(() => toDateTimeLocalString(new Date()));
-  const [latest, setLatest] = useState(() => {
-    const now = new Date();
-    const tomorrow7am = new Date(now);
-    tomorrow7am.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
-    tomorrow7am.setHours(7, 0, 0, 0);
-    return toDateTimeLocalString(tomorrow7am);
-  });
+  const [latest, setLatest] = useState(getDefaultLatest);
 
-  // Handle car selection - update form values via context
-  const handleCarSelect = (car: Car) => {
-    setSelectedCarId(car.id);
-    setBatterySize(car.batterySize);
-    setChargingSpeed(car.maxPower);
+  // Debounced submit - triggers calculation after user stops typing
+  const debouncedSubmit = useDebouncedCallback(
+    (input: FormInput) => onSubmit(input),
+    DEBOUNCE_MS,
+  );
+
+  // Wrapper that calls debounced submit with current form state
+  const triggerSubmit = (overrides: Partial<FormInput> = {}) => {
+    debouncedSubmit({
+      startPercent,
+      endPercent,
+      batterySize,
+      chargingSpeed,
+      earliest,
+      latest,
+      ...overrides,
+    });
   };
 
-  // Sync form with selected car on mount or when selection changes
-  const hasSyncedOnMount = useRef(false);
+  // Submit once on mount to trigger initial calculation
   useEffect(() => {
-    if (cars.length === 0) return;
+    onSubmit({
+      startPercent,
+      endPercent,
+      batterySize,
+      chargingSpeed,
+      earliest,
+      latest,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // If a car is selected (e.g., from localStorage), sync form values
-    if (selectedCarId) {
-      const selectedCar = cars.find(c => c.id === selectedCarId);
-      if (selectedCar && !hasSyncedOnMount.current) {
-        hasSyncedOnMount.current = true;
-        queueMicrotask(() => {
-          setBatterySize(selectedCar.batterySize);
-          setChargingSpeed(selectedCar.maxPower);
-        });
-      }
-      return;
-    }
+  // Field update handlers that also trigger debounced submit
+  const updateStartPercent = (value: number) => {
+    const clamped = Math.min(value, endPercent - 1);
+    setStartPercent(clamped);
+    triggerSubmit({ startPercent: clamped });
+  };
 
-    // Auto-select first car if none selected
-    if (!hasSyncedOnMount.current) {
-      hasSyncedOnMount.current = true;
-      const firstCar = cars[0];
-      queueMicrotask(() => {
-        setSelectedCarId(firstCar.id);
-        setBatterySize(firstCar.batterySize);
-        setChargingSpeed(firstCar.maxPower);
-      });
-    }
-  }, [cars, selectedCarId, setSelectedCarId, setBatterySize, setChargingSpeed]);
+  const updateEndPercent = (value: number) => {
+    const clamped = Math.max(value, startPercent + 1);
+    setEndPercent(clamped);
+    triggerSubmit({ endPercent: clamped });
+  };
 
-  // Store callback in ref to avoid resetting debounce when callback identity changes
-  const onSubmitRef = useRef(onSubmit);
-  useEffect(() => {
-    onSubmitRef.current = onSubmit;
-  }, [onSubmit]);
+  const updateBatterySize = (value: number) => {
+    setBatterySize(value);
+    triggerSubmit({ batterySize: value });
+  };
 
-  // Auto-calculate on input change with stable debounce
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      onSubmitRef.current({ startPercent, endPercent, batterySize, chargingSpeed, earliest, latest });
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(timeout);
-  }, [startPercent, endPercent, batterySize, chargingSpeed, earliest, latest]);
+  const updateChargingSpeed = (value: number) => {
+    setChargingSpeed(value);
+    triggerSubmit({ chargingSpeed: value });
+  };
+
+  const updateEarliest = (value: string) => {
+    setEarliest(value);
+    triggerSubmit({ earliest: value });
+  };
+
+  const updateLatest = (value: string) => {
+    setLatest(value);
+    triggerSubmit({ latest: value });
+  };
 
   return (
     <div>
@@ -127,12 +149,7 @@ export const InputForm: React.FC<Props> = ({
             />
           </Tooltip>
         </div>
-        <CarSelector
-          cars={cars}
-          selectedCarId={selectedCarId}
-          onSelect={handleCarSelect}
-          onAddCarClick={onSettingsClick}
-        />
+        <CarSelector onAddCarClick={onSettingsClick} />
         <form
           style={{ display: "flex", flexDirection: "column", gap: 16 }}
           onSubmit={e => {
@@ -142,13 +159,13 @@ export const InputForm: React.FC<Props> = ({
           <LabeledFormField icon={<Battery024Regular />} label="Start %">
             <BatteryPercentageSlider
               value={startPercent}
-              onChange={(value) => setStartPercent(Math.min(value, endPercent - 1))}
+              onChange={updateStartPercent}
             />
           </LabeledFormField>
           <LabeledFormField icon={<Battery1024Regular />} label="End %">
             <BatteryPercentageSlider
               value={endPercent}
-              onChange={(value) => setEndPercent(Math.max(value, startPercent + 1))}
+              onChange={updateEndPercent}
               snapPoint={80}
             />
           </LabeledFormField>
@@ -158,14 +175,14 @@ export const InputForm: React.FC<Props> = ({
               min={10}
               max={150}
               value={String(batterySize)}
-              onChange={(_ev, data) => setBatterySize(Number(data.value))}
+              onChange={(_ev, data) => updateBatterySize(Number(data.value))}
               style={{ width: "100%" }}
             />
           </LabeledFormField>
           <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
             <Dropdown
               value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
-              onOptionSelect={(_ev, data) => setChargingSpeed(Number(data.optionValue))}
+              onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
               style={{ width: "100%" }}
             >
               {CHARGING_POWER_OPTIONS.map(power => (
@@ -178,8 +195,8 @@ export const InputForm: React.FC<Props> = ({
           <TimeWindowSelector
             earliest={earliest}
             latest={latest}
-            onEarliestChange={setEarliest}
-            onLatestChange={setLatest}
+            onEarliestChange={updateEarliest}
+            onLatestChange={updateLatest}
           />
         </form>
       </div>

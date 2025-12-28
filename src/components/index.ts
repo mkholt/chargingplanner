@@ -1,5 +1,6 @@
 export { AppFooter } from './AppFooter';
 export { CarSelector } from './CarSelector';
+export { ChargingPlanHeader } from './ChargingPlanHeader';
 export { ErrorBoundary } from './ErrorBoundary';
 export { InputForm } from './InputForm';
 export { PriceAreaToggle } from './PriceAreaToggle';

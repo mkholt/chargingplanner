@@ -1,129 +1,48 @@
 import React, { useState } from 'react';
 
 import {
-  Button,
   Card,
-  Combobox,
-  Input,
-  Option,
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Add24Regular, Checkmark20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import { Add24Regular } from '@fluentui/react-icons';
 
-import type { Car } from '@/contexts';
-import { CHARGING_POWER_OPTIONS } from '@/utils';
+import { useCars } from '@/contexts';
 
-type Props = {
-  isAdding: boolean;
-  onStartAdd: () => void;
-  onAdd: (car: Omit<Car, 'id'>) => void;
-  onCancel: () => void;
-};
+import { CarForm } from './CarForm';
+import { DEFAULT_CAR_FORM, type CarFormState } from './carFormState';
 
-export const AddCarCard: React.FC<Props> = ({
-  isAdding,
-  onStartAdd,
-  onAdd,
-  onCancel,
-}) => {
-  const [name, setName] = useState('');
-  const [batterySize, setBatterySize] = useState(60);
-  const [maxPower, setMaxPower] = useState(11);
+export const AddCarCard: React.FC = () => {
+  const { addCar, setSelectedCarId } = useCars();
+  const [formState, setFormState] = useState<CarFormState | null>(null);
 
   const handleSave = () => {
-    if (!name.trim() || batterySize <= 0 || maxPower <= 0) return;
-    onAdd({ name: name.trim(), batterySize, maxPower });
-    // Reset form
-    setName('');
-    setBatterySize(60);
-    setMaxPower(11);
+    if (!formState || !formState.name.trim() || formState.batterySize <= 0 || formState.maxPower <= 0) return;
+    const newCar = addCar({
+      name: formState.name.trim(),
+      batterySize: formState.batterySize,
+      maxPower: formState.maxPower,
+    });
+    setSelectedCarId(newCar.id);
+    setFormState(null);
   };
 
-  const handleCancel = () => {
-    setName('');
-    setBatterySize(60);
-    setMaxPower(11);
-    onCancel();
-  };
-
-  if (isAdding) {
+  if (formState) {
     return (
-      <Card
-        style={{
-          flex: '1 1 200px',
-          maxWidth: '100%',
-          background: tokens.colorNeutralBackground3,
-          border: `2px solid ${tokens.colorBrandStroke1}`,
-          borderRadius: 10,
-          padding: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
-      >
-        <Input
-          placeholder="Car name"
-          value={name}
-          onChange={(_e, d) => setName(d.value)}
-          style={{ width: '100%' }}
-          size="small"
-          autoFocus
-        />
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Input
-            type="number"
-            min={10}
-            max={200}
-            value={String(batterySize)}
-            onChange={(_e, d) => setBatterySize(Number(d.value))}
-            style={{ flex: 1, minWidth: 0 }}
-            size="small"
-            contentAfter={<Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>kWh</Text>}
-          />
-          <Combobox
-            freeform
-            value={`${maxPower} kW`}
-            onOptionSelect={(_e, data) => {
-              if (data.optionValue) setMaxPower(Number(data.optionValue));
-            }}
-            onChange={(e) => {
-              const val = Number(e.target.value.replace(/[^0-9.]/g, ''));
-              if (!isNaN(val) && val > 0) setMaxPower(val);
-            }}
-            style={{ flex: 1, minWidth: 0 }}
-            size="small"
-          >
-            {CHARGING_POWER_OPTIONS.map((opt) => (
-              <Option key={opt.value} value={String(opt.value)}>
-                {opt.label}
-              </Option>
-            ))}
-          </Combobox>
-        </div>
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-          <Button
-            size="small"
-            appearance="subtle"
-            icon={<Dismiss20Regular />}
-            onClick={handleCancel}
-            aria-label="Cancel"
-          />
-          <Button
-            size="small"
-            appearance="primary"
-            icon={<Checkmark20Regular />}
-            onClick={handleSave}
-            aria-label="Add car"
-          />
-        </div>
-      </Card>
+      <CarForm
+        state={formState}
+        onChange={setFormState}
+        onSave={handleSave}
+        onCancel={() => setFormState(null)}
+        saveLabel="Add car"
+        autoFocus
+      />
     );
   }
 
   return (
     <Card
-      onClick={onStartAdd}
+      onClick={() => setFormState(DEFAULT_CAR_FORM)}
       style={{
         flex: '1 1 200px',
         maxWidth: '100%',

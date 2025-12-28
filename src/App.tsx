@@ -12,8 +12,8 @@ import { SettingsDialog } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
 import {
   CarsProvider,
-  ChargingFormProvider,
   PriceSettingsProvider,
+  useCars,
   usePriceSettings,
 } from '@/contexts';
 import { usePricesQuery } from '@/hooks';
@@ -30,6 +30,10 @@ type FormInput = {
 const AppContent: React.FC = () => {
   // UI state
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Get car selection from context
+  const { cars, selectedCarId } = useCars();
+  const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
 
   // Get aggregation settings from context
   const { resolved: priceSettings } = usePriceSettings();
@@ -103,6 +107,8 @@ const AppContent: React.FC = () => {
             >
               <div style={{ flex: '1 1 320px' }}>
                 <InputForm
+                  key={selectedCarId ?? 'no-car'}
+                  selectedCar={selectedCar}
                   onSettingsClick={() => setSettingsOpen(true)}
                   onSubmit={handleSubmit}
                 />
@@ -139,9 +145,7 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => (
   <CarsProvider>
     <PriceSettingsProvider>
-      <ChargingFormProvider>
-        <AppContent />
-      </ChargingFormProvider>
+      <AppContent />
     </PriceSettingsProvider>
   </CarsProvider>
 );

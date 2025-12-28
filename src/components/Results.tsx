@@ -8,15 +8,10 @@ import {
 } from '@fluentui/react-components';
 import {
   CalendarClock24Regular,
-  Clock16Regular,
-  Flash16Regular,
-  Money16Regular,
-  Play16Regular,
-  Stop16Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
 
-import { PriceTimeline } from '@/components';
+import { ChargingPlanHeader, PriceTimeline } from '@/components';
 import { useCars, usePriceSettings } from '@/contexts';
 import type { PricesApiResponse } from '@/types';
 import {
@@ -176,14 +171,39 @@ function getErrorMessage(error: CalculationError): string {
   }
 }
 
+/** Build subtitle from contexts */
+function useSubtitle(): string {
+  const { cars, selectedCarId } = useCars();
+  const { resolved: priceSettings } = usePriceSettings();
+
+  const selectedCar = cars.find(c => c.id === selectedCarId);
+
+  const priceSource = (() => {
+    const { company, product, supplier, priceArea, priceAreaSource } = priceSettings;
+
+    if (company && product) {
+      return `${company.name} - ${product.name}`;
+    }
+    if (supplier) {
+      return `${supplier.name} (${priceArea})`;
+    }
+    return priceAreaSource === 'manual'
+      ? `Spot price ${priceArea}`
+      : `${priceArea}`;
+  })();
+
+  return selectedCar
+    ? `${selectedCar.name} · ${priceSource}`
+    : priceSource;
+}
+
 export const Results: React.FC<Props> = ({
   formInput,
   priceData,
   priceError,
   onOpenSettings,
 }) => {
-  const { cars, selectedCarId } = useCars();
-  const { resolved: priceSettings } = usePriceSettings();
+  const subtitle = useSubtitle();
 
   // Calculate results from raw inputs
   const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error } = useMemo(
@@ -191,37 +211,7 @@ export const Results: React.FC<Props> = ({
     [formInput, priceData]
   );
 
-  const bg = tokens.colorNeutralBackground2;
-  const border = tokens.colorNeutralStroke1;
-  const text = tokens.colorNeutralForeground1;
-  const brand = tokens.colorBrandForeground1;
   const secondary = tokens.colorNeutralForeground2;
-
-  // Get selected car name
-  const selectedCar = cars.find(c => c.id === selectedCarId);
-
-  // Build price source description
-  const priceSource = (() => {
-    const { company, product, supplier, priceArea, priceAreaSource } = priceSettings;
-
-    if (company && product) {
-      // Full product selection: "Company - Product"
-      return `${company.name} - ${product.name}`;
-    }
-    if (supplier) {
-      // Supplier selected but no company: show supplier and area
-      return `${supplier.name} (${priceArea})`;
-    }
-    // Manual price area selection
-    return priceAreaSource === 'manual'
-      ? `Spot price ${priceArea}`
-      : `${priceArea}`;
-  })();
-
-  // Build subtitle with car name and price source
-  const subtitle = selectedCar
-    ? `${selectedCar.name} · ${priceSource}`
-    : priceSource;
 
   // Show error state when price data failed to load
   if (priceError) {
@@ -319,98 +309,13 @@ export const Results: React.FC<Props> = ({
       background: tokens.colorNeutralBackground2,
       border: `1px solid ${tokens.colorNeutralStroke1}`,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <CalendarClock24Regular />
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <Text weight="semibold" size={400} style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
-            Charging Plan
-          </Text>
-          <Text size={200} style={{ color: secondary }}>
-            {subtitle}
-          </Text>
-        </div>
-      </div>
-      {result && (
-        <div
-          style={{
-            marginTop: 12,
-            marginBottom: 12,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-            gap: 12,
-            background: bg,
-            borderRadius: 8,
-            padding: '12px 16px',
-            boxShadow: tokens.shadow2,
-            border: `1px solid ${border}`,
-            color: text,
-          }}
-        >
-          <div data-testid="result-start">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
-              <Play16Regular />
-              <Text size={200} style={{ color: secondary }}>Start</Text>
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>
-              {(() => {
-                const startDate = new Date(filteredStart);
-                startDate.setMinutes(startDate.getMinutes() + highlightStart * intervalMinutes, 0, 0);
-                return startDate.toLocaleString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  day: 'numeric',
-                  month: 'short',
-                });
-              })()}
-            </div>
-          </div>
-          <div data-testid="result-end">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
-              <Stop16Regular />
-              <Text size={200} style={{ color: secondary }}>End</Text>
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>
-              {(() => {
-                const endDate = new Date(filteredStart);
-                endDate.setMinutes(endDate.getMinutes() + highlightEnd * intervalMinutes, 0, 0);
-                return endDate.toLocaleString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  day: 'numeric',
-                  month: 'short',
-                });
-              })()}
-            </div>
-          </div>
-          <div data-testid="result-duration">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
-              <Clock16Regular />
-              <Text size={200} style={{ color: secondary }}>Duration</Text>
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>
-              {formatDuration(result.durationHours)}
-            </div>
-          </div>
-          <div data-testid="result-energy">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
-              <Flash16Regular />
-              <Text size={200} style={{ color: secondary }}>Energy</Text>
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>
-              {result.energyNeeded.toFixed(1)} kWh
-            </div>
-          </div>
-          <div data-testid="result-cost">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
-              <Money16Regular />
-              <Text size={200} style={{ color: secondary }}>Est. Cost</Text>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: brand }}>
-              {result.totalCost} DKK
-            </div>
-          </div>
-        </div>
-      )}
+      <ChargingPlanHeader
+        result={result}
+        startDate={filteredStart}
+        highlightStart={highlightStart}
+        highlightEnd={highlightEnd}
+        intervalMinutes={intervalMinutes}
+      />
       {!result && error && error.type !== 'no_input' && (
         <div
           data-testid="result-error"
@@ -437,8 +342,6 @@ export const Results: React.FC<Props> = ({
         chargingStart={highlightStart}
         chargingEnd={highlightEnd}
         chargingSpeed={chargingSpeed}
-        totalCost={result?.totalCost}
-        durationHours={result?.durationHours}
         intervalMinutes={intervalMinutes}
       />
     </Card>

@@ -22,8 +22,6 @@ type Props = {
   chargingStart?: number;
   chargingEnd?: number;
   chargingSpeed?: number;
-  totalCost?: number;
-  durationHours?: number;
   intervalMinutes?: number;
 };
 
