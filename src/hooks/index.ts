@@ -1,5 +1,6 @@
 export { useCompaniesQuery, companyQueryKeys } from './useCompaniesQuery';
 export { useDebouncedCallback } from './useDebouncedCallback';
+export { useIsMobile } from './useIsMobile';
 export { usePricesQuery, priceQueryKeys, type PriceQueryResult } from './usePricesQuery';
 export {
   useSuppliersByLocationQuery,

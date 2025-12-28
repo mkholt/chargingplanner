@@ -13,6 +13,8 @@ import {
   Battery024Regular,
   Battery1024Regular,
   BatteryCharge24Regular,
+  ChevronDown20Regular,
+  ChevronUp20Regular,
   Flash24Regular,
   Settings20Regular,
   VehicleCarProfileLtr24Regular,
@@ -22,7 +24,7 @@ import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
 import { LabeledFormField } from '@/components/ui';
 import { type Car } from '@/contexts';
-import { useDebouncedCallback } from '@/hooks';
+import { useDebouncedCallback, useIsMobile } from '@/hooks';
 import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
 
 type FormInput = {
@@ -54,6 +56,9 @@ export const InputForm: React.FC<Props> = ({
   onSettingsClick,
   onSubmit,
 }) => {
+  const isMobile = useIsMobile();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   // Initialize form state from selected car (component remounts when car changes via key prop)
   const [startPercent, setStartPercent] = useState(20);
   const [endPercent, setEndPercent] = useState(80);
@@ -127,6 +132,9 @@ export const InputForm: React.FC<Props> = ({
     triggerSubmit({ latest: value });
   };
 
+  const showCollapsible = isMobile;
+  const isContentVisible = !showCollapsible || !isCollapsed;
+
   return (
     <div>
       <div
@@ -137,68 +145,103 @@ export const InputForm: React.FC<Props> = ({
           border: `1px solid ${tokens.colorNeutralStroke1}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: isContentVisible ? 16 : 0,
+            cursor: showCollapsible ? 'pointer' : 'default',
+          }}
+          onClick={showCollapsible ? () => setIsCollapsed(!isCollapsed) : undefined}
+          role={showCollapsible ? "button" : undefined}
+          tabIndex={showCollapsible ? 0 : undefined}
+          onKeyDown={showCollapsible ? (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsCollapsed(!isCollapsed);
+            }
+          } : undefined}
+        >
           <BatteryCharge24Regular />
           <Text weight="semibold" size={400} style={{ flex: 1 }}>Charging Settings</Text>
+          {showCollapsible && (
+            <Button
+              appearance="subtle"
+              icon={isCollapsed ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
+              aria-label={isCollapsed ? "Expand settings" : "Collapse settings"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed(!isCollapsed);
+              }}
+            />
+          )}
           <Tooltip content="Settings" relationship="label">
             <Button
               appearance="subtle"
               icon={<Settings20Regular />}
-              onClick={onSettingsClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSettingsClick();
+              }}
               aria-label="Settings"
             />
           </Tooltip>
         </div>
-        <CarSelector onAddCarClick={onSettingsClick} />
-        <form
-          style={{ display: "flex", flexDirection: "column", gap: 16 }}
-          onSubmit={e => {
-            e.preventDefault();
-          }}
-        >
-          <LabeledFormField icon={<Battery024Regular />} label="Start %">
-            <BatteryPercentageSlider
-              value={startPercent}
-              onChange={updateStartPercent}
-            />
-          </LabeledFormField>
-          <LabeledFormField icon={<Battery1024Regular />} label="End %">
-            <BatteryPercentageSlider
-              value={endPercent}
-              onChange={updateEndPercent}
-              snapPoint={80}
-            />
-          </LabeledFormField>
-          <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label="Battery Size (kWh)">
-            <Input
-              type="number"
-              min={10}
-              max={150}
-              value={String(batterySize)}
-              onChange={(_ev, data) => updateBatterySize(Number(data.value))}
-              style={{ width: "100%" }}
-            />
-          </LabeledFormField>
-          <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
-            <Dropdown
-              value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
-              onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
-              style={{ width: "100%" }}
+        {isContentVisible && (
+          <>
+            <CarSelector onAddCarClick={onSettingsClick} />
+            <form
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+              onSubmit={e => {
+                e.preventDefault();
+              }}
             >
-              {CHARGING_POWER_OPTIONS.map(power => (
-                <Option key={power.value} value={String(power.value)}>
-                  {power.label}
-                </Option>
-              ))}
-            </Dropdown>
-          </LabeledFormField>
-          <TimeWindowSelector
-            earliest={earliest}
-            latest={latest}
-            onEarliestChange={updateEarliest}
-            onLatestChange={updateLatest}
-          />
-        </form>
+              <LabeledFormField icon={<Battery024Regular />} label="Start %">
+                <BatteryPercentageSlider
+                  value={startPercent}
+                  onChange={updateStartPercent}
+                />
+              </LabeledFormField>
+              <LabeledFormField icon={<Battery1024Regular />} label="End %">
+                <BatteryPercentageSlider
+                  value={endPercent}
+                  onChange={updateEndPercent}
+                  snapPoint={80}
+                />
+              </LabeledFormField>
+              <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label="Battery Size (kWh)">
+                <Input
+                  type="number"
+                  min={10}
+                  max={150}
+                  value={String(batterySize)}
+                  onChange={(_ev, data) => updateBatterySize(Number(data.value))}
+                  style={{ width: "100%" }}
+                />
+              </LabeledFormField>
+              <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
+                <Dropdown
+                  value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
+                  onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
+                  style={{ width: "100%" }}
+                >
+                  {CHARGING_POWER_OPTIONS.map(power => (
+                    <Option key={power.value} value={String(power.value)}>
+                      {power.label}
+                    </Option>
+                  ))}
+                </Dropdown>
+              </LabeledFormField>
+              <TimeWindowSelector
+                earliest={earliest}
+                latest={latest}
+                onEarliestChange={updateEarliest}
+                onLatestChange={updateLatest}
+              />
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

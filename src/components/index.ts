@@ -5,6 +5,5 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { InputForm } from './InputForm';
 export { PriceAreaToggle } from './PriceAreaToggle';
 export { PriceTimeline } from './PriceTimeline';
-export { PullToRefresh } from './PullToRefresh';
 export { RefreshButton } from './RefreshButton';
 export { Results } from './Results';

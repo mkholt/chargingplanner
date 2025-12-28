@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Spinner, Text, tokens } from '@fluentui/react-components';
 import { ArrowSync20Regular } from '@fluentui/react-icons';
@@ -16,30 +16,13 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const startY = useRef(0);
+  const startScrollTop = useRef(0); // Track scroll position at touch start
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Check if we're at the top of the scroll container
-  const isAtTop = () => {
-    if (!containerRef.current) return false;
-    return containerRef.current.scrollTop <= 0;
-  };
-
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (disabled || isRefreshing || !isAtTop()) return;
+    if (disabled || isRefreshing) return;
     startY.current = e.touches[0].clientY;
-  }, [disabled, isRefreshing]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (disabled || isRefreshing || !isAtTop() || startY.current === 0) return;
-
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - startY.current;
-
-    if (diff > 0) {
-      // Apply resistance to make it feel natural
-      const distance = Math.min(diff / RESISTANCE, THRESHOLD * 1.5);
-      setPullDistance(distance);
-    }
+    startScrollTop.current = containerRef.current?.scrollTop ?? 0;
   }, [disabled, isRefreshing]);
 
   const handleTouchEnd = useCallback(async () => {
@@ -56,7 +39,39 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
 
     setPullDistance(0);
     startY.current = 0;
+    startScrollTop.current = 0;
   }, [disabled, isRefreshing, pullDistance, onRefresh]);
+
+  // Add non-passive touch event listener to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const touchMoveHandler = (e: TouchEvent) => {
+      if (disabled || isRefreshing || startY.current === 0) return;
+
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - startY.current;
+      const currentScrollTop = container.scrollTop;
+
+      // Only activate pull-to-refresh when:
+      // 1. Started at the top (scrollTop was 0 at touch start)
+      // 2. Currently at the top (scrollTop is 0)
+      // 3. Pulling down (diff > 0)
+      // 4. Already showing pull indicator (pullDistance > 0) OR just starting
+      const isAtTop = startScrollTop.current === 0 && currentScrollTop === 0;
+
+      if (isAtTop && diff > 0) {
+        e.preventDefault();
+        const distance = Math.min(diff / RESISTANCE, THRESHOLD * 1.5);
+        setPullDistance(distance);
+      }
+    };
+
+    // Must use { passive: false } to allow preventDefault
+    container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+    return () => container.removeEventListener('touchmove', touchMoveHandler);
+  }, [disabled, isRefreshing]);
 
   const showIndicator = pullDistance > 0 || isRefreshing;
   const indicatorHeight = isRefreshing ? 50 : pullDistance;
@@ -67,12 +82,12 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
     <div
       ref={containerRef}
       onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
         height: '100%',
         overflow: 'auto',
         WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'none',
       }}
     >
       {/* Pull indicator */}
@@ -94,8 +109,6 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
               alignItems: 'center',
               gap: 8,
               opacity: isRefreshing ? 1 : progress,
-              transform: `rotate(${progress * 180}deg)`,
-              transition: isRefreshing ? 'none' : 'transform 0.1s ease-out',
             }}
           >
             {isRefreshing ? (
@@ -112,6 +125,8 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
                     color: shouldTrigger
                       ? tokens.colorBrandForeground1
                       : tokens.colorNeutralForeground3,
+                    transform: `rotate(${progress * 180}deg)`,
+                    transition: 'transform 0.1s ease-out',
                   }}
                 />
                 <Text

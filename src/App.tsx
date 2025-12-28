@@ -7,7 +7,7 @@ import {
   webDarkTheme,
 } from '@fluentui/react-components';
 
-import { AppFooter, ErrorBoundary, InputForm, PriceAreaToggle, PullToRefresh, RefreshButton, Results } from '@/components';
+import { AppFooter, ErrorBoundary, InputForm, PriceAreaToggle, RefreshButton, Results } from '@/components';
 import { SettingsDialog } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
 import {
@@ -50,20 +50,9 @@ const AppContent: React.FC = () => {
     setFormInput(input);
   }, []);
 
-  // Handle pull-to-refresh
-  const handleRefresh = useCallback(async () => {
-    try {
-      await refresh();
-    } catch (error) {
-      // Error is handled by React Query's error state
-      console.error('Failed to refresh prices:', error);
-    }
-  }, [refresh]);
-
   return (
     <FluentProvider theme={webDarkTheme}>
       <ErrorBoundary>
-        <PullToRefresh onRefresh={handleRefresh}>
           <div
             style={{
               minHeight: '100vh',
@@ -87,7 +76,7 @@ const AppContent: React.FC = () => {
                 EV Charging Planner
               </Title3>
               <RefreshButton
-                onRefresh={handleRefresh}
+                onRefresh={refresh}
                 isRefreshing={isFetching}
                 lastUpdated={dataUpdatedAt}
               />
@@ -130,7 +119,6 @@ const AppContent: React.FC = () => {
             </div>
             <AppFooter />
           </div>
-        </PullToRefresh>
         <SettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
