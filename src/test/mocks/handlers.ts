@@ -3,30 +3,42 @@ import { http, HttpResponse, delay } from 'msw';
 import { API_BASE } from '@/api/config';
 import type { PriceArea } from '@/contexts';
 
-import { getMockApiResponse } from './mockPrices';
+import { getMockApiResponse, getMockApiResponseWithScenario, type PriceScenario } from './mockPrices';
 import { getMockCompanies } from './mockCompanies';
 import { getMockSuppliers, findSupplierByPostalCode } from './mockSuppliers';
 
 // Default delay to simulate network latency
 const MOCK_DELAY = 100;
 
+/**
+ * Get price scenario from localStorage for E2E testing.
+ * Tests can set 'mock-price-scenario' in localStorage to control which price pattern is used.
+ */
+function getPriceScenarioFromStorage(): PriceScenario | null {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const scenario = window.localStorage.getItem('mock-price-scenario');
+    if (scenario) {
+      return scenario as PriceScenario;
+    }
+  }
+  return null;
+}
+
 export const handlers = [
   // Prices endpoint
+  // Supports scenario via query param OR localStorage ('mock-price-scenario') for E2E testing
   http.get(`${API_BASE}/api/prices`, async ({ request }) => {
     await delay(MOCK_DELAY);
     const url = new URL(request.url);
     const priceArea = (url.searchParams.get('priceArea') as PriceArea) ?? 'DK1';
-    return HttpResponse.json(getMockApiResponse(priceArea));
-  }),
 
-  // Current price endpoint
-  http.get(`${API_BASE}/api/prices/now`, async ({ request }) => {
-    await delay(MOCK_DELAY);
-    const url = new URL(request.url);
-    const priceArea = (url.searchParams.get('priceArea') as PriceArea) ?? 'DK1';
-    const response = getMockApiResponse(priceArea);
-    // Return just the first price entry as "current"
-    return HttpResponse.json(response.prices?.[0] ?? null);
+    // Check query param first, then localStorage
+    const scenario = (url.searchParams.get('scenario') as PriceScenario | null) ?? getPriceScenarioFromStorage();
+
+    if (scenario) {
+      return HttpResponse.json(getMockApiResponseWithScenario(scenario, priceArea));
+    }
+    return HttpResponse.json(getMockApiResponse(priceArea));
   }),
 
   // Companies endpoint
@@ -82,8 +94,9 @@ export const handlers = [
           priceArea: supplier.priceArea,
         }]);
       }
-      // Real API returns 404 for unknown postal codes
-      return HttpResponse.json('Postal code not found', { status: 404 });
+      // Return empty array for unknown postal codes so UI can show "No grid operator found"
+      // (404 would cause an error state that hides this message)
+      return HttpResponse.json([]);
     }
 
     if (lat && long) {

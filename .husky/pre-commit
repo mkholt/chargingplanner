@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Pre-commit hook that runs unit tests before allowing a commit.
+# To bypass this hook, use: git commit --no-verify
+#
+
+echo "Running pre-commit checks..."
+
+# Run unit tests (includes lint via pretest script)
+echo "Running unit tests..."
+npm test
+
+# Capture the exit code
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-commit check failed!"
+    echo "Unit tests must pass before committing."
+    echo "To bypass this check, use: git commit --no-verify"
+    exit 1
+fi
+
+echo ""
+echo "✅ Pre-commit checks passed!"
+exit 0

@@ -114,6 +114,7 @@ export const SupplierSection: React.FC = () => {
         />
         <Tooltip content="Use my location" relationship="label">
           <Button
+            data-testid="gps-location-button"
             icon={isLocating ? <Spinner size="tiny" /> : <MyLocation20Regular />}
             appearance="subtle"
             onClick={handleGpsClick}

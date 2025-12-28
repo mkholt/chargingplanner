@@ -2,6 +2,18 @@ import type { PriceArea } from '@/contexts';
 import type { PricesApiResponse, PriceEntry } from '@/types';
 import { MS_PER_DAY } from '@/utils';
 
+/**
+ * Price scenarios for E2E testing.
+ * These allow tests to verify optimal window selection with predictable price patterns.
+ */
+export type PriceScenario =
+  | 'default'         // Current seeded random prices
+  | 'flat'            // All hours same price (2.50 kr/kWh total)
+  | 'cheapest-night'  // Cheapest at 03:00-04:00 (1.50 kr), rest 3.00 kr
+  | 'cheapest-midday' // Cheapest at 12:00-13:00 (1.50 kr), rest 3.00 kr
+  | 'ascending'       // Prices increase each hour (1.50 → 4.00)
+  | 'descending';     // Prices decrease each hour (4.00 → 1.50)
+
 // Seeded random for consistent mock data per day
 function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
@@ -163,6 +175,105 @@ export function getMockApiResponse(priceArea: PriceArea = 'DK1'): PricesApiRespo
           unit: 'kr/kWh',
         },
         details,
+        forecast: false,
+        resolution: '15m',
+      });
+    }
+  }
+
+  return {
+    priceArea,
+    prices,
+  };
+}
+
+/**
+ * Generate a scenario-based total price for a given hour.
+ * Returns a simplified total price without detailed breakdown.
+ */
+function getScenarioPrice(scenario: PriceScenario, hour: number, totalHours: number): number {
+  switch (scenario) {
+    case 'flat':
+      return 2.50; // Fixed price for all hours
+
+    case 'cheapest-night':
+      // 03:00-04:00 is cheapest (hours 3-4 of day = indices 3,4,27,28 for 48h)
+      if (hour % 24 === 3) return 1.50;
+      return 3.00;
+
+    case 'cheapest-midday':
+      // 12:00-13:00 is cheapest
+      if (hour % 24 === 12) return 1.50;
+      return 3.00;
+
+    case 'ascending':
+      // Prices go from 1.50 to 4.00 over totalHours
+      return 1.50 + (hour / (totalHours - 1)) * 2.50;
+
+    case 'descending':
+      // Prices go from 4.00 to 1.50 over totalHours
+      return 4.00 - (hour / (totalHours - 1)) * 2.50;
+
+    default:
+      return 2.50;
+  }
+}
+
+/**
+ * Generate mock API response with a specific price scenario for testing.
+ * Unlike the default response, this creates predictable price patterns.
+ */
+export function getMockApiResponseWithScenario(
+  scenario: PriceScenario,
+  priceArea: PriceArea = 'DK1'
+): PricesApiResponse {
+  // For 'default', use the regular generator
+  if (scenario === 'default') {
+    return getMockApiResponse(priceArea);
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today.getTime() + MS_PER_DAY);
+
+  const prices: PriceEntry[] = [];
+  const totalHours = 48;
+
+  // Generate 15-minute prices for today (24 hours = 96 intervals)
+  for (let hour = 0; hour < 24; hour++) {
+    const basePrice = getScenarioPrice(scenario, hour, totalHours);
+
+    for (let quarter = 0; quarter < 4; quarter++) {
+      const date = new Date(today);
+      date.setHours(hour, quarter * 15, 0, 0);
+
+      // Simplified price entry for scenario testing
+      prices.push({
+        date: date.toISOString(),
+        price: {
+          total: basePrice,
+          unit: 'kr/kWh',
+        },
+        forecast: false,
+        resolution: '15m',
+      });
+    }
+  }
+
+  // Generate 15-minute prices for tomorrow
+  for (let hour = 0; hour < 24; hour++) {
+    const basePrice = getScenarioPrice(scenario, hour + 24, totalHours);
+
+    for (let quarter = 0; quarter < 4; quarter++) {
+      const date = new Date(tomorrow);
+      date.setHours(hour, quarter * 15, 0, 0);
+
+      prices.push({
+        date: date.toISOString(),
+        price: {
+          total: basePrice,
+          unit: 'kr/kWh',
+        },
         forecast: false,
         resolution: '15m',
       });

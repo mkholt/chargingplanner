@@ -59,4 +59,84 @@ test.describe('Price Settings', () => {
     const postalCode = await settingsDialogPage.getPostalCodeValue();
     expect(postalCode).toBe(String(POSTAL_CODES.COPENHAGEN));
   });
+
+  test('shows "No grid operator found" for unknown postal code in valid range', async ({ appPage, settingsDialogPage, page }) => {
+    await clearAllStorage(page);
+    await page.goto('/');
+    await appPage.waitForAppReady();
+    await appPage.openSettings();
+    await settingsDialogPage.switchToElectricityTab();
+
+    // Use a valid format postal code that's not in mock data
+    const input = page.getByPlaceholder(/postal code/i);
+    await input.fill(String(POSTAL_CODES.UNKNOWN));
+
+    // Wait for lookup to complete
+    await page.waitForTimeout(500);
+
+    // Should show "No grid operator found" message
+    const notFoundMsg = await settingsDialogPage.getSupplierNotFoundMessage();
+    expect(notFoundMsg).toContain('No grid operator found');
+  });
+
+  test('entering postal code above 9999 shows validation message', async ({ appPage, settingsDialogPage, page }) => {
+    await clearAllStorage(page);
+    await page.goto('/');
+    await appPage.waitForAppReady();
+    await appPage.openSettings();
+    await settingsDialogPage.switchToElectricityTab();
+
+    const input = page.getByPlaceholder(/postal code/i);
+    await input.fill('10000');
+
+    // Should show validation error
+    await expect(page.getByText('Danish postal codes are 1000-9999')).toBeVisible();
+  });
+
+  test('clears postal code input when GPS location is used', async ({ appPage, settingsDialogPage, page }) => {
+    // Mock geolocation to return Copenhagen coordinates
+    await page.addInitScript(() => {
+      const mockGeolocation = {
+        getCurrentPosition: (success: PositionCallback) => {
+          setTimeout(() => success({
+            coords: {
+              latitude: 55.6761,
+              longitude: 12.5683,
+              accuracy: 100,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition), 100);
+        },
+        watchPosition: () => 0,
+        clearWatch: () => {},
+      };
+      Object.defineProperty(navigator, 'geolocation', {
+        value: mockGeolocation,
+        writable: true,
+      });
+    });
+
+    await clearAllStorage(page);
+    await page.goto('/');
+    await appPage.waitForAppReady();
+    await appPage.openSettings();
+    await settingsDialogPage.switchToElectricityTab();
+
+    // First enter a postal code
+    const input = page.getByPlaceholder(/postal code/i);
+    await input.fill('8000');
+    await page.waitForTimeout(200);
+
+    // Click GPS button
+    await settingsDialogPage.clickGpsButton();
+    await page.waitForTimeout(300);
+
+    // Postal code should be cleared
+    const postalValue = await settingsDialogPage.getPostalCodeValue();
+    expect(postalValue).toBe('');
+  });
 });

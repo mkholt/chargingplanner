@@ -101,4 +101,64 @@ test.describe('Error States', () => {
     // Stromligning attribution should be visible
     await expect(page.getByText('stromligning')).toBeVisible();
   });
+
+  test('shows error when battery size is set to zero', async ({ appPage, inputFormPage, resultsPage, page }) => {
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+
+    // Set battery size to 0
+    await inputFormPage.setBatterySize(0);
+    await inputFormPage.waitForCalculation();
+
+    // Should show error
+    const hasError = await resultsPage.hasError();
+    expect(hasError).toBe(true);
+
+    const errorText = await resultsPage.getErrorText();
+    expect(errorText).toContain('Battery size and charging speed must be positive');
+  });
+
+  test('shows error when time window is entirely in the past', async ({ appPage, inputFormPage, resultsPage, page }) => {
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+
+    // Set time window in the past
+    const pastStart = new Date();
+    pastStart.setHours(pastStart.getHours() - 5);
+    const pastEnd = new Date();
+    pastEnd.setHours(pastEnd.getHours() - 3);
+
+    await inputFormPage.setTimeWindow(
+      pastStart.toISOString().slice(0, 16),
+      pastEnd.toISOString().slice(0, 16)
+    );
+    await inputFormPage.waitForCalculation();
+
+    // Should show error about no price data or time window
+    const hasError = await resultsPage.hasError();
+    expect(hasError).toBe(true);
+  });
+
+  test('shows error when time window is far in the future with no price data', async ({ appPage, inputFormPage, resultsPage, page }) => {
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+
+    // Set time window 5 days in the future (beyond available mock data)
+    const futureStart = new Date();
+    futureStart.setDate(futureStart.getDate() + 5);
+    const futureEnd = new Date(futureStart.getTime() + 8 * 60 * 60 * 1000);
+
+    await inputFormPage.setTimeWindow(
+      futureStart.toISOString().slice(0, 16),
+      futureEnd.toISOString().slice(0, 16)
+    );
+    await inputFormPage.waitForCalculation();
+
+    // Should show error about no price data
+    const hasError = await resultsPage.hasError();
+    expect(hasError).toBe(true);
+
+    const errorText = await resultsPage.getErrorText();
+    expect(errorText).toContain('No price data');
+  });
 });

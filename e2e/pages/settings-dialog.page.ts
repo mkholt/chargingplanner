@@ -161,4 +161,44 @@ export class SettingsDialogPage {
       await clearButton.click();
     }
   }
+
+  // ========== GPS Location Methods ==========
+
+  async clickGpsButton(): Promise<void> {
+    await this.switchToElectricityTab();
+    const gpsButton = this.page.getByTestId('gps-location-button');
+    await gpsButton.click();
+  }
+
+  async getLocationError(): Promise<string | null> {
+    // Location errors are displayed as red text in the SupplierSection
+    const errorText = this.page.locator('text=/Location access was denied|Location information is unavailable|Location request timed out|Geolocation is not supported|An unknown error occurred/');
+    if (await errorText.isVisible().catch(() => false)) {
+      return await errorText.textContent();
+    }
+    return null;
+  }
+
+  async isUsingGpsLocation(): Promise<boolean> {
+    const gpsIndicator = this.page.getByText('Using GPS location');
+    return await gpsIndicator.isVisible().catch(() => false);
+  }
+
+  async getPostalCodeError(): Promise<string | null> {
+    // Postal code validation errors
+    const errorText = this.page.locator('text=/Danish postal codes are 1000-9999|Enter a valid number/');
+    if (await errorText.isVisible().catch(() => false)) {
+      return await errorText.textContent();
+    }
+    return null;
+  }
+
+  async getSupplierNotFoundMessage(): Promise<string | null> {
+    // "No grid operator found" message
+    const notFoundText = this.page.locator('text=/No grid operator found/');
+    if (await notFoundText.isVisible().catch(() => false)) {
+      return await notFoundText.textContent();
+    }
+    return null;
+  }
 }

@@ -4,6 +4,8 @@ export class ResultsPage {
   readonly page: Page;
   readonly chargingPlanHeader: Locator;
   readonly errorMessage: Locator;
+  readonly warningMessage: Locator;
+  readonly priceError: Locator;
   readonly timeline: Locator;
   readonly resultStart: Locator;
   readonly resultEnd: Locator;
@@ -15,6 +17,8 @@ export class ResultsPage {
     this.page = page;
     this.chargingPlanHeader = page.getByText('Charging Plan');
     this.errorMessage = page.getByTestId('result-error');
+    this.warningMessage = page.getByTestId('result-warning');
+    this.priceError = page.getByTestId('price-error');
     this.timeline = page.getByText('stromligning');
     this.resultStart = page.getByTestId('result-start');
     this.resultEnd = page.getByTestId('result-end');
@@ -78,5 +82,74 @@ export class ResultsPage {
   async getSubtitle(): Promise<string> {
     const subtitle = this.chargingPlanHeader.locator('xpath=following-sibling::*[1]');
     return await subtitle.textContent() ?? '';
+  }
+
+  // ========== Numeric Value Parsers ==========
+
+  /**
+   * Parse cost value from "XX.XX DKK" format
+   */
+  async getCostValue(): Promise<number> {
+    const text = await this.getCost();
+    const match = text.match(/([\d.]+)/);
+    return match ? parseFloat(match[1]) : NaN;
+  }
+
+  /**
+   * Parse energy value from "XX.XX kWh" format
+   */
+  async getEnergyValue(): Promise<number> {
+    const text = await this.getEnergy();
+    const match = text.match(/([\d.]+)/);
+    return match ? parseFloat(match[1]) : NaN;
+  }
+
+  /**
+   * Parse duration and convert to hours.
+   * Handles formats: "3h 16m", "3h", "45m"
+   */
+  async getDurationHours(): Promise<number> {
+    const text = await this.getDuration();
+    let hours = 0;
+
+    const hoursMatch = text.match(/(\d+)h/);
+    if (hoursMatch) {
+      hours += parseInt(hoursMatch[1], 10);
+    }
+
+    const minutesMatch = text.match(/(\d+)m/);
+    if (minutesMatch) {
+      hours += parseInt(minutesMatch[1], 10) / 60;
+    }
+
+    return hours;
+  }
+
+  // ========== Warning Methods ==========
+
+  async hasWarning(): Promise<boolean> {
+    return await this.warningMessage.isVisible().catch(() => false);
+  }
+
+  async getWarningText(): Promise<string> {
+    return await this.warningMessage.textContent() ?? '';
+  }
+
+  async expectWarningVisible(): Promise<void> {
+    await expect(this.warningMessage).toBeVisible();
+  }
+
+  // ========== Price Error Methods ==========
+
+  async hasPriceError(): Promise<boolean> {
+    return await this.priceError.isVisible().catch(() => false);
+  }
+
+  async getPriceErrorText(): Promise<string> {
+    return await this.priceError.textContent() ?? '';
+  }
+
+  async expectPriceErrorVisible(): Promise<void> {
+    await expect(this.priceError).toBeVisible();
   }
 }

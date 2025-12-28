@@ -31,19 +31,3 @@ export async function fetchPrices(params: FetchPricesParams = {}) {
   return data;
 }
 
-/**
- * Fetch the current electricity price.
- */
-export async function fetchCurrentPrice(params: Omit<FetchPricesParams, 'from' | 'to' | 'forecast'> = {}) {
-  const { data, error } = await apiClient.GET('/api/prices/now', {
-    params: {
-      query: params,
-    },
-  });
-
-  if (error) {
-    throw new Error(`Failed to fetch current price: ${JSON.stringify(error)}`);
-  }
-
-  return data;
-}

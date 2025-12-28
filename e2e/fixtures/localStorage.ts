@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { LOCAL_STORAGE_KEYS, type Car, type PriceSettings } from './test-fixtures';
+import type { PriceScenario } from '../../src/test/mocks/mockPrices';
 
 /**
  * Ensures the page is on the app's origin before manipulating localStorage.
@@ -98,4 +99,43 @@ export const POSTAL_CODES = {
   AARHUS: 8000, // DK1 - Norlys
   ODENSE: 5000, // DK1 - Flow
   INVALID: 999, // Invalid (below 1000)
+  UNKNOWN: 3850, // Valid format but not in mock data (gap between Vores Elnet 3700-3799 and Cerius 4000-4999)
 } as const;
+
+// Price scenarios for testing optimal window selection
+// Type-safe mapping that uses PriceScenario from mockPrices
+export const PRICE_SCENARIOS: Record<string, PriceScenario> = {
+  DEFAULT: 'default',
+  FLAT: 'flat',
+  CHEAPEST_NIGHT: 'cheapest-night',
+  CHEAPEST_MIDDAY: 'cheapest-midday',
+  ASCENDING: 'ascending',
+  DESCENDING: 'descending',
+};
+
+// GPS coordinates for testing geolocation
+export const GPS_COORDINATES = {
+  COPENHAGEN: { lat: 55.6761, long: 12.5683 }, // DK2 (longitude > 12)
+  AARHUS: { lat: 56.1629, long: 10.2039 },     // DK1 (longitude < 12)
+} as const;
+
+/**
+ * Set the price scenario for mock API responses.
+ * The MSW handler reads this from localStorage to determine which price pattern to use.
+ * Must be called BEFORE the price API is fetched.
+ */
+export async function setPriceScenario(page: Page, scenario: PriceScenario): Promise<void> {
+  await ensureOnOrigin(page);
+  await page.evaluate(
+    (s) => localStorage.setItem('mock-price-scenario', s),
+    scenario
+  );
+}
+
+/**
+ * Clear the price scenario, reverting to default seeded random prices.
+ */
+export async function clearPriceScenario(page: Page): Promise<void> {
+  await ensureOnOrigin(page);
+  await page.evaluate(() => localStorage.removeItem('mock-price-scenario'));
+}
