@@ -1,12 +1,19 @@
 import { type Car, type PriceSettings } from '@/contexts';
+import type { Product } from '@/data';
 
 // =============================================================================
 // Types
 // =============================================================================
 
+/**
+ * Sync data format.
+ * Settings uses full cached objects for immediate display on import.
+ * Location is intentionally excluded for privacy.
+ */
 export type SyncData = {
   cars: Omit<Car, 'id'>[];
-  settings?: PriceSettings;
+  /** Settings with location always null (not synced for privacy) */
+  settings?: Omit<PriceSettings, 'location'> & { location: null };
 };
 
 export type SyncInputFormat = 'url' | 'code' | 'raw' | 'unknown';
@@ -121,7 +128,102 @@ function validateCar(car: unknown, index: number): Omit<Car, 'id'> {
   };
 }
 
-function validateSettings(settings: unknown): PriceSettings | undefined {
+function validateSupplier(supplier: unknown): PriceSettings['supplier'] {
+  if (supplier === null || supplier === undefined) {
+    return null;
+  }
+
+  if (typeof supplier !== 'object') {
+    throw new Error('Invalid settings: supplier must be an object');
+  }
+
+  const s = supplier as Record<string, unknown>;
+
+  if (typeof s.id !== 'string' || !s.id) {
+    throw new Error('Invalid settings: supplier.id must be a non-empty string');
+  }
+  if (typeof s.name !== 'string' || !s.name) {
+    throw new Error('Invalid settings: supplier.name must be a non-empty string');
+  }
+  if (typeof s.companyName !== 'string' || !s.companyName) {
+    throw new Error('Invalid settings: supplier.companyName must be a non-empty string');
+  }
+
+  const validPriceAreas = ['DK1', 'DK2'];
+  if (!validPriceAreas.includes(s.priceArea as string)) {
+    throw new Error('Invalid settings: supplier.priceArea must be DK1 or DK2');
+  }
+
+  return {
+    id: s.id,
+    name: s.name,
+    companyName: s.companyName,
+    priceArea: s.priceArea as 'DK1' | 'DK2',
+  };
+}
+
+function validateProduct(product: unknown): Product | null {
+  if (product === null || product === undefined) {
+    return null;
+  }
+
+  if (typeof product !== 'object') {
+    throw new Error('Invalid settings: product must be an object');
+  }
+
+  const p = product as Record<string, unknown>;
+
+  if (typeof p.id !== 'string' || !p.id) {
+    throw new Error('Invalid settings: product.id must be a non-empty string');
+  }
+  if (typeof p.name !== 'string' || !p.name) {
+    throw new Error('Invalid settings: product.name must be a non-empty string');
+  }
+  if (typeof p.surcharge !== 'number') {
+    throw new Error('Invalid settings: product.surcharge must be a number');
+  }
+  if (typeof p.subscriptionMonthly !== 'number') {
+    throw new Error('Invalid settings: product.subscriptionMonthly must be a number');
+  }
+  if (typeof p.isGreen !== 'boolean') {
+    throw new Error('Invalid settings: product.isGreen must be a boolean');
+  }
+
+  return {
+    id: p.id,
+    name: p.name,
+    surcharge: p.surcharge,
+    subscriptionMonthly: p.subscriptionMonthly,
+    isGreen: p.isGreen,
+  };
+}
+
+function validateCompany(company: unknown): PriceSettings['company'] {
+  if (company === null || company === undefined) {
+    return null;
+  }
+
+  if (typeof company !== 'object') {
+    throw new Error('Invalid settings: company must be an object');
+  }
+
+  const c = company as Record<string, unknown>;
+
+  if (typeof c.id !== 'string' || !c.id) {
+    throw new Error('Invalid settings: company.id must be a non-empty string');
+  }
+  if (typeof c.name !== 'string' || !c.name) {
+    throw new Error('Invalid settings: company.name must be a non-empty string');
+  }
+
+  return {
+    id: c.id,
+    name: c.name,
+    product: validateProduct(c.product),
+  };
+}
+
+function validateSettings(settings: unknown): SyncData['settings'] {
   if (settings === undefined || settings === null) {
     return undefined;
   }
@@ -131,18 +233,6 @@ function validateSettings(settings: unknown): PriceSettings | undefined {
   }
 
   const s = settings as Record<string, unknown>;
-
-  // Validate types (allow nulls for optional fields)
-  // Note: location is not synced for privacy reasons
-  if (s.supplierId !== null && s.supplierId !== undefined && typeof s.supplierId !== 'string') {
-    throw new Error('Invalid settings: supplierId must be string or null');
-  }
-  if (s.companyId !== null && s.companyId !== undefined && typeof s.companyId !== 'string') {
-    throw new Error('Invalid settings: companyId must be string or null');
-  }
-  if (s.productId !== null && s.productId !== undefined && typeof s.productId !== 'string') {
-    throw new Error('Invalid settings: productId must be string or null');
-  }
 
   // Validate enums
   const validPriceAreas = ['DK1', 'DK2'];
@@ -159,12 +249,12 @@ function validateSettings(settings: unknown): PriceSettings | undefined {
     throw new Error('Invalid settings: aggregationMethod must be mean, min, or max');
   }
 
+  // Validate and return settings with full cached objects
+  // Location is always null for privacy
   return {
-    // Location is not synced for privacy reasons - always null on import
     location: null,
-    supplierId: (s.supplierId as string) ?? null,
-    companyId: (s.companyId as string) ?? null,
-    productId: (s.productId as string) ?? null,
+    supplier: validateSupplier(s.supplier),
+    company: validateCompany(s.company),
     priceArea: (s.priceArea as PriceSettings['priceArea']) ?? 'DK1',
     aggregationSize: (s.aggregationSize as PriceSettings['aggregationSize']) ?? '1h',
     aggregationMethod: (s.aggregationMethod as PriceSettings['aggregationMethod']) ?? 'mean',
@@ -199,11 +289,15 @@ export async function encodeSyncData(cars: Car[], settings?: PriceSettings | nul
 
   // Only include settings if there are meaningful values
   // Note: Location is NOT synced for privacy reasons
-  if (settings && (settings.supplierId || settings.companyId || settings.productId)) {
-    // Exclude location from synced settings for privacy
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { location, ...settingsWithoutLocation } = settings;
-    data.settings = { ...settingsWithoutLocation, location: null };
+  if (settings && (settings.supplier || settings.company)) {
+    data.settings = {
+      location: null, // Never sync location for privacy
+      supplier: settings.supplier,
+      company: settings.company,
+      priceArea: settings.priceArea ?? 'DK1',
+      aggregationSize: settings.aggregationSize,
+      aggregationMethod: settings.aggregationMethod,
+    };
   }
 
   const json = JSON.stringify(data);

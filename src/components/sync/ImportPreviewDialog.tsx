@@ -14,9 +14,6 @@ import {
   tokens,
 } from '@fluentui/react-components';
 
-import { findCompanyById, findProductById, findSupplierById } from '@/data';
-import type { Company, Supplier } from '@/data';
-import { useCompaniesQuery, useSuppliersQuery } from '@/hooks';
 import type { SyncData } from '@/utils';
 
 type Props = {
@@ -48,9 +45,7 @@ const ImportPreviewDialogContent: React.FC<{
   existingCarNames: Set<string>;
   onClose: () => void;
   onConfirm: (selectedCarIndices: number[], importSettings: boolean) => void;
-  suppliers: Supplier[];
-  companies: Company[];
-}> = ({ syncData, existingCarNames, onClose, onConfirm, suppliers, companies }) => {
+}> = ({ syncData, existingCarNames, onClose, onConfirm }) => {
   const cars = syncData.cars;
   const settings = syncData.settings;
 
@@ -62,20 +57,16 @@ const ImportPreviewDialogContent: React.FC<{
   // Track whether to import settings
   const [importSettings, setImportSettings] = useState(!!settings);
 
-  // Resolve settings to display names
+  // Settings now contain full cached objects, no need to resolve
   const resolvedSettings = useMemo(() => {
     if (!settings) return null;
 
-    const supplier = settings.supplierId ? findSupplierById(suppliers, settings.supplierId) : null;
-    const company = settings.companyId
-      ? findCompanyById(companies, settings.companyId)
-      : null;
-    const product = settings.productId
-      ? findProductById(companies, settings.productId)
-      : null;
-
-    return { supplier, company, product };
-  }, [settings, suppliers, companies]);
+    return {
+      supplier: settings.supplier,
+      company: settings.company,
+      product: settings.company?.product ?? null,
+    };
+  }, [settings]);
 
   const toggleCar = (index: number) => {
     setSelectedCars(prev => {
@@ -245,18 +236,6 @@ export const ImportPreviewDialog: React.FC<Props> = ({
   syncData,
   existingCarNames,
 }) => {
-  // Fetch suppliers and companies data for resolving settings preview
-  const { data: suppliers = [] } = useSuppliersQuery();
-
-  // Get the priceArea from the supplier in syncData to fetch the right companies
-  const supplierId = syncData?.settings?.supplierId;
-  const syncSupplier = useMemo(() => {
-    if (!supplierId) return null;
-    return findSupplierById(suppliers, supplierId);
-  }, [supplierId, suppliers]);
-
-  const { data: companies = [] } = useCompaniesQuery(syncSupplier?.priceArea ?? null);
-
   // Use a counter to generate unique keys when syncData changes
   // This remounts the inner component to reset its state
   // Pattern: "Adjusting state during rendering" - see React docs
@@ -281,8 +260,6 @@ export const ImportPreviewDialog: React.FC<Props> = ({
               existingCarNames={existingCarNames}
               onClose={onClose}
               onConfirm={onConfirm}
-              suppliers={suppliers}
-              companies={companies}
             />
           ) : (
             <>

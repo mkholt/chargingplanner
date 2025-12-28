@@ -17,7 +17,7 @@ import { usePriceSettings } from '@/contexts';
 import { useCompaniesQuery } from '@/hooks';
 
 export const CompanySection: React.FC = () => {
-  const { resolved, setCompanyId, setProductId } = usePriceSettings();
+  const { resolved, setCompany, setProduct } = usePriceSettings();
   const { priceArea, company, product } = resolved;
 
   const { data: companies = [], isLoading } = useCompaniesQuery(priceArea);
@@ -56,7 +56,8 @@ export const CompanySection: React.FC = () => {
           value={query || company?.name || ''}
           selectedOptions={company ? [company.id] : []}
           onOptionSelect={(_, data) => {
-            setCompanyId(data.optionValue ?? null);
+            const selectedCompany = companies.find(c => c.id === data.optionValue) ?? null;
+            setCompany(selectedCompany);
             setQuery('');
           }}
           onChange={(e) => setQuery(e.target.value)}
@@ -89,7 +90,7 @@ export const CompanySection: React.FC = () => {
                 <LeafOne20Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
               ) : undefined}
               isSelected={product?.id === p.id}
-              onClick={() => setProductId(p.id)}
+              onClick={() => setProduct(p)}
             />
           ))}
         </div>

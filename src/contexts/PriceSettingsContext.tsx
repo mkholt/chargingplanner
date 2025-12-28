@@ -1,14 +1,13 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   findCompanyById,
   findProductById,
-  findSupplierById,
   type Company,
   type Product,
   type Supplier,
 } from '@/data';
-import { type Location, useCompaniesQuery, useSuppliersQuery, useSuppliersByLocationQuery } from '@/hooks';
+import { type Location, useCompaniesQuery, useSuppliersByLocationQuery } from '@/hooks';
 import type { PriceArea } from '@/types';
 
 export { isCoordinates, isPostalCode } from '@/hooks';
@@ -20,14 +19,23 @@ export type { PriceArea } from '@/types';
 export type AggregationSize = '15m' | '1h';
 export type AggregationMethod = 'mean' | 'min' | 'max';
 
+/** Selected company with chosen product (persisted for offline display) */
+export type SelectedCompany = {
+  id: string;
+  name: string;
+  /** The user's selected product from this company */
+  product: Product | null;
+};
+
 export type PriceSettings = {
   location: Location; // Postal code (number) or GPS coordinates ({ lat, long }) or null
-  supplierId: string | null;
-  companyId: string | null;
-  productId: string | null;
   priceArea: PriceArea | null; // Manual price area selection (used when no supplier is set)
   aggregationSize: AggregationSize;
   aggregationMethod: AggregationMethod;
+  /** Selected supplier (persisted for offline display) */
+  supplier: Supplier | null;
+  /** Selected company with product (persisted for offline display) */
+  company: SelectedCompany | null;
 };
 
 export type ResolvedPriceSettings = {
@@ -49,14 +57,16 @@ type PriceSettingsContextType = {
   settings: PriceSettings;
   resolved: ResolvedPriceSettings;
   setLocation: (location: Location) => void;
-  setSupplierId: (supplierId: string | null) => void;
-  setCompanyId: (companyId: string | null) => void;
-  setProductId: (productId: string | null) => void;
+  setSupplier: (supplier: Supplier | null) => void;
+  setCompany: (company: Company | null) => void;
+  setProduct: (product: Product | null) => void;
   setPriceArea: (priceArea: PriceArea) => void;
   setAggregationSize: (size: AggregationSize) => void;
   setAggregationMethod: (method: AggregationMethod) => void;
   clearAll: () => void;
   applySettings: (settings: PriceSettings) => void;
+  /** Refetch suppliers and companies if data is stale. Call when navigating to settings. */
+  refetchIfStale: () => void;
 };
 
 // ============ Context ============
@@ -69,12 +79,11 @@ const LS_KEY = 'ev-price-settings';
 
 const DEFAULT_SETTINGS: PriceSettings = {
   location: null,
-  supplierId: null,
-  companyId: null,
-  productId: null,
   priceArea: 'DK1', // Default to West Denmark
   aggregationSize: '1h',
   aggregationMethod: 'mean',
+  supplier: null,
+  company: null,
 };
 
 function loadSettings(): PriceSettings {
@@ -102,54 +111,65 @@ function saveSettings(settings: PriceSettings) {
 export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<PriceSettings>(() => loadSettings());
 
-  // Only fetch suppliers when needed (when location is set or supplier is selected)
-  const needsSuppliers = settings.location !== null || settings.supplierId !== null;
-  const { data: allSuppliers = [] } = useSuppliersQuery(needsSuppliers);
+  // Fetch suppliers by location (only when location is set)
   const {
     data: availableSuppliers = [],
     isLoading: isLoadingSuppliers,
+    refetch: refetchSuppliers,
   } = useSuppliersByLocationQuery(settings.location);
 
-  // Resolve supplier: use selected ID, or auto-select if only one available
-  const supplier = useMemo(() => {
-    if (settings.supplierId) {
-      // Try to find in available suppliers first, then fall back to all suppliers
-      return (
-        availableSuppliers.find(s => s.id === settings.supplierId) ??
-        findSupplierById(allSuppliers, settings.supplierId) ??
-        null
-      );
+  // Resolve supplier: prefer API data, fall back to cached settings
+  const supplier = useMemo((): Supplier | null => {
+    if (settings.supplier) {
+      // Find fresh data from API if available
+      const fromApi = availableSuppliers.find(s => s.id === settings.supplier?.id);
+      if (fromApi) return fromApi;
+      // Fall back to cached supplier info
+      return settings.supplier;
     }
     // Auto-select if exactly one supplier available
     if (availableSuppliers.length === 1) {
       return availableSuppliers[0];
     }
     return null;
-  }, [settings.supplierId, availableSuppliers, allSuppliers]);
+  }, [settings.supplier, availableSuppliers]);
 
   // Resolve price area: supplier takes precedence, then manual selection, then default
   const priceArea: PriceArea = supplier?.priceArea ?? settings.priceArea ?? 'DK1';
   // Only report 'supplier' source when we have a complete product selection (supplier + product)
   // because that's when the API actually uses supplier-specific pricing
-  const hasCompleteProductSelection = supplier !== null && settings.productId !== null;
+  const hasCompleteProductSelection = supplier !== null && settings.company?.product !== null;
   const priceAreaSource: 'supplier' | 'manual' = hasCompleteProductSelection ? 'supplier' : 'manual';
 
-  // Only fetch companies when needed (when company or product is selected)
-  const needsCompanies = settings.companyId !== null || settings.productId !== null;
-  const { data: companies = [], isLoading: isLoadingCompanies } = useCompaniesQuery(
-    needsCompanies ? priceArea : null
-  );
+  // Fetch companies when needed (when company is selected)
+  const needsCompanies = settings.company !== null;
+  const {
+    data: companies = [],
+    isLoading: isLoadingCompanies,
+    refetch: refetchCompanies,
+  } = useCompaniesQuery(needsCompanies ? priceArea : null);
 
-  // Resolve company and product from cached data
-  const company = useMemo(() => {
-    if (!settings.companyId) return null;
-    return findCompanyById(companies, settings.companyId) ?? null;
-  }, [settings.companyId, companies]);
+  // Resolve company from API data, falling back to cached
+  const company = useMemo((): Company | null => {
+    if (!settings.company) return null;
+    const fromApi = findCompanyById(companies, settings.company.id);
+    if (fromApi) return fromApi;
+    // Fall back to cached company info - reconstruct a minimal Company object
+    return {
+      id: settings.company.id,
+      name: settings.company.name,
+      products: settings.company.product ? [settings.company.product] : [],
+    };
+  }, [settings.company, companies]);
 
-  const product = useMemo(() => {
-    if (!settings.productId) return null;
-    return findProductById(companies, settings.productId) ?? null;
-  }, [settings.productId, companies]);
+  // Resolve product from API data, falling back to cached
+  const product = useMemo((): Product | null => {
+    if (!settings.company?.product) return null;
+    const fromApi = findProductById(companies, settings.company.product.id);
+    if (fromApi) return fromApi;
+    // Fall back to cached product info
+    return settings.company.product;
+  }, [settings.company, companies]);
 
   const isLoading = isLoadingSuppliers || isLoadingCompanies;
 
@@ -166,18 +186,75 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
   }), [settings.location, settings.aggregationSize, settings.aggregationMethod, availableSuppliers, supplier, company, product, priceArea, priceAreaSource, isLoading]);
 
+  // Sync fresh API data to localStorage (external system sync)
+  // This updates the persisted cache when API returns newer data than what we have stored.
+  // The resolved values already prefer API data, so no state update needed - just persist for next load.
+  const lastSyncedRef = useRef<string>('');
+
+  useEffect(() => {
+    // Build current cache state for comparison
+    const currentSupplier = settings.supplier;
+    const currentProduct = settings.company?.product;
+
+    // Find fresh API data (if available)
+    const apiSupplier = currentSupplier
+      ? availableSuppliers.find(s => s.id === currentSupplier.id)
+      : null;
+    const apiProduct = currentProduct
+      ? findProductById(companies, currentProduct.id)
+      : null;
+
+    // Create sync key to avoid redundant writes
+    const syncKey = JSON.stringify({ apiSupplier, apiProduct });
+    if (syncKey === lastSyncedRef.current) return;
+    lastSyncedRef.current = syncKey;
+
+    // Check what needs updating
+    let updatedSettings = settings;
+    let needsSave = false;
+
+    if (apiSupplier && currentSupplier) {
+      const supplierChanged =
+        apiSupplier.name !== currentSupplier.name ||
+        apiSupplier.companyName !== currentSupplier.companyName ||
+        apiSupplier.priceArea !== currentSupplier.priceArea;
+
+      if (supplierChanged) {
+        updatedSettings = { ...updatedSettings, supplier: apiSupplier };
+        needsSave = true;
+      }
+    }
+
+    if (apiProduct && currentProduct && settings.company) {
+      const productChanged =
+        apiProduct.name !== currentProduct.name ||
+        apiProduct.surcharge !== currentProduct.surcharge ||
+        apiProduct.subscriptionMonthly !== currentProduct.subscriptionMonthly ||
+        apiProduct.isGreen !== currentProduct.isGreen;
+
+      if (productChanged) {
+        updatedSettings = {
+          ...updatedSettings,
+          company: { ...settings.company, product: apiProduct },
+        };
+        needsSave = true;
+      }
+    }
+
+    // Persist to localStorage only (no state update - resolved values already use API data)
+    if (needsSave) {
+      saveSettings(updatedSettings);
+    }
+  }, [settings, availableSuppliers, companies]);
+
   const setLocation = useCallback((location: Location) => {
     setSettings(prev => {
-      // When location changes, clear supplier/company/product selections
-      // Suppliers will be resolved via useSuppliersByLocationQuery
+      // When location changes, clear supplier/company selections
       const updated: PriceSettings = {
+        ...prev,
         location,
-        supplierId: null, // Will be auto-resolved from location
-        companyId: null,
-        productId: null,
-        priceArea: prev.priceArea,
-        aggregationSize: prev.aggregationSize,
-        aggregationMethod: prev.aggregationMethod,
+        supplier: null,
+        company: null,
       };
 
       saveSettings(updated);
@@ -185,15 +262,14 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
-  const setSupplierId = useCallback((supplierId: string | null) => {
+  const setSupplier = useCallback((newSupplier: Supplier | null) => {
     setSettings(prev => {
-      const supplierChanged = supplierId !== prev.supplierId;
+      const supplierChanged = newSupplier?.id !== prev.supplier?.id;
 
       const updated: PriceSettings = {
         ...prev,
-        supplierId,
-        companyId: supplierChanged ? null : prev.companyId,
-        productId: supplierChanged ? null : prev.productId,
+        supplier: newSupplier,
+        company: supplierChanged ? null : prev.company,
       };
 
       saveSettings(updated);
@@ -201,14 +277,18 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
-  const setCompanyId = useCallback((companyId: string | null) => {
+  const setCompany = useCallback((newCompany: Company | null) => {
     setSettings(prev => {
-      const companyChanged = companyId !== prev.companyId;
+      const companyChanged = newCompany?.id !== prev.company?.id;
+
+      // Store selected company info (without product initially)
+      const selectedCompany: SelectedCompany | null = newCompany
+        ? { id: newCompany.id, name: newCompany.name, product: null }
+        : null;
 
       const updated: PriceSettings = {
         ...prev,
-        companyId,
-        productId: companyChanged ? null : prev.productId,
+        company: companyChanged ? selectedCompany : prev.company,
       };
 
       saveSettings(updated);
@@ -216,17 +296,24 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
-  const setProductId = useCallback((productId: string | null) => {
+  const setProduct = useCallback((newProduct: Product | null) => {
     setSettings(prev => {
-      const updated: PriceSettings = { ...prev, productId };
+      if (!prev.company) return prev;
+
+      // Update cached company with the selected product
+      const updated: PriceSettings = {
+        ...prev,
+        company: { ...prev.company, product: newProduct },
+      };
+
       saveSettings(updated);
       return updated;
     });
   }, []);
 
-  const setPriceArea = useCallback((priceArea: PriceArea) => {
+  const setPriceArea = useCallback((newPriceArea: PriceArea) => {
     setSettings(prev => {
-      const updated: PriceSettings = { ...prev, priceArea };
+      const updated: PriceSettings = { ...prev, priceArea: newPriceArea };
       saveSettings(updated);
       return updated;
     });
@@ -258,20 +345,31 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     saveSettings(newSettings);
   }, []);
 
+  const refetchIfStale = useCallback(() => {
+    // React Query will only actually refetch if data is stale
+    if (settings.location !== null) {
+      refetchSuppliers();
+    }
+    if (needsCompanies) {
+      refetchCompanies();
+    }
+  }, [settings.location, needsCompanies, refetchSuppliers, refetchCompanies]);
+
   return (
     <PriceSettingsContext.Provider
       value={{
         settings,
         resolved,
         setLocation,
-        setSupplierId,
-        setCompanyId,
-        setProductId,
+        setSupplier,
+        setCompany,
+        setProduct,
         setPriceArea,
         setAggregationSize,
         setAggregationMethod,
         clearAll,
         applySettings,
+        refetchIfStale,
       }}
     >
       {children}

@@ -7,6 +7,9 @@ import { getMockApiResponse, getMockApiResponseWithScenario, type PriceScenario 
 import { getMockCompanies } from './mockCompanies';
 import { getMockSuppliers, findSupplierByPostalCode } from './mockSuppliers';
 
+// Note: The /api/suppliers endpoint (list all suppliers) is not mocked because
+// the application only uses /api/suppliers/find (location-based lookup).
+
 // Default delay to simulate network latency
 const MOCK_DELAY = 100;
 
@@ -60,22 +63,7 @@ export const handlers = [
     );
   }),
 
-  // Suppliers list endpoint
-  http.get(`${API_BASE}/api/suppliers`, async () => {
-    await delay(MOCK_DELAY);
-    const suppliers = getMockSuppliers();
-    // Transform to API format
-    return HttpResponse.json(
-      suppliers.map(s => ({
-        id: s.id,
-        name: s.name,
-        companyName: s.companyName,
-        priceArea: s.priceArea,
-      }))
-    );
-  }),
-
-  // Suppliers find endpoint
+  // Suppliers find endpoint (location-based lookup)
   http.get(`${API_BASE}/api/suppliers/find`, async ({ request }) => {
     await delay(MOCK_DELAY);
     const url = new URL(request.url);

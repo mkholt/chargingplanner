@@ -3,13 +3,35 @@ import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PriceSettingsProvider, usePriceSettings, type PriceSettings } from '@/contexts/PriceSettingsContext';
 import { stubLocalStorage } from '@/test/utils/testUtils';
+import type { Company, Product, Supplier } from '@/data';
 
 // Mock the hooks that PriceSettingsContext depends on
 vi.mock('@/hooks', () => ({
-  useSuppliersQuery: vi.fn(() => ({ data: [], isLoading: false })),
-  useSuppliersByLocationQuery: vi.fn(() => ({ data: [], isLoading: false })),
-  useCompaniesQuery: vi.fn(() => ({ data: [], isLoading: false })),
+  useSuppliersByLocationQuery: vi.fn(() => ({ data: [], isLoading: false, refetch: vi.fn() })),
+  useCompaniesQuery: vi.fn(() => ({ data: [], isLoading: false, refetch: vi.fn() })),
 }));
+
+// Test fixtures
+const mockSupplier: Supplier = {
+  id: 'supplier-1',
+  name: 'Test Supplier',
+  companyName: 'Test Company',
+  priceArea: 'DK1',
+};
+
+const mockProduct: Product = {
+  id: 'product-1',
+  name: 'Test Product',
+  surcharge: 0.05,
+  subscriptionMonthly: 39,
+  isGreen: true,
+};
+
+const mockCompany: Company = {
+  id: 'company-1',
+  name: 'Test Company',
+  products: [mockProduct],
+};
 
 describe('PriceSettingsContext', () => {
   let queryClient: QueryClient;
@@ -43,9 +65,8 @@ describe('PriceSettingsContext', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       expect(result.current.settings.location).toBeNull();
-      expect(result.current.settings.supplierId).toBeNull();
-      expect(result.current.settings.companyId).toBeNull();
-      expect(result.current.settings.productId).toBeNull();
+      expect(result.current.settings.supplier).toBeNull();
+      expect(result.current.settings.company).toBeNull();
       expect(result.current.settings.priceArea).toBe('DK1');
       expect(result.current.settings.aggregationSize).toBe('1h');
       expect(result.current.settings.aggregationMethod).toBe('mean');
@@ -54,9 +75,8 @@ describe('PriceSettingsContext', () => {
     it('loads settings from localStorage on init', () => {
       const savedSettings: PriceSettings = {
         location: 8000,
-        supplierId: 'supplier-1',
-        companyId: null,
-        productId: null,
+        supplier: mockSupplier,
+        company: null,
         priceArea: 'DK2',
         aggregationSize: '15m',
         aggregationMethod: 'max',
@@ -77,9 +97,9 @@ describe('PriceSettingsContext', () => {
 
       // First set supplier/company/product
       act(() => {
-        result.current.setSupplierId('supplier-1');
-        result.current.setCompanyId('company-1');
-        result.current.setProductId('product-1');
+        result.current.setSupplier(mockSupplier);
+        result.current.setCompany(mockCompany);
+        result.current.setProduct(mockProduct);
       });
 
       // Then change location (postal code)
@@ -88,9 +108,8 @@ describe('PriceSettingsContext', () => {
       });
 
       expect(result.current.settings.location).toBe(8000);
-      expect(result.current.settings.supplierId).toBeNull();
-      expect(result.current.settings.companyId).toBeNull();
-      expect(result.current.settings.productId).toBeNull();
+      expect(result.current.settings.supplier).toBeNull();
+      expect(result.current.settings.company).toBeNull();
     });
 
     it('accepts GPS coordinates', () => {
@@ -117,51 +136,96 @@ describe('PriceSettingsContext', () => {
     });
   });
 
-  describe('setSupplierId', () => {
-    it('updates supplier ID and clears company/product when changed', () => {
+  describe('setSupplier', () => {
+    it('updates supplier and clears company when changed', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       act(() => {
-        result.current.setCompanyId('company-1');
-        result.current.setProductId('product-1');
+        result.current.setCompany(mockCompany);
+        result.current.setProduct(mockProduct);
+      });
+
+      const newSupplier = { id: 'new-supplier', name: 'New Supplier', companyName: 'New Co', priceArea: 'DK2' as const };
+      act(() => {
+        result.current.setSupplier(newSupplier);
+      });
+
+      expect(result.current.settings.supplier?.id).toBe('new-supplier');
+      expect(result.current.settings.company).toBeNull();
+    });
+
+    it('stores full supplier object for offline display', () => {
+      const { result } = renderHook(() => usePriceSettings(), { wrapper });
+
+      act(() => {
+        result.current.setSupplier(mockSupplier);
+      });
+
+      expect(result.current.settings.supplier).toEqual({
+        id: 'supplier-1',
+        name: 'Test Supplier',
+        companyName: 'Test Company',
+        priceArea: 'DK1',
+      });
+    });
+
+    it('clears supplier when set to null', () => {
+      const { result } = renderHook(() => usePriceSettings(), { wrapper });
+
+      act(() => {
+        result.current.setSupplier(mockSupplier);
       });
 
       act(() => {
-        result.current.setSupplierId('new-supplier');
+        result.current.setSupplier(null);
       });
 
-      expect(result.current.settings.supplierId).toBe('new-supplier');
-      expect(result.current.settings.companyId).toBeNull();
-      expect(result.current.settings.productId).toBeNull();
+      expect(result.current.settings.supplier).toBeNull();
     });
   });
 
-  describe('setCompanyId', () => {
-    it('updates company ID and clears product when changed', () => {
+  describe('setCompany', () => {
+    it('updates company and clears product when changed', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       act(() => {
-        result.current.setProductId('product-1');
+        result.current.setCompany(mockCompany);
+        result.current.setProduct(mockProduct);
       });
 
+      const newCompany = { id: 'new-company', name: 'New Company', products: [] };
       act(() => {
-        result.current.setCompanyId('new-company');
+        result.current.setCompany(newCompany);
       });
 
-      expect(result.current.settings.companyId).toBe('new-company');
-      expect(result.current.settings.productId).toBeNull();
+      expect(result.current.settings.company?.id).toBe('new-company');
+      expect(result.current.settings.company?.product).toBeNull();
     });
   });
 
-  describe('setProductId', () => {
-    it('updates product ID', () => {
+  describe('setProduct', () => {
+    it('updates product within company', () => {
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
       act(() => {
-        result.current.setProductId('product-123');
+        result.current.setCompany(mockCompany);
       });
 
-      expect(result.current.settings.productId).toBe('product-123');
+      act(() => {
+        result.current.setProduct(mockProduct);
+      });
+
+      expect(result.current.settings.company?.product?.id).toBe('product-1');
+    });
+
+    it('does nothing if no company is selected', () => {
+      const { result } = renderHook(() => usePriceSettings(), { wrapper });
+
+      act(() => {
+        result.current.setProduct(mockProduct);
+      });
+
+      expect(result.current.settings.company).toBeNull();
     });
   });
 
@@ -229,9 +293,8 @@ describe('PriceSettingsContext', () => {
 
       const newSettings: PriceSettings = {
         location: 5000,
-        supplierId: 'sup-1',
-        companyId: 'comp-1',
-        productId: 'prod-1',
+        supplier: mockSupplier,
+        company: { id: 'comp-1', name: 'Test', product: mockProduct },
         priceArea: 'DK2',
         aggregationSize: '15m',
         aggregationMethod: 'max',

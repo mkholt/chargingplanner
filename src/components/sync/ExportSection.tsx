@@ -46,7 +46,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
 function hasAnySettings(settings?: PriceSettings | null): boolean {
   if (!settings) return false;
   // Note: location is not synced for privacy reasons
-  return !!(settings.supplierId || settings.companyId || settings.productId);
+  // Check if we have any supplier/company/product selection worth syncing
+  return settings.supplier !== null || settings.company !== null;
 }
 
 export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {

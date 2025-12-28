@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { fetchSuppliers, findSupplier } from '@/api';
+import { findSupplier } from '@/api';
 import type { Supplier } from '@/data';
-import type { PriceArea, SuppliersApiResponse, SuppliersFindApiResponse } from '@/types';
+import type { PriceArea, SuppliersFindApiResponse } from '@/types';
 import { QUERY_TIMING } from '@/utils';
 
 // ============ Types ============
@@ -26,11 +26,9 @@ export function isPostalCode(location: Location): location is number {
 // ============ Query Keys ============
 
 // Query key factory for suppliers
-// All suppliers have no dependencies
 // Finding by location depends on those values
 export const supplierQueryKeys = {
   all: ['suppliers'] as const,
-  list: () => ['suppliers', 'list'] as const,
   findByLocation: (location: Location) => {
     if (isCoordinates(location)) {
       return ['suppliers', 'find', { lat: location.lat, long: location.long }] as const;
@@ -41,18 +39,6 @@ export const supplierQueryKeys = {
     return ['suppliers', 'find', null] as const;
   },
 };
-
-/**
- * Map API response to our internal Supplier type.
- */
-function mapApiSuppliers(apiSuppliers: SuppliersApiResponse): Supplier[] {
-  return apiSuppliers.map(s => ({
-    id: s.id ?? 'unknown',
-    name: s.name ?? 'Unknown',
-    companyName: s.companyName ?? 'Unknown',
-    priceArea: (s.priceArea as PriceArea) ?? 'DK1',
-  }));
-}
 
 /**
  * Map API find response to Supplier array.
@@ -68,29 +54,13 @@ function mapApiFindSuppliers(apiResult: SuppliersFindApiResponse): Supplier[] {
   }));
 }
 
-/**
- * Fetch all suppliers.
- * Suppliers rarely change, so we cache aggressively.
- * @param enabled - Whether to enable the query (default: true)
- */
-export function useSuppliersQuery(enabled = true) {
-  return useQuery({
-    queryKey: supplierQueryKeys.list(),
-    queryFn: async (): Promise<Supplier[]> => {
-      // MSW intercepts the request when USE_MOCK_API is true
-      const apiResponse = await fetchSuppliers();
-      return mapApiSuppliers(apiResponse ?? []);
-    },
-    enabled,
-    staleTime: QUERY_TIMING.static.staleTime,
-    gcTime: QUERY_TIMING.static.gcTime,
-  });
-}
 
 /**
  * Find suppliers by location (postal code or GPS coordinates).
  * Returns an array since a location can have multiple grid operators.
  * Result is cached per location.
+ *
+ * Data is only refetched on mount when stale - no automatic background refetching.
  */
 export function useSuppliersByLocationQuery(location: Location) {
   return useQuery({
@@ -112,5 +82,9 @@ export function useSuppliersByLocationQuery(location: Location) {
     enabled: location !== null && (isCoordinates(location) || (isPostalCode(location) && location >= 1000 && location <= 9999)),
     staleTime: QUERY_TIMING.static.staleTime,
     gcTime: QUERY_TIMING.static.gcTime,
+    // Disable automatic background refetching - only refetch on mount if stale
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
 }

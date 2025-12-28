@@ -15,7 +15,7 @@ import { isCoordinates, isPostalCode, usePriceSettings } from '@/contexts';
 import { isValidPostalCode } from '@/data';
 
 export const SupplierSection: React.FC = () => {
-  const { resolved, setLocation, setSupplierId } = usePriceSettings();
+  const { resolved, setLocation, setSupplier } = usePriceSettings();
   const { location, availableSuppliers, supplier, isLoading } = resolved;
 
   // Extract postal code from location for display in input
@@ -160,7 +160,7 @@ export const SupplierSection: React.FC = () => {
               title={s.name}
               subtitle={`${s.companyName} · ${s.priceArea === 'DK1' ? 'Vestdanmark' : 'Østdanmark'}`}
               isSelected={supplier?.id === s.id}
-              onClick={() => setSupplierId(s.id)}
+              onClick={() => setSupplier(s)}
             />
           ))}
         </div>

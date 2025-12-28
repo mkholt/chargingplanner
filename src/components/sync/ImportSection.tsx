@@ -70,7 +70,7 @@ export const ImportSection: React.FC = () => {
       addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
     });
 
-    // Apply settings if requested
+    // Apply settings if requested (sync data contains full cached objects)
     if (importSettings && previewData.settings) {
       applySettings(previewData.settings);
     }

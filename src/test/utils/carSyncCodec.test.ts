@@ -27,11 +27,14 @@ describe('encodeSyncData / decodeSyncData', () => {
 
     it('preserves settings through encoding and decoding (except location for privacy)', async () => {
       const cars: Car[] = [{ id: '1', name: 'Test Car', batterySize: 50, maxPower: 7 }];
+      const supplier = { id: 'supplier-1', name: 'Test Supplier', companyName: 'Test Co', priceArea: 'DK2' as const };
+      const product = { id: 'product-1', name: 'Test Product', surcharge: 0.05, subscriptionMonthly: 39, isGreen: true };
+      const company = { id: 'company-1', name: 'Test Company', product };
+
       const settings: PriceSettings = {
         location: 8000, // Will not be synced for privacy
-        supplierId: 'supplier-1',
-        companyId: 'company-1',
-        productId: 'product-1',
+        supplier,
+        company,
         priceArea: 'DK2',
         aggregationSize: '15m',
         aggregationMethod: 'max',
@@ -40,10 +43,15 @@ describe('encodeSyncData / decodeSyncData', () => {
       const encoded = await encodeSyncData(cars, settings);
       const decoded = await decodeSyncData(encoded);
 
+      // Decoded settings now contain full cached objects (not IDs)
       // Location should always be null after decoding (not synced for privacy)
       expect(decoded.settings).toEqual({
-        ...settings,
         location: null,
+        supplier,
+        company,
+        priceArea: 'DK2',
+        aggregationSize: '15m',
+        aggregationMethod: 'max',
       });
     });
 
@@ -57,11 +65,11 @@ describe('encodeSyncData / decodeSyncData', () => {
 
     it('omits settings when only defaults are present', async () => {
       const cars: Car[] = [{ id: '1', name: 'Test', batterySize: 50, maxPower: 7 }];
+      // Settings with no supplier/company/product should not be synced
       const settings: PriceSettings = {
         location: null,
-        supplierId: null,
-        companyId: null,
-        productId: null,
+        supplier: null,
+        company: null,
         priceArea: 'DK1',
         aggregationSize: '1h',
         aggregationMethod: 'mean',
@@ -92,6 +100,84 @@ describe('encodeSyncData / decodeSyncData', () => {
       const encoded = await encodeSyncData(cars);
       const decoded = await decodeSyncData(encoded);
       expect(decoded.cars[0].name).toBe('Test');
+    });
+  });
+
+  describe('settings validation', () => {
+    it('validates supplier object structure', async () => {
+      const cars: Car[] = [{ id: '1', name: 'Test', batterySize: 50, maxPower: 7 }];
+      const validSupplier = { id: 'sup-1', name: 'Supplier', companyName: 'Company', priceArea: 'DK1' as const };
+      const settings: PriceSettings = {
+        location: null,
+        supplier: validSupplier,
+        company: null,
+        priceArea: 'DK1',
+        aggregationSize: '1h',
+        aggregationMethod: 'mean',
+      };
+
+      const encoded = await encodeSyncData(cars, settings);
+      const decoded = await decodeSyncData(encoded);
+
+      expect(decoded.settings?.supplier).toEqual(validSupplier);
+    });
+
+    it('validates company object with product', async () => {
+      const cars: Car[] = [{ id: '1', name: 'Test', batterySize: 50, maxPower: 7 }];
+      const product = { id: 'prod-1', name: 'Product', surcharge: 0.05, subscriptionMonthly: 39, isGreen: true };
+      const company = { id: 'comp-1', name: 'Company', product };
+      const settings: PriceSettings = {
+        location: null,
+        supplier: null,
+        company,
+        priceArea: 'DK1',
+        aggregationSize: '1h',
+        aggregationMethod: 'mean',
+      };
+
+      const encoded = await encodeSyncData(cars, settings);
+      const decoded = await decodeSyncData(encoded);
+
+      expect(decoded.settings?.company).toEqual(company);
+      expect(decoded.settings?.company?.product).toEqual(product);
+    });
+
+    it('handles company without product', async () => {
+      const cars: Car[] = [{ id: '1', name: 'Test', batterySize: 50, maxPower: 7 }];
+      const company = { id: 'comp-1', name: 'Company', product: null };
+      const settings: PriceSettings = {
+        location: null,
+        supplier: null,
+        company,
+        priceArea: 'DK1',
+        aggregationSize: '1h',
+        aggregationMethod: 'mean',
+      };
+
+      const encoded = await encodeSyncData(cars, settings);
+      const decoded = await decodeSyncData(encoded);
+
+      expect(decoded.settings?.company?.id).toBe('comp-1');
+      expect(decoded.settings?.company?.product).toBeNull();
+    });
+
+    it('handles null supplier and company', async () => {
+      const cars: Car[] = [{ id: '1', name: 'Test', batterySize: 50, maxPower: 7 }];
+      // Settings with aggregation but no supplier/company
+      const settings: PriceSettings = {
+        location: null,
+        supplier: null,
+        company: null,
+        priceArea: 'DK2',
+        aggregationSize: '15m',
+        aggregationMethod: 'max',
+      };
+
+      // Without supplier or company, settings won't be included
+      const encoded = await encodeSyncData(cars, settings);
+      const decoded = await decodeSyncData(encoded);
+
+      expect(decoded.settings).toBeUndefined();
     });
   });
 });

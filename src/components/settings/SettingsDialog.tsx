@@ -40,7 +40,16 @@ export const SettingsDialog: React.FC<Props> = ({
   onOpenChange,
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('cars');
-  const { clearAll: clearPriceSettings } = usePriceSettings();
+  const { clearAll: clearPriceSettings, refetchIfStale } = usePriceSettings();
+
+  const handleTabSelect = (_: unknown, data: { value: unknown }) => {
+    const tab = data.value as SettingsTab;
+    setActiveTab(tab);
+    // Refetch supplier/company data when entering the electricity tab (if stale)
+    if (tab === 'electricity') {
+      refetchIfStale();
+    }
+  };
 
   const closeButton = (
     <Button
@@ -61,7 +70,7 @@ export const SettingsDialog: React.FC<Props> = ({
               {/* Tab navigation */}
               <TabList
                 selectedValue={activeTab}
-                onTabSelect={(_, data) => setActiveTab(data.value as SettingsTab)}
+                onTabSelect={handleTabSelect}
               >
                 <Tab value="cars" icon={<VehicleCar20Regular />}>
                   Cars

@@ -12,4 +12,5 @@ export type {
   PriceArea,
   PriceSettings,
   ResolvedPriceSettings,
+  SelectedCompany,
 } from './PriceSettingsContext';

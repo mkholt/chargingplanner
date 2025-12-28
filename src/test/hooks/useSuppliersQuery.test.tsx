@@ -1,7 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 
 import {
-  useSuppliersQuery,
   useSuppliersByLocationQuery,
   supplierQueryKeys,
   isCoordinates,
@@ -10,56 +9,6 @@ import {
   type Coordinates,
 } from '@/hooks/useSuppliersQuery';
 import { createQueryWrapper } from '@/test/utils/testUtils';
-
-describe('useSuppliersQuery', () => {
-  describe('fetching all suppliers', () => {
-    it('fetches all suppliers when enabled', async () => {
-      const { result } = renderHook(
-        () => useSuppliersQuery(),
-        { wrapper: createQueryWrapper() }
-      );
-
-      await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
-      });
-
-      expect(result.current.data).toBeDefined();
-      expect(Array.isArray(result.current.data)).toBe(true);
-      expect(result.current.data!.length).toBeGreaterThan(0);
-    });
-
-    it('is disabled when enabled=false', () => {
-      const { result } = renderHook(
-        () => useSuppliersQuery(false),
-        { wrapper: createQueryWrapper() }
-      );
-
-      expect(result.current.isFetching).toBe(false);
-      expect(result.current.data).toBeUndefined();
-    });
-
-    it('maps supplier data correctly', async () => {
-      const { result } = renderHook(
-        () => useSuppliersQuery(),
-        { wrapper: createQueryWrapper() }
-      );
-
-      await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
-      });
-
-      const supplier = result.current.data![0];
-      expect(supplier).toHaveProperty('id');
-      expect(supplier).toHaveProperty('name');
-      expect(supplier).toHaveProperty('companyName');
-      expect(supplier).toHaveProperty('priceArea');
-      expect(typeof supplier.id).toBe('string');
-      expect(typeof supplier.name).toBe('string');
-      expect(typeof supplier.companyName).toBe('string');
-      expect(['DK1', 'DK2']).toContain(supplier.priceArea);
-    });
-  });
-});
 
 describe('useSuppliersByLocationQuery', () => {
   describe('postal code lookup', () => {
@@ -189,10 +138,6 @@ describe('type guards', () => {
 describe('supplierQueryKeys', () => {
   it('generates correct key for all suppliers', () => {
     expect(supplierQueryKeys.all).toEqual(['suppliers']);
-  });
-
-  it('generates correct key for supplier list', () => {
-    expect(supplierQueryKeys.list()).toEqual(['suppliers', 'list']);
   });
 
   it('generates correct key for postal code location', () => {

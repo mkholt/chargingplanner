@@ -63,6 +63,10 @@ function mapApiCompanies(apiCompanies: CompaniesApiResponse): Company[] {
   });
 }
 
+/**
+ * Fetch companies for a price area.
+ * Data is only refetched on mount when stale - no automatic background refetching.
+ */
 export function useCompaniesQuery(priceArea: PriceArea | null) {
   return useQuery({
     queryKey: companyQueryKeys.byRegion(priceArea ?? 'DK1'),
@@ -77,5 +81,9 @@ export function useCompaniesQuery(priceArea: PriceArea | null) {
     enabled: priceArea !== null,
     staleTime: QUERY_TIMING.static.staleTime,
     gcTime: QUERY_TIMING.static.gcTime,
+    // Disable automatic background refetching - only refetch on mount if stale
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
 }
