@@ -4,7 +4,7 @@ import { MS_PER_DAY, MS_PER_MINUTE } from './constants';
 import { getLocalDateString } from './dateUtils';
 import { mapApiResponseToPrices, type PriceSlot } from './priceMapper';
 
-const EMPTY_SLOT: PriceSlot = { total: 0 };
+const EMPTY_SLOT: PriceSlot = { total: 0, hasData: false };
 
 export interface TimelineData {
   /** All price slots from now to end of available data */
@@ -17,6 +17,8 @@ export interface TimelineData {
   chargingEndIdx: number;
   /** Interval size in minutes (15 or 60) */
   intervalMinutes: number;
+  /** Index of the last slot with valid price data (exclusive) - slots beyond this have no real data */
+  validDataEndIdx: number;
 }
 
 /**
@@ -78,6 +80,14 @@ export function buildTimeline(
   const timelineStart = new Date(timelineAllStart);
   timelineStart.setMinutes(nowIntervalIdx * intervalMinutes, 0, 0);
 
+  // Find the last index with valid price data (relative to sliced timeline)
+  let validDataEndIdx = 0;
+  for (let i = 0; i < timelineSlots.length; i++) {
+    if (timelineSlots[i].hasData) {
+      validDataEndIdx = i + 1; // exclusive index
+    }
+  }
+
   // Calculate charging interval indices relative to the timeline
   const chargingStartIdx = Math.max(
     Math.floor((earliestDate.getTime() - timelineStart.getTime()) / msPerInterval),
@@ -94,5 +104,6 @@ export function buildTimeline(
     chargingStartIdx,
     chargingEndIdx,
     intervalMinutes,
+    validDataEndIdx,
   };
 }

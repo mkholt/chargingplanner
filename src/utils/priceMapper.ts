@@ -8,6 +8,8 @@ export type PriceDetails = NonNullable<PriceEntry['details']>;
 export type PriceSlot = {
   total: number;
   details?: PriceDetails;
+  /** Whether this slot has real price data (false = placeholder) */
+  hasData: boolean;
 };
 
 export type PriceMapResult = {
@@ -19,7 +21,7 @@ export type PriceMapResult = {
   intervalsPerDay: number;
 };
 
-const EMPTY_SLOT: PriceSlot = { total: 0 };
+const EMPTY_SLOT: PriceSlot = { total: 0, hasData: false };
 
 /**
  * Convert API response to a map of date -> price slots.
@@ -63,6 +65,7 @@ export function mapApiResponseToPrices(response: PricesApiResponse): PriceMapRes
     slots[intervalIndex] = {
       total: entry.price.total,
       details: entry.details,
+      hasData: true,
     };
   }
 

@@ -8,6 +8,7 @@ import {
 } from '@fluentui/react-components';
 import {
   CalendarClock24Regular,
+  Info24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
 
@@ -42,7 +43,8 @@ type CalculationError =
   | { type: 'no_input' }
   | { type: 'no_timeline'; reason: string }
   | { type: 'time_too_short'; availableHours: number; requiredHours: number }
-  | { type: 'invalid_params'; reason: string };
+  | { type: 'invalid_params'; reason: string }
+  | { type: 'incomplete_data'; validUntil: Date };
 
 type CalculationResults = {
   result: ChargingResult | null;
@@ -51,6 +53,8 @@ type CalculationResults = {
   intervalMinutes: number;
   chargingSpeed: number | undefined;
   error: CalculationError | null;
+  /** Warning when user's window extends beyond available data */
+  warning: { type: 'partial_data'; validUntil: Date } | null;
 };
 
 function calculateResults(
@@ -64,6 +68,7 @@ function calculateResults(
     intervalMinutes: 60,
     chargingSpeed: undefined,
     error: null,
+    warning: null,
   };
 
   if (!input || !priceData) {
@@ -95,9 +100,46 @@ function calculateResults(
     };
   }
 
-  // Extract prices for the charging interval only (for optimization calculation)
+  // Check if we have valid price data - if not, we can't calculate
+  if (timeline.validDataEndIdx === 0) {
+    return {
+      ...emptyResults,
+      slots: timeline.slots,
+      intervalStart: timeline.startDate,
+      intervalMinutes: timeline.intervalMinutes,
+      chargingSpeed: input.chargingSpeed,
+      error: { type: 'no_timeline', reason: 'No price data available yet. Prices for tomorrow are usually published around 13:00.' },
+    };
+  }
+
+  // Calculate valid data end time for warnings
+  const validDataEndTime = new Date(timeline.startDate);
+  validDataEndTime.setMinutes(validDataEndTime.getMinutes() + timeline.validDataEndIdx * timeline.intervalMinutes);
+
+  // Constrain charging window to only use slots with valid price data
+  const effectiveChargingEndIdx = Math.min(timeline.chargingEndIdx, timeline.validDataEndIdx);
+
+  // Check if user's window extends beyond available data
+  let warning: CalculationResults['warning'] = null;
+  if (timeline.chargingEndIdx > timeline.validDataEndIdx && timeline.chargingStartIdx < timeline.validDataEndIdx) {
+    warning = { type: 'partial_data', validUntil: validDataEndTime };
+  }
+
+  // If the entire charging window is beyond valid data, show error
+  if (timeline.chargingStartIdx >= timeline.validDataEndIdx) {
+    return {
+      ...emptyResults,
+      slots: timeline.slots,
+      intervalStart: timeline.startDate,
+      intervalMinutes: timeline.intervalMinutes,
+      chargingSpeed: input.chargingSpeed,
+      error: { type: 'incomplete_data', validUntil: validDataEndTime },
+    };
+  }
+
+  // Extract prices for the charging interval only (constrained to valid data)
   const chargingIntervalPrices = timeline.slots
-    .slice(timeline.chargingStartIdx, timeline.chargingEndIdx)
+    .slice(timeline.chargingStartIdx, effectiveChargingEndIdx)
     .map(slot => slot.total);
 
   // Calculate required charging duration for error messages
@@ -145,6 +187,7 @@ function calculateResults(
     intervalMinutes: timeline.intervalMinutes,
     chargingSpeed: input.chargingSpeed,
     error,
+    warning,
   };
 }
 
@@ -155,6 +198,11 @@ function formatDuration(hours: number): string {
   if (m === 0) return `${h}h`;
   if (h === 0) return `${m}m`;
   return `${h}h ${m}m`;
+}
+
+/** Format time for display */
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Get user-friendly error message */
@@ -168,6 +216,8 @@ function getErrorMessage(error: CalculationError): string {
       return error.reason;
     case 'time_too_short':
       return `Not enough time. Charging requires ${formatDuration(error.requiredHours)}, but only ${formatDuration(error.availableHours)} available in the selected window.`;
+    case 'incomplete_data':
+      return `No price data available for this time window. Prices are only available until ${formatTime(error.validUntil)}. Try selecting an earlier end time.`;
   }
 }
 
@@ -206,7 +256,7 @@ export const Results: React.FC<Props> = ({
   const subtitle = useSubtitle();
 
   // Calculate results from raw inputs
-  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error } = useMemo(
+  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error, warning } = useMemo(
     () => calculateResults(formInput, priceData),
     [formInput, priceData]
   );
@@ -333,6 +383,26 @@ export const Results: React.FC<Props> = ({
           <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
           <Text style={{ color: tokens.colorPaletteYellowForeground1 }}>
             {getErrorMessage(error)}
+          </Text>
+        </div>
+      )}
+      {warning && (
+        <div
+          data-testid="result-warning"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            padding: 12,
+            marginBottom: 12,
+            background: tokens.colorPaletteBlueBackground2,
+            borderRadius: 6,
+            border: `1px solid ${tokens.colorPaletteBlueBackground2}`,
+          }}
+        >
+          <Info24Regular style={{ color: tokens.colorPaletteBlueForeground2, flexShrink: 0 }} />
+          <Text style={{ color: tokens.colorPaletteBlueForeground2 }}>
+            Price data is only available until {formatTime(warning.validUntil)}. The charging window is constrained to this period.
           </Text>
         </div>
       )}
