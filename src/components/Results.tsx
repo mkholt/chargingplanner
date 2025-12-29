@@ -55,6 +55,8 @@ type CalculationResults = {
   error: CalculationError | null;
   /** Warning when user's window extends beyond available data */
   warning: { type: 'partial_data'; validUntil: Date } | null;
+  /** Index of the last slot with valid data (exclusive) */
+  validDataEndIdx: number;
 };
 
 function calculateResults(
@@ -69,6 +71,7 @@ function calculateResults(
     chargingSpeed: undefined,
     error: null,
     warning: null,
+    validDataEndIdx: 0,
   };
 
   if (!input || !priceData) {
@@ -188,6 +191,7 @@ function calculateResults(
     chargingSpeed: input.chargingSpeed,
     error,
     warning,
+    validDataEndIdx: timeline.validDataEndIdx,
   };
 }
 
@@ -256,7 +260,7 @@ export const Results: React.FC<Props> = ({
   const subtitle = useSubtitle();
 
   // Calculate results from raw inputs
-  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error, warning } = useMemo(
+  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error, warning, validDataEndIdx } = useMemo(
     () => calculateResults(formInput, priceData),
     [formInput, priceData]
   );
@@ -327,7 +331,7 @@ export const Results: React.FC<Props> = ({
     );
   }
 
-  // Filter out slots before the current interval
+  // Filter out slots before the current interval and after valid data ends
   const now = new Date();
   const currentIntervalStart = new Date(now);
   // Round down to the start of the current interval
@@ -343,7 +347,9 @@ export const Results: React.FC<Props> = ({
       break;
     }
   }
-  const filteredSlots = slots.slice(firstIdx);
+  // Only show slots with valid data (exclude tomorrow's 0 DKK slots when data isn't available yet)
+  const lastIdx = Math.max(firstIdx, validDataEndIdx);
+  const filteredSlots = slots.slice(firstIdx, lastIdx);
   const filteredStart = new Date(intervalStart);
   filteredStart.setMinutes(filteredStart.getMinutes() + firstIdx * intervalMinutes, 0, 0);
 
