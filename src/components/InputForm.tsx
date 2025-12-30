@@ -25,7 +25,12 @@ import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
 import { LabeledFormField } from '@/components/ui';
 import { type Car } from '@/contexts';
 import { useDebouncedCallback, useIsMobile } from '@/hooks';
-import { CHARGING_POWER_OPTIONS, DEBOUNCE_MS, toDateTimeLocalString } from '@/utils';
+import {
+  CHARGING_POWER_OPTIONS,
+  DEBOUNCE_MS,
+  roundToNext15Minutes,
+  toDateTimeLocalString,
+} from '@/utils';
 
 type FormInput = {
   startPercent: number;
@@ -41,6 +46,11 @@ type Props = {
   onSettingsClick: () => void;
   onSubmit: (input: FormInput) => void;
 };
+
+/** Get default earliest time (now, rounded forward to next 15-minute interval) */
+function getDefaultEarliest(): string {
+  return toDateTimeLocalString(roundToNext15Minutes(new Date()));
+}
 
 /** Get default latest time (tomorrow 7am, or today 7am if before 7am) */
 function getDefaultLatest(): string {
@@ -64,7 +74,7 @@ export const InputForm: React.FC<Props> = ({
   const [endPercent, setEndPercent] = useState(80);
   const [batterySize, setBatterySize] = useState(selectedCar?.batterySize ?? 60);
   const [chargingSpeed, setChargingSpeed] = useState(selectedCar?.maxPower ?? 11);
-  const [earliest, setEarliest] = useState(() => toDateTimeLocalString(new Date()));
+  const [earliest, setEarliest] = useState(getDefaultEarliest);
   const [latest, setLatest] = useState(getDefaultLatest);
 
   // Debounced submit - triggers calculation after user stops typing
@@ -185,6 +195,7 @@ export const InputForm: React.FC<Props> = ({
                 onSettingsClick();
               }}
               aria-label="Settings"
+              data-testid="settings-button"
             />
           </Tooltip>
         </div>

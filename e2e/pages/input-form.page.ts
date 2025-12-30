@@ -6,10 +6,11 @@ export class InputFormPage {
   readonly endPercentInput: Locator;
   readonly batterySizeInput: Locator;
   readonly chargingPowerDropdown: Locator;
-  readonly earliestInput: Locator;
-  readonly latestInput: Locator;
+  readonly earliestTimePicker: Locator;
+  readonly latestTimePicker: Locator;
   readonly resultCost: Locator;
   readonly resultError: Locator;
+  readonly expandButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -19,12 +20,26 @@ export class InputFormPage {
     this.batterySizeInput = page.locator('input[type="number"]').nth(2);
     // Charging power is the second combobox (first is car selector)
     this.chargingPowerDropdown = page.getByRole('combobox').nth(1);
-    // Datetime inputs
-    this.earliestInput = page.locator('input[type="datetime-local"]').first();
-    this.latestInput = page.locator('input[type="datetime-local"]').last();
+    // Time pickers (Fluent UI TimePicker with data-testid)
+    this.earliestTimePicker = page.getByTestId('earliest-time-picker');
+    this.latestTimePicker = page.getByTestId('latest-time-picker');
     // Result elements for waiting on calculation completion
     this.resultCost = page.getByTestId('result-cost');
     this.resultError = page.getByTestId('result-error');
+    // Expand button (only visible on mobile when collapsed)
+    this.expandButton = page.getByRole('button', { name: 'Expand settings' });
+  }
+
+  /**
+   * Ensure the form is expanded (on mobile it may be collapsed)
+   */
+  async ensureExpanded(): Promise<void> {
+    // If expand button is visible, click it to expand the form
+    if (await this.expandButton.isVisible()) {
+      await this.expandButton.click();
+      // Wait for form fields to be visible
+      await expect(this.earliestTimePicker).toBeVisible({ timeout: 5000 });
+    }
   }
 
   async setStartPercent(value: number): Promise<void> {
@@ -69,13 +84,26 @@ export class InputFormPage {
     return await this.chargingPowerDropdown.textContent() ?? '';
   }
 
-  async setTimeWindow(earliest: string, latest: string): Promise<void> {
-    await this.earliestInput.clear();
-    await this.earliestInput.fill(earliest);
-    await this.latestInput.clear();
-    await this.latestInput.fill(latest);
-    // Trigger blur on the last input to ensure change is processed
-    await this.latestInput.blur();
+  /**
+   * Set time using the native time input.
+   */
+  private async setTime(picker: Locator, time: string): Promise<void> {
+    // The data-testid is on the native input element itself
+    await picker.scrollIntoViewIfNeeded();
+    await picker.fill(time);
+    // Blur to trigger change event
+    await picker.blur();
+  }
+
+  /**
+   * Set the time window using HH:mm format strings.
+   * The TimePicker will automatically determine Today/Tomorrow based on current time.
+   */
+  async setTimeWindow(earliestTime: string, latestTime: string): Promise<void> {
+    // Ensure form is expanded on mobile
+    await this.ensureExpanded();
+    await this.setTime(this.earliestTimePicker, earliestTime);
+    await this.setTime(this.latestTimePicker, latestTime);
   }
 
   async waitForCalculation(): Promise<void> {
@@ -86,19 +114,25 @@ export class InputFormPage {
     await expect(this.resultCost.or(this.resultError)).toBeVisible({ timeout: 5000 });
   }
 
-  // Helper to create ISO datetime-local format string
-  static formatDateTimeLocal(date: Date): string {
-    return date.toISOString().slice(0, 16);
+  // Helper to format time as HH:mm (24-hour format)
+  static formatTime(date: Date): string {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
-  // Create a time window relative to now
+  /**
+   * Create a time window relative to now.
+   * The TimePicker automatically determines Today/Tomorrow based on current time,
+   * so we just need to pass the target times in HH:mm format.
+   */
   async setRelativeTimeWindow(startOffsetHours: number, endOffsetHours: number): Promise<void> {
     const now = new Date();
     const start = new Date(now.getTime() + startOffsetHours * 60 * 60 * 1000);
     const end = new Date(now.getTime() + endOffsetHours * 60 * 60 * 1000);
     await this.setTimeWindow(
-      InputFormPage.formatDateTimeLocal(start),
-      InputFormPage.formatDateTimeLocal(end)
+      InputFormPage.formatTime(start),
+      InputFormPage.formatTime(end)
     );
   }
 }

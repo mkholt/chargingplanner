@@ -13,7 +13,7 @@ export class AppPage {
   constructor(page: Page) {
     this.page = page;
     this.title = page.getByRole('heading', { name: 'EV Charging Planner' });
-    this.settingsButton = page.getByRole('button', { name: 'Settings' });
+    this.settingsButton = page.getByTestId('settings-button');
     this.carSelectorDropdown = page.getByTestId('car-selector');
     this.addCarButton = page.getByRole('button', { name: 'Add Car' });
     this.noCarMessage = page.getByText('No car saved');

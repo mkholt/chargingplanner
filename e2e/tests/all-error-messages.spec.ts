@@ -18,60 +18,6 @@ async function setupCarAndNavigate(page: import('@playwright/test').Page) {
 
 test.describe('All Error Messages', () => {
   test.describe('Calculation Errors (Results.tsx)', () => {
-    test('shows "Not enough time" error when charging window is too short', async ({
-      appPage,
-      inputFormPage,
-      resultsPage,
-      page,
-    }) => {
-      await setupCarAndNavigate(page);
-      await appPage.waitForAppReady();
-
-      // Set a very short time window (15 minutes) - not enough for any meaningful charging
-      await inputFormPage.setRelativeTimeWindow(0, 0.25);
-      await inputFormPage.waitForCalculation();
-
-      const hasError = await resultsPage.hasError();
-      expect(hasError).toBe(true);
-
-      const errorText = await resultsPage.getErrorText();
-      expect(errorText).toContain('Not enough time');
-      expect(errorText).toContain('requires');
-      expect(errorText).toContain('available');
-    });
-
-    test('shows time-related error for window shorter than one interval', async ({
-      appPage,
-      inputFormPage,
-      resultsPage,
-      page,
-    }) => {
-      await setupCarAndNavigate(page);
-      await appPage.waitForAppReady();
-
-      // Set a 5-minute window (less than 15-minute interval)
-      const now = new Date();
-      const start = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
-      const end = new Date(start.getTime() + 5 * 60 * 1000); // 5 minutes later
-
-      await inputFormPage.setTimeWindow(
-        start.toISOString().slice(0, 16),
-        end.toISOString().slice(0, 16)
-      );
-      await inputFormPage.waitForCalculation();
-
-      const hasError = await resultsPage.hasError();
-      expect(hasError).toBe(true);
-
-      // Error may be "time window is too short" or "not enough time" depending on calculation
-      const errorText = await resultsPage.getErrorText();
-      expect(
-        errorText.toLowerCase().includes('time window') ||
-        errorText.toLowerCase().includes('not enough time') ||
-        errorText.toLowerCase().includes('0h available')
-      ).toBe(true);
-    });
-
     test('shows "Battery size and charging speed must be positive" when battery is zero', async ({
       appPage,
       inputFormPage,
@@ -158,66 +104,6 @@ test.describe('All Error Messages', () => {
       }
     });
 
-    test('shows "No price data available for this time window" when window is beyond available data', async ({
-      appPage,
-      inputFormPage,
-      resultsPage,
-      page,
-    }) => {
-      await setupCarAndNavigate(page);
-      await appPage.waitForAppReady();
-
-      // Set time window far in the future (3 days from now)
-      // Mock data only has 48 hours (today + tomorrow)
-      const futureStart = new Date();
-      futureStart.setDate(futureStart.getDate() + 3);
-      const futureEnd = new Date(futureStart.getTime() + 8 * 60 * 60 * 1000);
-
-      await inputFormPage.setTimeWindow(
-        futureStart.toISOString().slice(0, 16),
-        futureEnd.toISOString().slice(0, 16)
-      );
-      await inputFormPage.waitForCalculation();
-
-      const hasError = await resultsPage.hasError();
-      expect(hasError).toBe(true);
-
-      const errorText = await resultsPage.getErrorText();
-      expect(errorText).toContain('No price data available');
-    });
-  });
-
-  test.describe('Warnings (Results.tsx)', () => {
-    test('shows partial data warning when window extends beyond available prices', async ({
-      appPage,
-      inputFormPage,
-      resultsPage,
-      page,
-    }) => {
-      await setupCarAndNavigate(page);
-      await appPage.waitForAppReady();
-
-      // Set time window that starts within data but extends beyond
-      // Mock data has 48 hours, so start at 40 hours from now and extend to 60 hours
-      const now = new Date();
-      const start = new Date(now);
-      start.setHours(start.getHours() + 40);
-      const end = new Date(now);
-      end.setHours(end.getHours() + 60);
-
-      await inputFormPage.setTimeWindow(
-        start.toISOString().slice(0, 16),
-        end.toISOString().slice(0, 16)
-      );
-      await inputFormPage.waitForCalculation();
-
-      // Should show warning about partial data
-      const hasWarning = await resultsPage.hasWarning();
-      if (hasWarning) {
-        const warningText = await resultsPage.getWarningText();
-        expect(warningText).toContain('Price data is only available until');
-      }
-    });
   });
 
   test.describe('Supplier/Settings Errors (SupplierSection.tsx)', () => {

@@ -28,6 +28,12 @@ type Props = {
   highlightEnd: number;
   /** Interval size in minutes */
   intervalMinutes: number;
+  /** Fraction of first interval that's unavailable (0-1), for partial start blocks */
+  startOffset?: number;
+  /** The original slot index where user's earliest time falls (in the full timeline, before filtering) */
+  chargingStartIdx?: number;
+  /** The first visible slot index after filtering (to determine when startOffset applies) */
+  firstVisibleIdx?: number;
 };
 
 /** Format duration as "Xh Ym" */
@@ -45,6 +51,9 @@ export const ChargingPlanHeader: React.FC<Props> = ({
   highlightStart,
   highlightEnd,
   intervalMinutes,
+  startOffset = 0,
+  chargingStartIdx = 0,
+  firstVisibleIdx = 0,
 }) => {
   const { cars, selectedCarId } = useCars();
   const { resolved: priceSettings } = usePriceSettings();
@@ -115,12 +124,14 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {(() => {
                 const date = new Date(startDate);
-                date.setMinutes(date.getMinutes() + highlightStart * intervalMinutes, 0, 0);
-                return date.toLocaleString(undefined, {
+                // Apply startOffset only when charging starts at user's earliest time slot
+                const actualStartIdx = highlightStart + firstVisibleIdx;
+                const startsAtEarliestSlot = actualStartIdx === chargingStartIdx;
+                const offsetMinutes = startsAtEarliestSlot ? startOffset * intervalMinutes : 0;
+                date.setMinutes(date.getMinutes() + highlightStart * intervalMinutes + offsetMinutes, 0, 0);
+                return date.toLocaleTimeString(undefined, {
                   hour: '2-digit',
                   minute: '2-digit',
-                  day: 'numeric',
-                  month: 'short',
                 });
               })()}
             </div>
@@ -134,11 +145,9 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               {(() => {
                 const date = new Date(startDate);
                 date.setMinutes(date.getMinutes() + highlightEnd * intervalMinutes, 0, 0);
-                return date.toLocaleString(undefined, {
+                return date.toLocaleTimeString(undefined, {
                   hour: '2-digit',
                   minute: '2-digit',
-                  day: 'numeric',
-                  month: 'short',
                 });
               })()}
             </div>

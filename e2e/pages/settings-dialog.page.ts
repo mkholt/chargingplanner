@@ -38,7 +38,10 @@ export class SettingsDialogPage {
 
   async clickAddCarCard(): Promise<void> {
     // Click the "Add Car" card in the cars grid
-    await this.page.locator('text=Add Car').last().click();
+    const addCarCard = this.page.locator('text=Add Car').last();
+    await addCarCard.scrollIntoViewIfNeeded();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await addCarCard.click({ force: true });
   }
 
   async fillCarForm(name: string, batterySize: number, maxPower: number): Promise<void> {
@@ -63,7 +66,9 @@ export class SettingsDialogPage {
     // Wait for button to be stable before clicking
     const addButton = this.page.getByRole('button', { name: 'Add car', exact: true });
     await addButton.waitFor({ state: 'visible' });
-    await addButton.click();
+    await addButton.scrollIntoViewIfNeeded();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await addButton.click({ force: true });
   }
 
   async addCar(name: string, batterySize: number, maxPower: number): Promise<void> {
@@ -80,7 +85,10 @@ export class SettingsDialogPage {
   ): Promise<void> {
     // Find the car card and click edit
     const carCard = this.page.locator(`text="${currentName}"`).locator('xpath=ancestor::div[contains(@style, "border")]');
-    await carCard.getByRole('button', { name: 'Edit car' }).click();
+    const editButton = carCard.getByRole('button', { name: 'Edit car' });
+    await editButton.scrollIntoViewIfNeeded();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await editButton.click({ force: true });
 
     if (updates.name !== undefined) {
       await this.page.getByPlaceholder('Car name').fill(updates.name);
@@ -100,10 +108,16 @@ export class SettingsDialogPage {
 
   async deleteCar(carName: string): Promise<void> {
     const carCard = this.page.locator(`text="${carName}"`).locator('xpath=ancestor::div[contains(@style, "border")]');
-    await carCard.getByRole('button', { name: 'Delete car' }).click();
+    const deleteButton = carCard.getByRole('button', { name: 'Delete car' });
+    await deleteButton.scrollIntoViewIfNeeded();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await deleteButton.click({ force: true });
 
     // Confirm deletion in dialog - use exact match to avoid "Delete car" button
-    await this.page.getByRole('button', { name: 'Delete', exact: true }).click();
+    const confirmButton = this.page.getByRole('button', { name: 'Delete', exact: true });
+    await confirmButton.scrollIntoViewIfNeeded();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await confirmButton.click({ force: true });
   }
 
   async selectCar(carName: string): Promise<void> {
@@ -167,7 +181,10 @@ export class SettingsDialogPage {
   async clickGpsButton(): Promise<void> {
     await this.switchToElectricityTab();
     const gpsButton = this.page.getByTestId('gps-location-button');
-    await gpsButton.click();
+    // Scroll into view on mobile where dialog content may need scrolling
+    await gpsButton.scrollIntoViewIfNeeded();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await gpsButton.click({ force: true });
   }
 
   async getLocationError(): Promise<string | null> {

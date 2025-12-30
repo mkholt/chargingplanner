@@ -57,6 +57,10 @@ type CalculationResults = {
   warning: { type: 'partial_data'; validUntil: Date } | null;
   /** Index of the last slot with valid data (exclusive) */
   validDataEndIdx: number;
+  /** Fraction of first interval unavailable (for partial start blocks) */
+  startOffset: number;
+  /** The slot index where user's earliest time falls (for determining when to apply startOffset) */
+  chargingStartIdx: number;
 };
 
 function calculateResults(
@@ -72,6 +76,8 @@ function calculateResults(
     error: null,
     warning: null,
     validDataEndIdx: 0,
+    startOffset: 0,
+    chargingStartIdx: 0,
   };
 
   if (!input || !priceData) {
@@ -158,6 +164,7 @@ function calculateResults(
     chargingSpeed: input.chargingSpeed,
     prices: chargingIntervalPrices,
     intervalMinutes: timeline.intervalMinutes,
+    startOffset: timeline.startOffset,
   });
 
   // Adjust result indices to be relative to the full timeline
@@ -192,6 +199,8 @@ function calculateResults(
     error,
     warning,
     validDataEndIdx: timeline.validDataEndIdx,
+    startOffset: timeline.startOffset,
+    chargingStartIdx: timeline.chargingStartIdx,
   };
 }
 
@@ -260,7 +269,7 @@ export const Results: React.FC<Props> = ({
   const subtitle = useSubtitle();
 
   // Calculate results from raw inputs
-  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error, warning, validDataEndIdx } = useMemo(
+  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error, warning, validDataEndIdx, startOffset, chargingStartIdx } = useMemo(
     () => calculateResults(formInput, priceData),
     [formInput, priceData]
   );
@@ -371,6 +380,9 @@ export const Results: React.FC<Props> = ({
         highlightStart={highlightStart}
         highlightEnd={highlightEnd}
         intervalMinutes={intervalMinutes}
+        startOffset={startOffset}
+        chargingStartIdx={chargingStartIdx}
+        firstVisibleIdx={firstIdx}
       />
       {!result && error && error.type !== 'no_input' && (
         <div

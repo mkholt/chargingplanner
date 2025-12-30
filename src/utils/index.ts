@@ -19,7 +19,14 @@ export {
   MS_PER_MINUTE,
   QUERY_TIMING,
 } from './constants';
-export { getLocalDateString, toDateTimeLocalString } from './dateUtils';
+export {
+  formatTimeValue,
+  getDateLabel,
+  getLocalDateString,
+  getNextOccurrence,
+  roundToNext15Minutes,
+  toDateTimeLocalString,
+} from './dateUtils';
 export { getPriceUnit, mapApiResponseToPrices } from './priceMapper';
 export type { PriceDetails, PriceMapResult, PriceSlot } from './priceMapper';
 export { buildTimeline } from './timelineBuilder';

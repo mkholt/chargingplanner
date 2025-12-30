@@ -19,6 +19,8 @@ export interface TimelineData {
   intervalMinutes: number;
   /** Index of the last slot with valid price data (exclusive) - slots beyond this have no real data */
   validDataEndIdx: number;
+  /** Fraction of the first interval that's unavailable (0-1), e.g., 0.5 means start halfway through */
+  startOffset: number;
 }
 
 /**
@@ -89,12 +91,15 @@ export function buildTimeline(
   }
 
   // Calculate charging interval indices relative to the timeline
-  const chargingStartIdx = Math.max(
-    Math.floor((earliestDate.getTime() - timelineStart.getTime()) / msPerInterval),
-    0
-  );
+  // Use floor for start to support partial first blocks (e.g., 01:15 uses the 01:00 slot partially)
+  const startIntervalFractional = (earliestDate.getTime() - timelineStart.getTime()) / msPerInterval;
+  const chargingStartIdx = Math.max(Math.floor(startIntervalFractional), 0);
+  // startOffset is the fraction of the first interval that's unavailable (before earliestDate)
+  const startOffset = Math.max(0, Math.min(1, startIntervalFractional - chargingStartIdx));
+
+  // Use ceil for end: if user selects 17:30 as latest end, include the 17:00-18:00 slot
   const chargingEndIdx = Math.max(
-    Math.floor((latestDate.getTime() - timelineStart.getTime()) / msPerInterval),
+    Math.ceil((latestDate.getTime() - timelineStart.getTime()) / msPerInterval),
     chargingStartIdx
   );
 
@@ -105,5 +110,6 @@ export function buildTimeline(
     chargingEndIdx,
     intervalMinutes,
     validDataEndIdx,
+    startOffset,
   };
 }
