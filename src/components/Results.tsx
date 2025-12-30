@@ -431,6 +431,10 @@ export const Results: React.FC<Props> = ({
         chargingEnd={highlightEnd}
         chargingSpeed={chargingSpeed}
         intervalMinutes={intervalMinutes}
+        startOffset={result?.startOffset ?? 0}
+        endOffset={result?.endOffset ?? 0}
+        chargingStartIdx={chargingStartIdx}
+        firstVisibleIdx={firstIdx}
       />
     </Card>
   );

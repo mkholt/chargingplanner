@@ -19,6 +19,10 @@ export type ChargingResult = {
   durationHours: number;
   windowPrices: number[];
   energyNeeded: number;
+  /** Fraction of first interval unavailable (0-1), only applies when startIndex is at user's earliest slot */
+  startOffset: number;
+  /** Fraction of last interval unused (0-1), e.g., 0.25 means charging ends 3/4 through */
+  endOffset: number;
 };
 
 export function findOptimalChargingWindow(input: ChargingInput): ChargingResult | null {
@@ -68,13 +72,28 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
 
   if (minCost === Infinity) return null;
 
+  // Calculate the effective start offset for the optimal window
+  const effectiveStartOffset = bestStart === 0 ? startOffset : 0;
+
+  // Calculate intervals actually used in the window
+  const totalIntervalsInWindow = durationIntervals + effectiveStartOffset;
+  const fullIntervalsNeeded = Math.ceil(totalIntervalsInWindow);
+
+  // End offset is how much of the last interval is unused
+  // If totalIntervalsInWindow is 3.75, we need 4 full slots but only use 0.75 of the last one
+  // So endOffset = 1 - 0.75 = 0.25 (unused portion)
+  const fractionalPart = totalIntervalsInWindow % 1;
+  const endOffset = fractionalPart > 0.0001 ? (1 - fractionalPart) : 0;
+
   return {
     startIndex: bestStart,
-    endIndex: bestStart + Math.ceil(durationIntervals + (bestStart === 0 ? startOffset : 0)),
+    endIndex: bestStart + fullIntervalsNeeded,
     intervalMinutes,
     totalCost: Math.round(minCost * 100) / 100,
     durationHours: Math.round(durationHours * 100) / 100,
     windowPrices: bestWindow,
     energyNeeded: kWhNeeded,
+    startOffset: effectiveStartOffset,
+    endOffset,
   };
 }

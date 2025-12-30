@@ -11,10 +11,12 @@ export class InputFormPage {
   readonly resultCost: Locator;
   readonly resultError: Locator;
   readonly expandButton: Locator;
+  readonly vehicleSettingsButton: Locator;
+  readonly setToNowButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    // Number inputs in order: start %, end %, battery size
+    // Number inputs in order: start %, end %, battery size (when advanced section is open)
     this.startPercentInput = page.locator('input[type="number"]').nth(0);
     this.endPercentInput = page.locator('input[type="number"]').nth(1);
     this.batterySizeInput = page.locator('input[type="number"]').nth(2);
@@ -28,6 +30,10 @@ export class InputFormPage {
     this.resultError = page.getByTestId('result-error');
     // Expand button (only visible on mobile when collapsed)
     this.expandButton = page.getByRole('button', { name: 'Expand settings' });
+    // Vehicle settings toggle button (collapsible advanced section)
+    this.vehicleSettingsButton = page.getByRole('button', { name: /vehicle settings/ });
+    // Set to now button in earliest time picker
+    this.setToNowButton = page.getByTestId('set-to-now-button');
   }
 
   /**
@@ -39,6 +45,22 @@ export class InputFormPage {
       await this.expandButton.click();
       // Wait for form fields to be visible
       await expect(this.earliestTimePicker).toBeVisible({ timeout: 5000 });
+    }
+  }
+
+  /**
+   * Ensure the vehicle settings (advanced) section is expanded.
+   * Battery size and charging power fields are inside this collapsible section.
+   */
+  async ensureVehicleSettingsExpanded(): Promise<void> {
+    // First ensure the main form is expanded
+    await this.ensureExpanded();
+    // Check if battery size input is already visible (section is open)
+    if (!(await this.batterySizeInput.isVisible())) {
+      // Click the vehicle settings button to expand
+      await this.vehicleSettingsButton.click();
+      // Wait for battery size input to be visible
+      await expect(this.batterySizeInput).toBeVisible({ timeout: 5000 });
     }
   }
 
@@ -67,21 +89,42 @@ export class InputFormPage {
   }
 
   async setBatterySize(value: number): Promise<void> {
+    await this.ensureVehicleSettingsExpanded();
     await this.batterySizeInput.fill(String(value));
   }
 
   async getBatterySize(): Promise<number> {
+    await this.ensureVehicleSettingsExpanded();
     const value = await this.batterySizeInput.inputValue();
     return parseInt(value, 10);
   }
 
   async setChargingPower(label: string): Promise<void> {
+    await this.ensureVehicleSettingsExpanded();
     await this.chargingPowerDropdown.click();
     await this.page.getByRole('option', { name: new RegExp(label) }).click();
   }
 
   async getChargingPowerText(): Promise<string> {
+    await this.ensureVehicleSettingsExpanded();
     return await this.chargingPowerDropdown.textContent() ?? '';
+  }
+
+  /**
+   * Click the "Set to now" button to set earliest time to current time (rounded to next 15 min).
+   */
+  async clickSetToNow(): Promise<void> {
+    await this.ensureExpanded();
+    await this.setToNowButton.click();
+  }
+
+  /**
+   * Get the earliest time value from the time picker.
+   * Returns time in HH:mm format.
+   */
+  async getEarliestTime(): Promise<string> {
+    await this.ensureExpanded();
+    return await this.earliestTimePicker.inputValue();
   }
 
   /**

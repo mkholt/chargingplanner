@@ -6,24 +6,24 @@ type Props = {
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 };
 
-export const LabeledFormField: React.FC<Props> = ({ icon, label, children }) => {
+export const LabeledFormField: React.FC<Props> = ({ icon, label, children, style }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', ...style }}>
       <div style={{
         display: "flex",
-        alignItems: "flex-start",
+        alignItems: "center",
         gap: 4,
         marginBottom: 4,
-        minHeight: 40,
+        minHeight: 24,
       }}>
         <span style={{
           color: tokens.colorNeutralForeground3,
           fontSize: 16,
           display: 'flex',
           flexShrink: 0,
-          marginTop: 2,
         }}>
           {icon}
         </span>

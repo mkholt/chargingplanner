@@ -1,10 +1,10 @@
 import React from 'react';
 
-import { Button, Input } from '@fluentui/react-components';
+import { Button, Input, Text, tokens, Tooltip } from '@fluentui/react-components';
 import {
   Clock24Regular,
   ClockAlarm24Regular,
-  TargetArrow20Regular,
+  TargetArrow16Regular,
 } from '@fluentui/react-icons';
 
 import { LabeledFormField } from '@/components/ui';
@@ -62,30 +62,36 @@ export const TimeWindowSelector: React.FC<Props> = ({
     <div style={{ display: 'flex', gap: 16 }}>
       <LabeledFormField
         icon={<Clock24Regular />}
-        label={`Earliest Start (${getDateLabel(earliestDate)})`}
+        label="Earliest Start"
+        style={{ flex: 1 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Input
-            type="time"
-            step={900}
-            data-testid="earliest-time-picker"
-            value={formatTimeValue(earliestDate)}
-            onChange={handleEarliestChange}
-            style={{ width: 'auto' }}
-          />
-          <Button
-            size="small"
-            appearance="outline"
-            icon={<TargetArrow20Regular />}
-            onClick={handleNowClick}
-          >
-            Now
-          </Button>
-        </div>
+        <Input
+          type="time"
+          step={900}
+          data-testid="earliest-time-picker"
+          value={formatTimeValue(earliestDate)}
+          onChange={handleEarliestChange}
+          contentAfter={
+            <Tooltip content="Set to now" relationship="label">
+              <Button
+                size="small"
+                appearance="transparent"
+                icon={<TargetArrow16Regular />}
+                onClick={handleNowClick}
+                aria-label="Set to now"
+                data-testid="set-to-now-button"
+              />
+            </Tooltip>
+          }
+        />
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: 4 }}>
+          {getDateLabel(earliestDate)}
+        </Text>
       </LabeledFormField>
       <LabeledFormField
         icon={<ClockAlarm24Regular />}
-        label={`Latest End (${getDateLabel(latestDate)})`}
+        label="Latest End"
+        style={{ flex: 1 }}
       >
         <Input
           type="time"
@@ -93,8 +99,10 @@ export const TimeWindowSelector: React.FC<Props> = ({
           data-testid="latest-time-picker"
           value={formatTimeValue(latestDate)}
           onChange={handleLatestChange}
-          style={{ width: 'auto' }}
         />
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: 4 }}>
+          {getDateLabel(latestDate)}
+        </Text>
       </LabeledFormField>
     </div>
   );

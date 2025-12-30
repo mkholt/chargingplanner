@@ -23,6 +23,14 @@ type Props = {
   chargingEnd?: number;
   chargingSpeed?: number;
   intervalMinutes?: number;
+  /** Fraction of first interval unavailable (0-1), for partial start blocks */
+  startOffset?: number;
+  /** Fraction of last interval unused (0-1), for partial end blocks */
+  endOffset?: number;
+  /** The slot index where user's earliest time falls (in the full timeline) */
+  chargingStartIdx?: number;
+  /** The first visible slot index after filtering */
+  firstVisibleIdx?: number;
 };
 
 export const PriceTimeline: React.FC<Props> = ({
@@ -32,6 +40,10 @@ export const PriceTimeline: React.FC<Props> = ({
   chargingEnd = -1,
   chargingSpeed,
   intervalMinutes = 60,
+  startOffset = 0,
+  endOffset = 0,
+  chargingStartIdx = 0,
+  firstVisibleIdx = 0,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,11 +54,38 @@ export const PriceTimeline: React.FC<Props> = ({
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
+  // Determine if the first charging bar is at the user's earliest slot (where startOffset applies)
+  // chargingStart is relative to filtered slots, chargingStartIdx is the absolute index in full timeline
+  const actualFirstChargingIdx = chargingStart + firstVisibleIdx;
+  const startsAtEarliestSlot = actualFirstChargingIdx === chargingStartIdx;
+
   // Build interval data (each entry represents one interval - 15m or 1h)
   const hourData: HourData[] = slots.map((slot, index) => {
     const date = new Date(startDate);
     date.setMinutes(date.getMinutes() + index * intervalMinutes, 0, 0);
     const isCharging = index >= chargingStart && index < chargingEnd;
+
+    // Calculate fill fraction for partial bars
+    let chargingFillFraction: number | undefined;
+    let fillFromRight: boolean | undefined;
+
+    if (isCharging) {
+      const isFirstChargingBar = index === chargingStart;
+      const isLastChargingBar = index === chargingEnd - 1;
+
+      if (isFirstChargingBar && startsAtEarliestSlot && startOffset > 0) {
+        // First bar starts partway through - fill from right (active portion on right)
+        chargingFillFraction = 1 - startOffset;
+        fillFromRight = true;
+      } else if (isLastChargingBar && endOffset > 0) {
+        // Last bar ends partway through - fill from left (active portion on left)
+        chargingFillFraction = 1 - endOffset;
+        fillFromRight = false;
+      } else {
+        // Full bar
+        chargingFillFraction = 1;
+      }
+    }
 
     return {
       index,
@@ -57,6 +96,8 @@ export const PriceTimeline: React.FC<Props> = ({
       date,
       dayLabel: getDayLabel(date),
       details: slot.details,
+      chargingFillFraction,
+      fillFromRight,
     };
   });
 
@@ -181,17 +222,66 @@ export const PriceTimeline: React.FC<Props> = ({
             marginTop: 4,
           }}
         >
-          {hourData.map((data) => (
-            <div
-              key={data.index}
-              style={{
-                flex: 1,
-                height: '100%',
-                background: data.isCharging ? tokens.colorBrandStroke1 : 'transparent',
-                borderRadius: 2,
-              }}
-            />
-          ))}
+          {hourData.map((data) => {
+            const isPartial = data.isCharging &&
+              data.chargingFillFraction !== undefined &&
+              data.chargingFillFraction < 1;
+            const fillFraction = data.chargingFillFraction ?? 1;
+            const fillFromRight = data.fillFromRight ?? false;
+
+            if (!data.isCharging) {
+              return (
+                <div
+                  key={data.index}
+                  style={{
+                    flex: 1,
+                    height: '100%',
+                    background: 'transparent',
+                    borderRadius: 2,
+                  }}
+                />
+              );
+            }
+
+            if (isPartial) {
+              return (
+                <div
+                  key={data.index}
+                  style={{
+                    flex: 1,
+                    height: '100%',
+                    position: 'relative',
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      [fillFromRight ? 'right' : 'left']: 0,
+                      width: `${fillFraction * 100}%`,
+                      background: tokens.colorBrandStroke1,
+                      borderRadius: 2,
+                    }}
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={data.index}
+                style={{
+                  flex: 1,
+                  height: '100%',
+                  background: tokens.colorBrandStroke1,
+                  borderRadius: 2,
+                }}
+              />
+            );
+          })}
         </div>
       )}
 

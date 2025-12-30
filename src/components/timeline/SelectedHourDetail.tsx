@@ -56,6 +56,35 @@ export const SelectedHourDetail: React.FC<Props> = ({
   const endDate = new Date(hour.date.getTime() + intervalMinutes * 60 * 1000);
   const durationLabel = intervalMinutes === 60 ? '1 hour' : `${intervalMinutes} min`;
 
+  // Check if this is a partial charging bar
+  const isPartialBar = hour.isCharging &&
+    hour.chargingFillFraction !== undefined &&
+    hour.chargingFillFraction < 1;
+  const fillFraction = hour.chargingFillFraction ?? 1;
+  const fillFromRight = hour.fillFromRight ?? false;
+
+  // Calculate actual charging time for partial bars
+  let chargingStartDate = hour.date;
+  let chargingEndDate = endDate;
+
+  if (isPartialBar) {
+    const inactiveFraction = 1 - fillFraction;
+    const inactiveMinutes = Math.round(inactiveFraction * intervalMinutes);
+
+    if (fillFromRight) {
+      // Charging starts partway through (inactive portion at start)
+      chargingStartDate = new Date(hour.date.getTime() + inactiveMinutes * 60 * 1000);
+    } else {
+      // Charging ends partway through (inactive portion at end)
+      chargingEndDate = new Date(hour.date.getTime() + fillFraction * intervalMinutes * 60 * 1000);
+    }
+  }
+
+  // Calculate actual charging duration for cost calculation
+  const actualChargingMinutes = isPartialBar
+    ? fillFraction * intervalMinutes
+    : intervalMinutes;
+
   const breakdownItems = hour.details ? getBreakdownItems(hour.details) : [];
 
   return (
@@ -133,6 +162,14 @@ export const SelectedHourDetail: React.FC<Props> = ({
               {(hour.price * chargingSpeed * (intervalMinutes / 60)).toFixed(2)} DKK
             </Text>
           </Text>
+          {isPartialBar && chargingSpeed !== undefined && (
+            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+              Charging portion ({Math.round(actualChargingMinutes)} min):{' '}
+              <Text weight="semibold">
+                {(hour.price * chargingSpeed * (actualChargingMinutes / 60)).toFixed(2)} DKK
+              </Text>
+            </Text>
+          )}
         </div>
       )}
 
@@ -147,7 +184,9 @@ export const SelectedHourDetail: React.FC<Props> = ({
           }}
         >
           <Text size={200} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-            Charging
+            {isPartialBar
+              ? `Charging ${chargingStartDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - ${chargingEndDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+              : 'Charging'}
           </Text>
         </div>
       )}

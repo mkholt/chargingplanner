@@ -13,7 +13,9 @@ import {
   Battery024Regular,
   Battery1024Regular,
   BatteryCharge24Regular,
+  ChevronDown16Regular,
   ChevronDown20Regular,
+  ChevronUp16Regular,
   ChevronUp20Regular,
   Flash24Regular,
   Settings20Regular,
@@ -68,6 +70,7 @@ export const InputForm: React.FC<Props> = ({
 }) => {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Initialize form state from selected car (component remounts when car changes via key prop)
   const [startPercent, setStartPercent] = useState(20);
@@ -221,35 +224,54 @@ export const InputForm: React.FC<Props> = ({
                   snapPoint={80}
                 />
               </LabeledFormField>
-              <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label="Battery Size (kWh)">
-                <Input
-                  type="number"
-                  min={10}
-                  max={150}
-                  value={String(batterySize)}
-                  onChange={(_ev, data) => updateBatterySize(Number(data.value))}
-                  style={{ width: "100%" }}
-                />
-              </LabeledFormField>
-              <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
-                <Dropdown
-                  value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
-                  onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
-                  style={{ width: "100%" }}
-                >
-                  {CHARGING_POWER_OPTIONS.map(power => (
-                    <Option key={power.value} value={String(power.value)}>
-                      {power.label}
-                    </Option>
-                  ))}
-                </Dropdown>
-              </LabeledFormField>
               <TimeWindowSelector
                 earliest={earliest}
                 latest={latest}
                 onEarliestChange={updateEarliest}
                 onLatestChange={updateLatest}
               />
+              {/* Collapsible advanced section for battery size and charging power */}
+              <div>
+                <Button
+                  appearance="transparent"
+                  size="small"
+                  icon={isAdvancedOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+                  onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                  style={{
+                    padding: '4px 0',
+                    color: tokens.colorNeutralForeground2,
+                  }}
+                >
+                  {isAdvancedOpen ? 'Hide' : 'Show'} vehicle settings ({batterySize} kWh · {chargingSpeed} kW)
+                </Button>
+                {isAdvancedOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
+                    <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label="Battery Size (kWh)">
+                      <Input
+                        type="number"
+                        min={10}
+                        max={150}
+                        value={String(batterySize)}
+                        onChange={(_ev, data) => updateBatterySize(Number(data.value))}
+                        style={{ width: "100%" }}
+                      />
+                    </LabeledFormField>
+                    <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
+                      <Dropdown
+                        value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
+                        onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
+                        style={{ width: "100%" }}
+                      >
+                        {CHARGING_POWER_OPTIONS.map(power => (
+                          <Option key={power.value} value={String(power.value)}>
+                            {power.label}
+                          </Option>
+                        ))}
+                      </Dropdown>
+                    </LabeledFormField>
+                  </div>
+                )}
+              </div>
             </form>
           </>
         )}

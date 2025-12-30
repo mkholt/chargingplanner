@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/test-fixtures';
 import { seedCars, seedSelectedCar, createTestCar, TEST_CARS, clearAllStorage } from '../fixtures/localStorage';
+import { roundToNext15Minutes, formatTimeValue } from '../../src/utils';
 
 async function setupCarAndNavigate(page: import('@playwright/test').Page) {
   await clearAllStorage(page);
@@ -79,5 +80,28 @@ test.describe('Charging Calculation', () => {
 
     // Duration should be different (shorter with faster charging)
     expect(newDuration).not.toBe(initialDuration);
+  });
+
+  test('"Set to now" button updates earliest time to current time rounded to next 15 minutes', async ({ appPage, inputFormPage, page }) => {
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+
+    // Set earliest time to something different from now (e.g., 2 hours from now)
+    await inputFormPage.setRelativeTimeWindow(2, 10);
+    const initialTime = await inputFormPage.getEarliestTime();
+
+    // Click "Set to now" button
+    await inputFormPage.clickSetToNow();
+
+    // Get the new time
+    const newTime = await inputFormPage.getEarliestTime();
+
+    // Time should have changed
+    expect(newTime).not.toBe(initialTime);
+
+    // Verify it's close to current time (rounded to next 15 minutes)
+    // Use the same utility function as the component
+    const expectedTime = formatTimeValue(roundToNext15Minutes(new Date()));
+    expect(newTime).toBe(expectedTime);
   });
 });

@@ -1,9 +1,11 @@
 import React from 'react';
 
 import {
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
   Text,
   tokens,
-  Tooltip,
 } from '@fluentui/react-components';
 import {
   CalendarClock24Regular,
@@ -144,7 +146,9 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {(() => {
                 const date = new Date(startDate);
-                date.setMinutes(date.getMinutes() + highlightEnd * intervalMinutes, 0, 0);
+                // Subtract endOffset from the end time (endOffset is the unused portion of last interval)
+                const endOffsetMinutes = result.endOffset * intervalMinutes;
+                date.setMinutes(date.getMinutes() + highlightEnd * intervalMinutes - endOffsetMinutes, 0, 0);
                 return date.toLocaleTimeString(undefined, {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -166,21 +170,37 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               <Flash16Regular />
               <Text size={200} style={{ color: secondary }}>Energy</Text>
             </div>
-            <Tooltip
-              content={
+            <Popover withArrow openOnHover>
+              <PopoverTrigger disableButtonEnhancement>
+                <button
+                  type="button"
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: 'inherit',
+                    font: 'inherit',
+                  }}
+                  aria-label="Energy breakdown"
+                >
+                  {result.energyNeeded.toFixed(1)} kWh
+                  <Info12Regular style={{ color: secondary }} />
+                </button>
+              </PopoverTrigger>
+              <PopoverSurface>
                 <div>
                   <div>{(result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1)} kWh to battery</div>
                   <div>+{((1 - CHARGING_EFFICIENCY) * 100).toFixed(0)}% charging loss</div>
                   <div style={{ fontWeight: 600, marginTop: 4 }}>= {result.energyNeeded.toFixed(1)} kWh from grid</div>
                 </div>
-              }
-              relationship="description"
-            >
-              <div style={{ fontSize: 14, fontWeight: 600, cursor: 'help', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                {result.energyNeeded.toFixed(1)} kWh
-                <Info12Regular style={{ color: secondary }} />
-              </div>
-            </Tooltip>
+              </PopoverSurface>
+            </Popover>
           </div>
           <div data-testid="result-cost">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>

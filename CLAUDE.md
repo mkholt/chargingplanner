@@ -98,4 +98,6 @@ Located in `e2e/`. Uses Playwright for browser-based end-to-end testing.
 **Writing E2E tests:**
 - Place tests in `e2e/tests/` with `*.spec.ts` extension
 - Use Page Object classes for UI interactions
+- Use `data-testid` identifiers to locate input fields and buttons, if they are missing, add them to the component.
 - Tests run in parallel on Chromium and Mobile Chrome by default
+- There are no "Pre-existing issues" - tests should pass when adding or changing functionality - it is never okay to just ignore them without user approval

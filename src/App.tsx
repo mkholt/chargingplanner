@@ -94,7 +94,7 @@ const AppContent: React.FC = () => {
                 boxSizing: 'border-box',
               }}
             >
-              <div style={{ flex: '1 1 320px' }}>
+              <div style={{ flex: '1 1 320px', maxWidth: 400 }}>
                 <InputForm
                   key={selectedCarId ?? 'no-car'}
                   selectedCar={selectedCar}
