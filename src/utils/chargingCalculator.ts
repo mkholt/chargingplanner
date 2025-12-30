@@ -1,3 +1,5 @@
+import { CHARGING_EFFICIENCY } from './constants';
+
 export type ChargingInput = {
   startPercent: number; // e.g. 20
   endPercent: number;   // e.g. 80
@@ -21,7 +23,10 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
   const { startPercent, endPercent, batterySize, chargingSpeed, prices, intervalMinutes } = input;
   if (endPercent <= startPercent || chargingSpeed <= 0 || batterySize <= 0) return null;
 
-  const kWhNeeded = ((endPercent - startPercent) / 100) * batterySize;
+  // Energy needed in the battery
+  const kWhNeededInBattery = ((endPercent - startPercent) / 100) * batterySize;
+  // Energy drawn from grid (accounting for charging losses)
+  const kWhNeeded = kWhNeededInBattery / CHARGING_EFFICIENCY;
   const durationHours = kWhNeeded / chargingSpeed;
 
   // Convert duration to intervals (e.g., 2 hours = 8 intervals at 15m, 2 intervals at 1h)

@@ -3,18 +3,20 @@ import React from 'react';
 import {
   Text,
   tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   CalendarClock24Regular,
   Clock16Regular,
   Flash16Regular,
+  Info12Regular,
   Money16Regular,
   Play16Regular,
   Stop16Regular,
 } from '@fluentui/react-icons';
 
 import { useCars, usePriceSettings } from '@/contexts';
-import type { ChargingResult } from '@/utils';
+import { CHARGING_EFFICIENCY, type ChargingResult } from '@/utils';
 
 type Props = {
   result: ChargingResult | null;
@@ -155,9 +157,21 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               <Flash16Regular />
               <Text size={200} style={{ color: secondary }}>Energy</Text>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>
-              {result.energyNeeded.toFixed(1)} kWh
-            </div>
+            <Tooltip
+              content={
+                <div>
+                  <div>{(result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1)} kWh to battery</div>
+                  <div>+{((1 - CHARGING_EFFICIENCY) * 100).toFixed(0)}% charging loss</div>
+                  <div style={{ fontWeight: 600, marginTop: 4 }}>= {result.energyNeeded.toFixed(1)} kWh from grid</div>
+                </div>
+              }
+              relationship="description"
+            >
+              <div style={{ fontSize: 14, fontWeight: 600, cursor: 'help', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {result.energyNeeded.toFixed(1)} kWh
+                <Info12Regular style={{ color: secondary }} />
+              </div>
+            </Tooltip>
           </div>
           <div data-testid="result-cost">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>

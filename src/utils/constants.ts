@@ -20,6 +20,10 @@ export const QUERY_TIMING = {
   },
 } as const;
 
+// Charging efficiency (accounts for charging losses in cable, charger, and battery)
+// Typical AC charging efficiency is 85-90%, we use 90% (10% loss)
+export const CHARGING_EFFICIENCY = 0.9;
+
 // Charging power options (shared between InputForm and CarManager)
 export const CHARGING_POWER_OPTIONS = [
   { label: "2.3 kW (Level 1)", value: 2.3 },

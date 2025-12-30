@@ -11,6 +11,7 @@ export {
 } from './carSyncCodec';
 export type { MergeResult, SyncData } from './carSyncCodec';
 export {
+  CHARGING_EFFICIENCY,
   CHARGING_POWER_OPTIONS,
   DEBOUNCE_MS,
   MS_PER_DAY,

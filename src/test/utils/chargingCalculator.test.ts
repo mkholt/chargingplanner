@@ -1,5 +1,5 @@
-
 import { findOptimalChargingWindow, type ChargingInput } from '@/utils/chargingCalculator';
+import { CHARGING_EFFICIENCY } from '@/utils/constants';
 
 describe('findOptimalChargingWindow', () => {
   describe('invalid inputs', () => {
@@ -57,29 +57,33 @@ describe('findOptimalChargingWindow', () => {
   });
 
   describe('energy calculation', () => {
-    it('correctly calculates energy needed from percentage and battery size', () => {
+    it('correctly calculates energy needed including charging losses', () => {
       const input: ChargingInput = {
         startPercent: 20,
         endPercent: 80,
         batterySize: 60,
-        chargingSpeed: 30, // Fast charging to complete in 1.2 hours
+        chargingSpeed: 50, // Fast charging to complete quickly
         prices: [1, 1, 1, 1],
         intervalMinutes: 60,
       };
       const result = findOptimalChargingWindow(input);
       expect(result).not.toBeNull();
-      // 60% of 60kWh = 36kWh
-      expect(result!.energyNeeded).toBe(36);
+      // 60% of 60kWh = 36kWh in battery, but we need 36/0.9 = 40kWh from grid
+      const batteryEnergy = 36;
+      const gridEnergy = batteryEnergy / CHARGING_EFFICIENCY;
+      expect(result!.energyNeeded).toBe(gridEnergy);
     });
   });
 
   describe('optimal window finding with 60-minute intervals', () => {
     it('finds the cheapest single-hour window', () => {
+      // With 90% efficiency: 9kWh in battery needs 10kWh from grid
+      // At 10kW charging speed, this takes exactly 1 hour
       const input: ChargingInput = {
         startPercent: 0,
-        endPercent: 20,
+        endPercent: 18, // 18% of 50kWh = 9kWh in battery = 10kWh from grid
         batterySize: 50,
-        chargingSpeed: 10, // 10kWh needed, 1 hour charging time
+        chargingSpeed: 10, // 10kWh from grid, 1 hour charging
         prices: [3, 5, 1, 4, 2],
         intervalMinutes: 60,
       };
@@ -91,11 +95,13 @@ describe('findOptimalChargingWindow', () => {
     });
 
     it('finds the cheapest multi-hour window', () => {
+      // With 90% efficiency: 27kWh in battery needs 30kWh from grid
+      // At 10kW charging speed, this takes exactly 3 hours
       const input: ChargingInput = {
         startPercent: 0,
-        endPercent: 60,
+        endPercent: 54, // 54% of 50kWh = 27kWh in battery = 30kWh from grid
         batterySize: 50,
-        chargingSpeed: 10, // 30kWh needed, 3 hours charging time
+        chargingSpeed: 10, // 30kWh from grid, 3 hours charging
         prices: [5, 4, 1, 2, 3, 6],
         intervalMinutes: 60,
       };
@@ -108,11 +114,13 @@ describe('findOptimalChargingWindow', () => {
     });
 
     it('calculates total cost correctly', () => {
+      // With 90% efficiency: 18kWh in battery needs 20kWh from grid
+      // At 10kW charging speed, this takes 2 hours
       const input: ChargingInput = {
         startPercent: 0,
-        endPercent: 40,
+        endPercent: 36, // 36% of 50kWh = 18kWh in battery = 20kWh from grid
         batterySize: 50,
-        chargingSpeed: 10, // 20kWh needed, 2 hours charging time
+        chargingSpeed: 10, // 20kWh from grid, 2 hours charging
         prices: [2, 3],
         intervalMinutes: 60,
       };
@@ -125,11 +133,13 @@ describe('findOptimalChargingWindow', () => {
 
   describe('optimal window finding with 15-minute intervals', () => {
     it('finds the cheapest window with 15-minute intervals', () => {
+      // With 90% efficiency: 8kWh in battery needs 8.89kWh from grid
+      // At 8.89kW charging speed, this takes 1 hour = 4 intervals
       const input: ChargingInput = {
         startPercent: 0,
         endPercent: 20,
         batterySize: 40,
-        chargingSpeed: 8, // 8kWh needed, 1 hour = 4 intervals
+        chargingSpeed: 8.89, // 8.89kWh from grid, 1 hour = 4 intervals
         prices: [4, 4, 4, 4, 1, 1, 1, 1, 3, 3, 3, 3],
         intervalMinutes: 15,
       };
@@ -142,11 +152,13 @@ describe('findOptimalChargingWindow', () => {
     });
 
     it('handles partial intervals correctly', () => {
+      // With 90% efficiency: 4kWh in battery needs 4.44kWh from grid
+      // At 8.89kW charging speed, this takes 0.5 hours = 2 intervals at 15m
       const input: ChargingInput = {
         startPercent: 0,
         endPercent: 10,
         batterySize: 40,
-        chargingSpeed: 8, // 4kWh needed, 0.5 hours = 2 intervals at 15m
+        chargingSpeed: 8.89, // 4.44kWh from grid, 0.5 hours
         prices: [5, 5, 1, 2, 3, 3],
         intervalMinutes: 15,
       };
@@ -159,27 +171,32 @@ describe('findOptimalChargingWindow', () => {
 
   describe('edge cases', () => {
     it('handles charging from 0% to 100%', () => {
+      // With 90% efficiency: 50kWh in battery needs 55.56kWh from grid
+      // At 55.56kW charging speed, this takes 1 hour
       const input: ChargingInput = {
         startPercent: 0,
         endPercent: 100,
         batterySize: 50,
-        chargingSpeed: 50, // 1 hour charging time
+        chargingSpeed: 55.56, // 55.56kWh from grid, 1 hour charging
         prices: [1, 2, 3],
         intervalMinutes: 60,
       };
       const result = findOptimalChargingWindow(input);
       expect(result).not.toBeNull();
-      expect(result!.energyNeeded).toBe(50);
+      // Grid energy = 50 / 0.9 = 55.56kWh
+      expect(result!.energyNeeded).toBeCloseTo(55.56, 1);
       expect(result!.durationHours).toBe(1);
       expect(result!.startIndex).toBe(0); // Cheapest slot
     });
 
     it('works when only one valid window exists', () => {
+      // With 90% efficiency: 18kWh in battery needs 20kWh from grid
+      // At 10kW charging speed, this takes 2 hours
       const input: ChargingInput = {
         startPercent: 0,
-        endPercent: 50,
+        endPercent: 45, // 45% of 40kWh = 18kWh in battery = 20kWh from grid
         batterySize: 40,
-        chargingSpeed: 10, // 20kWh needed, 2 hours
+        chargingSpeed: 10, // 20kWh from grid, 2 hours
         prices: [1, 2],
         intervalMinutes: 60,
       };
@@ -190,11 +207,13 @@ describe('findOptimalChargingWindow', () => {
     });
 
     it('handles uniform prices', () => {
+      // With 90% efficiency: 10kWh in battery needs 11.11kWh from grid
+      // At 11.11kW charging speed, this takes 1 hour
       const input: ChargingInput = {
         startPercent: 20,
         endPercent: 40,
         batterySize: 50,
-        chargingSpeed: 10, // 10kWh needed, 1 hour
+        chargingSpeed: 11.11, // 11.11kWh from grid, 1 hour
         prices: [2, 2, 2, 2],
         intervalMinutes: 60,
       };
