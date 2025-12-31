@@ -18,6 +18,8 @@ import type { PricesApiResponse } from '@/types';
 import {
   buildTimeline,
   findOptimalChargingWindow,
+  formatDuration,
+  formatTime,
   MS_PER_MINUTE,
   type ChargingResult,
   type PriceSlot,
@@ -49,18 +51,11 @@ type CalculationError =
 type CalculationResults = {
   result: ChargingResult | null;
   slots: PriceSlot[];
-  intervalStart: Date | null;
   intervalMinutes: number;
   chargingSpeed: number | undefined;
   error: CalculationError | null;
   /** Warning when user's window extends beyond available data */
   warning: { type: 'partial_data'; validUntil: Date } | null;
-  /** Index of the last slot with valid data (exclusive) */
-  validDataEndIdx: number;
-  /** Fraction of first interval unavailable (for partial start blocks) */
-  startOffset: number;
-  /** The slot index where user's earliest time falls (for determining when to apply startOffset) */
-  chargingStartIdx: number;
 };
 
 function calculateResults(
@@ -70,14 +65,10 @@ function calculateResults(
   const emptyResults: CalculationResults = {
     result: null,
     slots: [],
-    intervalStart: null,
     intervalMinutes: 60,
     chargingSpeed: undefined,
     error: null,
     warning: null,
-    validDataEndIdx: 0,
-    startOffset: 0,
-    chargingStartIdx: 0,
   };
 
   if (!input || !priceData) {
@@ -109,76 +100,62 @@ function calculateResults(
     };
   }
 
-  // Check if we have valid price data - if not, we can't calculate
-  if (timeline.validDataEndIdx === 0) {
+  // Check if we have valid price data using timestamp comparison
+  const hasValidData = timeline.slots.some(s => s.hasData);
+  if (!hasValidData) {
     return {
       ...emptyResults,
       slots: timeline.slots,
-      intervalStart: timeline.startDate,
       intervalMinutes: timeline.intervalMinutes,
       chargingSpeed: input.chargingSpeed,
       error: { type: 'no_timeline', reason: 'No price data available yet. Prices for tomorrow are usually published around 13:00.' },
     };
   }
 
-  // Calculate valid data end time for warnings
-  const validDataEndTime = new Date(timeline.startDate);
-  validDataEndTime.setMinutes(validDataEndTime.getMinutes() + timeline.validDataEndIdx * timeline.intervalMinutes);
+  // Use timestamp-based validDataEndTime from timeline
+  const validDataEndTime = timeline.validDataEndTime;
 
-  // Constrain charging window to only use slots with valid price data
-  const effectiveChargingEndIdx = Math.min(timeline.chargingEndIdx, timeline.validDataEndIdx);
-
-  // Check if user's window extends beyond available data
+  // Check if user's window extends beyond available data (using timestamps)
   let warning: CalculationResults['warning'] = null;
-  if (timeline.chargingEndIdx > timeline.validDataEndIdx && timeline.chargingStartIdx < timeline.validDataEndIdx) {
+  if (latestDate > validDataEndTime && earliestDate < validDataEndTime) {
     warning = { type: 'partial_data', validUntil: validDataEndTime };
   }
 
   // If the entire charging window is beyond valid data, show error
-  if (timeline.chargingStartIdx >= timeline.validDataEndIdx) {
+  if (earliestDate >= validDataEndTime) {
     return {
       ...emptyResults,
       slots: timeline.slots,
-      intervalStart: timeline.startDate,
       intervalMinutes: timeline.intervalMinutes,
       chargingSpeed: input.chargingSpeed,
       error: { type: 'incomplete_data', validUntil: validDataEndTime },
     };
   }
 
-  // Extract prices for the charging interval only (constrained to valid data)
-  const chargingIntervalPrices = timeline.slots
-    .slice(timeline.chargingStartIdx, effectiveChargingEndIdx)
-    .map(slot => slot.total);
-
   // Calculate required charging duration for error messages
   const kWhNeeded = ((input.endPercent - input.startPercent) / 100) * input.batterySize;
   const requiredHours = kWhNeeded / input.chargingSpeed;
-  const availableHours = chargingIntervalPrices.length * (timeline.intervalMinutes / 60);
 
-  // Find optimal charging window
+  // Calculate available hours using timestamps
+  const effectiveLatestEnd = new Date(Math.min(latestDate.getTime(), validDataEndTime.getTime()));
+  const availableMs = effectiveLatestEnd.getTime() - earliestDate.getTime();
+  const availableHours = availableMs / (60 * 60 * 1000);
+
+  // Find optimal charging window using timestamp-based interface
   const calcResult = findOptimalChargingWindow({
     startPercent: input.startPercent,
     endPercent: input.endPercent,
     batterySize: input.batterySize,
     chargingSpeed: input.chargingSpeed,
-    prices: chargingIntervalPrices,
+    slots: timeline.slots,
     intervalMinutes: timeline.intervalMinutes,
-    startOffset: timeline.startOffset,
+    earliestStart: earliestDate,
+    latestEnd: effectiveLatestEnd,
   });
-
-  // Adjust result indices to be relative to the full timeline
-  const adjustedResult = calcResult
-    ? {
-        ...calcResult,
-        startIndex: calcResult.startIndex + timeline.chargingStartIdx,
-        endIndex: calcResult.endIndex + timeline.chargingStartIdx,
-      }
-    : null;
 
   // Determine error if calculation failed
   let error: CalculationError | null = null;
-  if (!adjustedResult) {
+  if (!calcResult) {
     if (input.endPercent <= input.startPercent) {
       error = { type: 'invalid_params', reason: 'End percentage must be greater than start percentage.' };
     } else if (input.chargingSpeed <= 0 || input.batterySize <= 0) {
@@ -191,31 +168,13 @@ function calculateResults(
   }
 
   return {
-    result: adjustedResult,
+    result: calcResult,
     slots: timeline.slots,
-    intervalStart: timeline.startDate,
     intervalMinutes: timeline.intervalMinutes,
     chargingSpeed: input.chargingSpeed,
     error,
     warning,
-    validDataEndIdx: timeline.validDataEndIdx,
-    startOffset: timeline.startOffset,
-    chargingStartIdx: timeline.chargingStartIdx,
   };
-}
-
-/** Format duration as "Xh Ym" */
-function formatDuration(hours: number): string {
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (m === 0) return `${h}h`;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
-
-/** Format time for display */
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Get user-friendly error message */
@@ -269,7 +228,7 @@ export const Results: React.FC<Props> = ({
   const subtitle = useSubtitle();
 
   // Calculate results from raw inputs
-  const { result, slots, intervalStart, intervalMinutes, chargingSpeed, error, warning, validDataEndIdx, startOffset, chargingStartIdx } = useMemo(
+  const { result, slots, intervalMinutes, chargingSpeed, error, warning } = useMemo(
     () => calculateResults(formInput, priceData),
     [formInput, priceData]
   );
@@ -332,7 +291,7 @@ export const Results: React.FC<Props> = ({
     );
   }
 
-  if (!slots.length || !intervalStart) {
+  if (!slots.length) {
     return (
       <Card>
         <Text>No result to display.</Text>
@@ -340,33 +299,17 @@ export const Results: React.FC<Props> = ({
     );
   }
 
-  // Filter out slots before the current interval and after valid data ends
+  // Filter slots using timestamps: show from current interval to end of valid data
   const now = new Date();
   const currentIntervalStart = new Date(now);
   // Round down to the start of the current interval
   const currentMinutes = currentIntervalStart.getMinutes();
   currentIntervalStart.setMinutes(Math.floor(currentMinutes / intervalMinutes) * intervalMinutes, 0, 0);
 
-  let firstIdx = 0;
-  for (let i = 0; i < slots.length; i++) {
-    const intervalDate = new Date(intervalStart);
-    intervalDate.setMinutes(intervalDate.getMinutes() + i * intervalMinutes, 0, 0);
-    if (intervalDate >= currentIntervalStart) {
-      firstIdx = i;
-      break;
-    }
-  }
-  // Only show slots with valid data (exclude tomorrow's 0 DKK slots when data isn't available yet)
-  const lastIdx = Math.max(firstIdx, validDataEndIdx);
-  const filteredSlots = slots.slice(firstIdx, lastIdx);
-  const filteredStart = new Date(intervalStart);
-  filteredStart.setMinutes(filteredStart.getMinutes() + firstIdx * intervalMinutes, 0, 0);
-
-  // Highlight charging window (adjusted for filtered index)
-  let highlightStart = result ? result.startIndex - firstIdx : -1;
-  let highlightEnd = result ? result.endIndex - firstIdx : -1;
-  if (highlightStart < 0 || highlightStart >= filteredSlots.length) highlightStart = -1;
-  if (highlightEnd < 0 || highlightEnd > filteredSlots.length) highlightEnd = filteredSlots.length;
+  // Filter using slot timestamps directly
+  const filteredSlots = slots.filter(slot =>
+    slot.timestamp >= currentIntervalStart && slot.hasData
+  );
 
   return (
     <Card style={{
@@ -374,16 +317,7 @@ export const Results: React.FC<Props> = ({
       background: tokens.colorNeutralBackground2,
       border: `1px solid ${tokens.colorNeutralStroke1}`,
     }}>
-      <ChargingPlanHeader
-        result={result}
-        startDate={filteredStart}
-        highlightStart={highlightStart}
-        highlightEnd={highlightEnd}
-        intervalMinutes={intervalMinutes}
-        startOffset={startOffset}
-        chargingStartIdx={chargingStartIdx}
-        firstVisibleIdx={firstIdx}
-      />
+      <ChargingPlanHeader result={result} />
       {!result && error && error.type !== 'no_input' && (
         <div
           data-testid="result-error"
@@ -426,15 +360,10 @@ export const Results: React.FC<Props> = ({
       )}
       <PriceTimeline
         slots={filteredSlots}
-        startDate={filteredStart}
-        chargingStart={highlightStart}
-        chargingEnd={highlightEnd}
+        chargingStart={result?.startTime}
+        chargingEnd={result?.endTime}
         chargingSpeed={chargingSpeed}
         intervalMinutes={intervalMinutes}
-        startOffset={result?.startOffset ?? 0}
-        endOffset={result?.endOffset ?? 0}
-        chargingStartIdx={chargingStartIdx}
-        firstVisibleIdx={firstIdx}
       />
     </Card>
   );

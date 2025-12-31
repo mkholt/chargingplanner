@@ -2,25 +2,19 @@ import type { PricesApiResponse } from '@/types';
 
 import { MS_PER_DAY, MS_PER_MINUTE } from './constants';
 import { getLocalDateString } from './dateUtils';
-import { mapApiResponseToPrices, type PriceSlot } from './priceMapper';
-
-const EMPTY_SLOT: PriceSlot = { total: 0, hasData: false };
+import { createEmptySlots, mapApiResponseToPrices, type PriceSlot } from './priceMapper';
 
 export interface TimelineData {
-  /** All price slots from now to end of available data */
+  /** All price slots from now to end of available data (each slot has its own timestamp) */
   slots: PriceSlot[];
-  /** Start time of the timeline (truncated to current interval) */
-  startDate: Date;
-  /** Index of charging interval start within the timeline */
-  chargingStartIdx: number;
-  /** Index of charging interval end within the timeline */
-  chargingEndIdx: number;
   /** Interval size in minutes (15 or 60) */
   intervalMinutes: number;
-  /** Index of the last slot with valid price data (exclusive) - slots beyond this have no real data */
-  validDataEndIdx: number;
-  /** Fraction of the first interval that's unavailable (0-1), e.g., 0.5 means start halfway through */
-  startOffset: number;
+  /** User's earliest allowed charging start time */
+  chargingStartTime: Date;
+  /** User's latest allowed charging end time */
+  chargingEndTime: Date;
+  /** End time of valid price data (timestamp after last slot with data) */
+  validDataEndTime: Date;
 }
 
 /**
@@ -57,8 +51,8 @@ export function buildTimeline(
   const tomorrowDate = new Date(now.getTime() + MS_PER_DAY);
   const tomorrow = getLocalDateString(tomorrowDate);
 
-  const todaySlots = slotsByDate.get(today) || new Array(intervalsPerDay).fill(EMPTY_SLOT);
-  const tomorrowSlots = slotsByDate.get(tomorrow) || new Array(intervalsPerDay).fill(EMPTY_SLOT);
+  const todaySlots = slotsByDate.get(today) || createEmptySlots(now, intervalsPerDay, intervalMinutes);
+  const tomorrowSlots = slotsByDate.get(tomorrow) || createEmptySlots(tomorrowDate, intervalsPerDay, intervalMinutes);
 
   const allSlots = [...todaySlots, ...tomorrowSlots];
 
@@ -78,38 +72,24 @@ export function buildTimeline(
     Math.floor(minutesSinceMidnight / intervalMinutes);
   const timelineSlots = allSlots.slice(nowIntervalIdx);
 
-  // Calculate the actual start time of our sliced timeline
-  const timelineStart = new Date(timelineAllStart);
-  timelineStart.setMinutes(nowIntervalIdx * intervalMinutes, 0, 0);
-
-  // Find the last index with valid price data (relative to sliced timeline)
-  let validDataEndIdx = 0;
-  for (let i = 0; i < timelineSlots.length; i++) {
-    if (timelineSlots[i].hasData) {
-      validDataEndIdx = i + 1; // exclusive index
+  // Find the last slot with valid price data to calculate validDataEndTime
+  let lastValidSlot: PriceSlot | null = null;
+  for (const slot of timelineSlots) {
+    if (slot.hasData) {
+      lastValidSlot = slot;
     }
   }
 
-  // Calculate charging interval indices relative to the timeline
-  // Use floor for start to support partial first blocks (e.g., 01:15 uses the 01:00 slot partially)
-  const startIntervalFractional = (earliestDate.getTime() - timelineStart.getTime()) / msPerInterval;
-  const chargingStartIdx = Math.max(Math.floor(startIntervalFractional), 0);
-  // startOffset is the fraction of the first interval that's unavailable (before earliestDate)
-  const startOffset = Math.max(0, Math.min(1, startIntervalFractional - chargingStartIdx));
-
-  // Use ceil for end: if user selects 17:30 as latest end, include the 17:00-18:00 slot
-  const chargingEndIdx = Math.max(
-    Math.ceil((latestDate.getTime() - timelineStart.getTime()) / msPerInterval),
-    chargingStartIdx
-  );
+  // Calculate valid data end time from the last slot with data
+  const validDataEndTime = lastValidSlot
+    ? new Date(lastValidSlot.timestamp.getTime() + msPerInterval)
+    : timelineSlots[0].timestamp;
 
   return {
     slots: timelineSlots,
-    startDate: timelineStart,
-    chargingStartIdx,
-    chargingEndIdx,
     intervalMinutes,
-    validDataEndIdx,
-    startOffset,
+    chargingStartTime: earliestDate,
+    chargingEndTime: latestDate,
+    validDataEndTime,
   };
 }

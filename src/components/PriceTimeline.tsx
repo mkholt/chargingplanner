@@ -14,36 +14,24 @@ import {
   SelectedHourDetail,
   TimelineBar,
 } from '@/components/timeline';
-import type { PriceSlot } from '@/utils';
+import { MS_PER_MINUTE, type PriceSlot } from '@/utils';
 
 type Props = {
   slots: PriceSlot[];
-  startDate: Date;
-  chargingStart?: number;
-  chargingEnd?: number;
+  /** Start time of optimal charging window */
+  chargingStart?: Date;
+  /** End time of optimal charging window */
+  chargingEnd?: Date;
   chargingSpeed?: number;
   intervalMinutes?: number;
-  /** Fraction of first interval unavailable (0-1), for partial start blocks */
-  startOffset?: number;
-  /** Fraction of last interval unused (0-1), for partial end blocks */
-  endOffset?: number;
-  /** The slot index where user's earliest time falls (in the full timeline) */
-  chargingStartIdx?: number;
-  /** The first visible slot index after filtering */
-  firstVisibleIdx?: number;
 };
 
 export const PriceTimeline: React.FC<Props> = ({
   slots,
-  startDate,
-  chargingStart = -1,
-  chargingEnd = -1,
+  chargingStart,
+  chargingEnd,
   chargingSpeed,
   intervalMinutes = 60,
-  startOffset = 0,
-  endOffset = 0,
-  chargingStartIdx = 0,
-  firstVisibleIdx = 0,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,32 +42,35 @@ export const PriceTimeline: React.FC<Props> = ({
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
-  // Determine if the first charging bar is at the user's earliest slot (where startOffset applies)
-  // chargingStart is relative to filtered slots, chargingStartIdx is the absolute index in full timeline
-  const actualFirstChargingIdx = chargingStart + firstVisibleIdx;
-  const startsAtEarliestSlot = actualFirstChargingIdx === chargingStartIdx;
+  const msPerInterval = intervalMinutes * MS_PER_MINUTE;
 
-  // Build interval data (each entry represents one interval - 15m or 1h)
+  // Build interval data using slot timestamps directly
   const hourData: HourData[] = slots.map((slot, index) => {
-    const date = new Date(startDate);
-    date.setMinutes(date.getMinutes() + index * intervalMinutes, 0, 0);
-    const isCharging = index >= chargingStart && index < chargingEnd;
+    const slotTime = slot.timestamp;
+    const slotEndTime = new Date(slotTime.getTime() + msPerInterval);
+
+    // Determine if this slot is in the charging window using timestamps
+    const isCharging = chargingStart && chargingEnd
+      ? slotTime < chargingEnd && slotEndTime > chargingStart
+      : false;
 
     // Calculate fill fraction for partial bars
     let chargingFillFraction: number | undefined;
     let fillFromRight: boolean | undefined;
 
-    if (isCharging) {
-      const isFirstChargingBar = index === chargingStart;
-      const isLastChargingBar = index === chargingEnd - 1;
+    if (isCharging && chargingStart && chargingEnd) {
+      const isFirstChargingBar = chargingStart > slotTime && chargingStart < slotEndTime;
+      const isLastChargingBar = chargingEnd > slotTime && chargingEnd < slotEndTime;
 
-      if (isFirstChargingBar && startsAtEarliestSlot && startOffset > 0) {
+      if (isFirstChargingBar) {
         // First bar starts partway through - fill from right (active portion on right)
-        chargingFillFraction = 1 - startOffset;
+        const offsetMs = chargingStart.getTime() - slotTime.getTime();
+        chargingFillFraction = 1 - (offsetMs / msPerInterval);
         fillFromRight = true;
-      } else if (isLastChargingBar && endOffset > 0) {
+      } else if (isLastChargingBar) {
         // Last bar ends partway through - fill from left (active portion on left)
-        chargingFillFraction = 1 - endOffset;
+        const usedMs = chargingEnd.getTime() - slotTime.getTime();
+        chargingFillFraction = usedMs / msPerInterval;
         fillFromRight = false;
       } else {
         // Full bar
@@ -89,12 +80,12 @@ export const PriceTimeline: React.FC<Props> = ({
 
     return {
       index,
-      hour: date.getHours(),
-      minute: date.getMinutes(),
+      hour: slotTime.getHours(),
+      minute: slotTime.getMinutes(),
       price: slot.total,
       isCharging,
-      date,
-      dayLabel: getDayLabel(date),
+      date: slotTime,
+      dayLabel: getDayLabel(slotTime),
       details: slot.details,
       chargingFillFraction,
       fillFromRight,
@@ -213,7 +204,7 @@ export const PriceTimeline: React.FC<Props> = ({
       </div>
 
       {/* Charging indicator line */}
-      {chargingStart >= 0 && chargingEnd > chargingStart && (
+      {chargingStart && chargingEnd && chargingEnd > chargingStart && (
         <div
           style={{
             display: 'flex',

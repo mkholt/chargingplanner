@@ -20,8 +20,12 @@ export {
   QUERY_TIMING,
 } from './constants';
 export {
+  findSlotIndexByTime,
+  formatDuration,
+  formatTime,
   formatTimeValue,
   getDateLabel,
+  getIntervalOffset,
   getLocalDateString,
   getNextOccurrence,
   roundToNext15Minutes,

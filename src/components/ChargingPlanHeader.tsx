@@ -18,44 +18,14 @@ import {
 } from '@fluentui/react-icons';
 
 import { useCars, usePriceSettings } from '@/contexts';
-import { CHARGING_EFFICIENCY, type ChargingResult } from '@/utils';
+import { CHARGING_EFFICIENCY, formatDuration, type ChargingResult } from '@/utils';
 
 type Props = {
   result: ChargingResult | null;
-  /** Start date for calculating display times */
-  startDate: Date;
-  /** Highlight start index (for time calculation) */
-  highlightStart: number;
-  /** Highlight end index (for time calculation) */
-  highlightEnd: number;
-  /** Interval size in minutes */
-  intervalMinutes: number;
-  /** Fraction of first interval that's unavailable (0-1), for partial start blocks */
-  startOffset?: number;
-  /** The original slot index where user's earliest time falls (in the full timeline, before filtering) */
-  chargingStartIdx?: number;
-  /** The first visible slot index after filtering (to determine when startOffset applies) */
-  firstVisibleIdx?: number;
 };
-
-/** Format duration as "Xh Ym" */
-function formatDuration(hours: number): string {
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (m === 0) return `${h}h`;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
 
 export const ChargingPlanHeader: React.FC<Props> = ({
   result,
-  startDate,
-  highlightStart,
-  highlightEnd,
-  intervalMinutes,
-  startOffset = 0,
-  chargingStartIdx = 0,
-  firstVisibleIdx = 0,
 }) => {
   const { cars, selectedCarId } = useCars();
   const { resolved: priceSettings } = usePriceSettings();
@@ -124,18 +94,10 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               <Text size={200} style={{ color: secondary }}>Start</Text>
             </div>
             <div style={{ fontSize: 20, fontWeight: 700 }}>
-              {(() => {
-                const date = new Date(startDate);
-                // Apply startOffset only when charging starts at user's earliest time slot
-                const actualStartIdx = highlightStart + firstVisibleIdx;
-                const startsAtEarliestSlot = actualStartIdx === chargingStartIdx;
-                const offsetMinutes = startsAtEarliestSlot ? startOffset * intervalMinutes : 0;
-                date.setMinutes(date.getMinutes() + highlightStart * intervalMinutes + offsetMinutes, 0, 0);
-                return date.toLocaleTimeString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-              })()}
+              {result.startTime.toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </div>
           </div>
           <div data-testid="result-end">
@@ -144,16 +106,10 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               <Text size={200} style={{ color: secondary }}>End</Text>
             </div>
             <div style={{ fontSize: 20, fontWeight: 700 }}>
-              {(() => {
-                const date = new Date(startDate);
-                // Subtract endOffset from the end time (endOffset is the unused portion of last interval)
-                const endOffsetMinutes = result.endOffset * intervalMinutes;
-                date.setMinutes(date.getMinutes() + highlightEnd * intervalMinutes - endOffsetMinutes, 0, 0);
-                return date.toLocaleTimeString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-              })()}
+              {result.endTime.toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </div>
           </div>
           <div data-testid="result-duration">

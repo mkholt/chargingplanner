@@ -77,8 +77,8 @@ test.describe('Calculation Verification', () => {
       await setupCarAndNavigate(page, TEST_CARS.TESLA_MODEL_3);
       await appPage.waitForAppReady();
 
-      // Don't change time window - use default which gives enough hours
-      // Changing time window on mobile causes issues with TimePicker "next occurrence" logic
+      // Extend time window to accommodate 10.81 hours of charging
+      await inputFormPage.setRelativeTimeWindow(0, 12);
 
       await inputFormPage.setStartPercent(20);
       await inputFormPage.setEndPercent(80);

@@ -4,8 +4,10 @@ import { getLocalDateString } from './dateUtils';
 
 export type PriceDetails = NonNullable<PriceEntry['details']>;
 
-/** A price slot with its total and optional breakdown details */
+/** A price slot with its total, optional breakdown details, and timestamp */
 export type PriceSlot = {
+  /** Start time of this interval */
+  timestamp: Date;
   total: number;
   details?: PriceDetails;
   /** Whether this slot has real price data (false = placeholder) */
@@ -21,7 +23,25 @@ export type PriceMapResult = {
   intervalsPerDay: number;
 };
 
-const EMPTY_SLOT: PriceSlot = { total: 0, hasData: false };
+/**
+ * Create an array of empty slots with timestamps for a given day.
+ */
+export function createEmptySlots(dayDate: Date, intervalsPerDay: number, intervalMinutes: number): PriceSlot[] {
+  const dayStart = new Date(dayDate);
+  dayStart.setHours(0, 0, 0, 0);
+
+  const slots: PriceSlot[] = [];
+  for (let i = 0; i < intervalsPerDay; i++) {
+    const slotTime = new Date(dayStart);
+    slotTime.setMinutes(i * intervalMinutes);
+    slots.push({
+      timestamp: slotTime,
+      total: 0,
+      hasData: false,
+    });
+  }
+  return slots;
+}
 
 /**
  * Convert API response to a map of date -> price slots.
@@ -41,6 +61,7 @@ export function mapApiResponseToPrices(response: PricesApiResponse): PriceMapRes
   const is15m = firstResolution === '15m';
   const intervalsPerDay = is15m ? 96 : 24;
   const resolution = is15m ? '15m' : '1h';
+  const intervalMinutes = is15m ? 15 : 60;
 
   for (const entry of response.prices) {
     if (!entry.date || entry.price?.total === undefined) {
@@ -58,11 +79,12 @@ export function mapApiResponseToPrices(response: PricesApiResponse): PriceMapRes
       : hour; // 0-23 for 1h
 
     if (!slotsByDate.has(dateKey)) {
-      slotsByDate.set(dateKey, new Array(intervalsPerDay).fill(EMPTY_SLOT));
+      slotsByDate.set(dateKey, createEmptySlots(date, intervalsPerDay, intervalMinutes));
     }
 
     const slots = slotsByDate.get(dateKey)!;
     slots[intervalIndex] = {
+      timestamp: date,
       total: entry.price.total,
       details: entry.details,
       hasData: true,

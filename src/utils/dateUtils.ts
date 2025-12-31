@@ -1,3 +1,6 @@
+import { MS_PER_MINUTE } from './constants';
+import type { PriceSlot } from './priceMapper';
+
 // Formatter for YYYY-MM-DD (used as cache keys for price data)
 // Note: sv-SE (Swedish) locale naturally formats as ISO 8601 (YYYY-MM-DD)
 const dateKeyFormatter = new Intl.DateTimeFormat('sv-SE', {
@@ -82,4 +85,61 @@ export function getDateLabel(date: Date): string {
     return 'Tomorrow';
   }
   return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+/**
+ * Find the index of a slot by timestamp.
+ * Returns -1 if slots array is empty.
+ * Returns the index of the slot containing the timestamp (floored).
+ * If target is before first slot, returns 0.
+ * If target is beyond last slot, returns last index.
+ */
+export function findSlotIndexByTime(
+  slots: PriceSlot[],
+  targetTime: Date,
+  intervalMinutes: number
+): number {
+  if (slots.length === 0) return -1;
+
+  const firstSlotTime = slots[0].timestamp.getTime();
+  const msPerInterval = intervalMinutes * MS_PER_MINUTE;
+  const offsetMs = targetTime.getTime() - firstSlotTime;
+
+  if (offsetMs < 0) return 0; // Before first slot
+
+  const index = Math.floor(offsetMs / msPerInterval);
+  return Math.min(index, slots.length - 1);
+}
+
+/**
+ * Calculate the fractional offset within an interval for a given timestamp.
+ * Returns 0 if the timestamp is exactly at the interval start.
+ * Returns a value between 0 and 1 representing the position within the interval.
+ */
+export function getIntervalOffset(
+  timestamp: Date,
+  intervalMinutes: number
+): number {
+  const minutes = timestamp.getMinutes();
+  const offsetMinutes = minutes % intervalMinutes;
+  return offsetMinutes / intervalMinutes;
+}
+
+/**
+ * Format a duration in hours as "Xh Ym" string.
+ * Examples: 3.5 => "3h 30m", 2 => "2h", 0.5 => "30m"
+ */
+export function formatDuration(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (m === 0) return `${h}h`;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+/**
+ * Format a Date for display as HH:MM using Danish locale.
+ */
+export function formatTime(date: Date): string {
+  return date.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 }

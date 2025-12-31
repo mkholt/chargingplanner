@@ -42,9 +42,9 @@ export class ResultsPage {
   }
 
   async getEnergy(): Promise<string> {
-    // Get the value div (second child, after the label row)
-    const valueDiv = this.resultEnergy.locator('div').last();
-    return await valueDiv.textContent() ?? '';
+    // Energy uses a button with popover - get the button text
+    const button = this.resultEnergy.locator('button');
+    return await button.textContent() ?? '';
   }
 
   async getCost(): Promise<string> {

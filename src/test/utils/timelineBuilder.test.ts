@@ -47,9 +47,10 @@ describe('buildTimeline', () => {
 
       expect(result).not.toBeNull();
       expect(result!.slots).toBeDefined();
-      expect(result!.startDate).toBeInstanceOf(Date);
-      expect(typeof result!.chargingStartIdx).toBe('number');
-      expect(typeof result!.chargingEndIdx).toBe('number');
+      expect(result!.slots[0].timestamp).toBeInstanceOf(Date);
+      expect(result!.chargingStartTime).toBeInstanceOf(Date);
+      expect(result!.chargingEndTime).toBeInstanceOf(Date);
+      expect(result!.validDataEndTime).toBeInstanceOf(Date);
       expect(result!.intervalMinutes).toBe(15); // Mock data uses 15-minute intervals
     });
 
@@ -80,8 +81,7 @@ describe('buildTimeline', () => {
   });
 
   describe('charging interval calculations', () => {
-    it('calculates charging start index correctly', () => {
-      // Current time is 10:00, charging starts at 12:00 (2 hours later = 8 intervals at 15m)
+    it('stores chargingStartTime from earliestDate', () => {
       const earliestDate = new Date(2024, 0, 15, 12, 0, 0);
       const latestDate = new Date(2024, 0, 15, 18, 0, 0);
       const priceData = getMockApiResponse('DK1');
@@ -89,12 +89,10 @@ describe('buildTimeline', () => {
       const result = buildTimeline(earliestDate, latestDate, priceData);
 
       expect(result).not.toBeNull();
-      // 2 hours = 8 intervals at 15-minute resolution
-      expect(result!.chargingStartIdx).toBe(8);
+      expect(result!.chargingStartTime).toEqual(earliestDate);
     });
 
-    it('calculates charging end index correctly', () => {
-      // Current time is 10:00, charging ends at 18:00 (8 hours later = 32 intervals at 15m)
+    it('stores chargingEndTime from latestDate', () => {
       const earliestDate = new Date(2024, 0, 15, 12, 0, 0);
       const latestDate = new Date(2024, 0, 15, 18, 0, 0);
       const priceData = getMockApiResponse('DK1');
@@ -102,11 +100,10 @@ describe('buildTimeline', () => {
       const result = buildTimeline(earliestDate, latestDate, priceData);
 
       expect(result).not.toBeNull();
-      // 8 hours = 32 intervals at 15-minute resolution
-      expect(result!.chargingEndIdx).toBe(32);
+      expect(result!.chargingEndTime).toEqual(latestDate);
     });
 
-    it('clamps charging start index to 0 when earliest date is in the past', () => {
+    it('preserves charging times when earliest is in the past', () => {
       // Earliest date is before current time
       const earliestDate = new Date(2024, 0, 15, 8, 0, 0); // 2 hours before now
       const latestDate = new Date(2024, 0, 15, 18, 0, 0);
@@ -115,11 +112,12 @@ describe('buildTimeline', () => {
       const result = buildTimeline(earliestDate, latestDate, priceData);
 
       expect(result).not.toBeNull();
-      expect(result!.chargingStartIdx).toBe(0);
+      // chargingStartTime stores the original earliestDate
+      expect(result!.chargingStartTime).toEqual(earliestDate);
     });
 
-    it('ensures chargingEndIdx >= chargingStartIdx', () => {
-      // Both dates in the past should result in both indices being 0
+    it('ensures chargingEndTime >= chargingStartTime', () => {
+      // Both dates in the past
       const earliestDate = new Date(2024, 0, 15, 8, 0, 0);
       const latestDate = new Date(2024, 0, 15, 9, 0, 0);
       const priceData = getMockApiResponse('DK1');
@@ -127,7 +125,7 @@ describe('buildTimeline', () => {
       const result = buildTimeline(earliestDate, latestDate, priceData);
 
       expect(result).not.toBeNull();
-      expect(result!.chargingEndIdx).toBeGreaterThanOrEqual(result!.chargingStartIdx);
+      expect(result!.chargingEndTime.getTime()).toBeGreaterThanOrEqual(result!.chargingStartTime.getTime());
     });
   });
 
@@ -169,6 +167,39 @@ describe('buildTimeline', () => {
       expect(typeof firstSlot.total).toBe('number');
       expect(firstSlot.total).toBeGreaterThan(0);
       expect(firstSlot.details).toBeDefined();
+    });
+  });
+
+  describe('validDataEndTime calculation', () => {
+    it('calculates validDataEndTime as last valid slot timestamp plus interval', () => {
+      const earliestDate = new Date(2024, 0, 15, 12, 0, 0);
+      const latestDate = new Date(2024, 0, 15, 18, 0, 0);
+      const priceData = getMockApiResponse('DK1');
+
+      const result = buildTimeline(earliestDate, latestDate, priceData);
+
+      expect(result).not.toBeNull();
+      // Find the last slot with hasData = true
+      const slotsWithData = result!.slots.filter(s => s.hasData);
+      expect(slotsWithData.length).toBeGreaterThan(0);
+
+      const lastValidSlot = slotsWithData[slotsWithData.length - 1];
+      const expectedEndTime = new Date(lastValidSlot.timestamp.getTime() + result!.intervalMinutes * 60 * 1000);
+
+      expect(result!.validDataEndTime).toEqual(expectedEndTime);
+    });
+
+    it('returns first slot timestamp when no valid data exists', () => {
+      const earliestDate = new Date(2024, 0, 15, 12, 0, 0);
+      const latestDate = new Date(2024, 0, 15, 18, 0, 0);
+      // Empty price data - no valid slots
+      const priceData = { prices: [] };
+
+      const result = buildTimeline(earliestDate, latestDate, priceData);
+
+      expect(result).not.toBeNull();
+      // When no slots have data, validDataEndTime falls back to first slot timestamp
+      expect(result!.validDataEndTime).toEqual(result!.slots[0].timestamp);
     });
   });
 });
