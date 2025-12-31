@@ -1,4 +1,5 @@
 import { Page, Locator, expect } from '@playwright/test';
+import { FIXED_TEST_TIME } from '../fixtures/time';
 
 export class InputFormPage {
   readonly page: Page;
@@ -16,12 +17,12 @@ export class InputFormPage {
 
   constructor(page: Page) {
     this.page = page;
-    // Number inputs in order: start %, end %, battery size (when advanced section is open)
-    this.startPercentInput = page.locator('input[type="number"]').nth(0);
-    this.endPercentInput = page.locator('input[type="number"]').nth(1);
-    this.batterySizeInput = page.locator('input[type="number"]').nth(2);
-    // Charging power is the second combobox (first is car selector)
-    this.chargingPowerDropdown = page.getByRole('combobox').nth(1);
+    // Number inputs with data-testid
+    this.startPercentInput = page.getByTestId('start-percent-input');
+    this.endPercentInput = page.getByTestId('end-percent-input');
+    this.batterySizeInput = page.getByTestId('battery-size-input');
+    // Charging power dropdown
+    this.chargingPowerDropdown = page.getByTestId('charging-power-dropdown');
     // Time pickers (Fluent UI TimePicker with data-testid)
     this.earliestTimePicker = page.getByTestId('earliest-time-picker');
     this.latestTimePicker = page.getByTestId('latest-time-picker');
@@ -29,9 +30,9 @@ export class InputFormPage {
     this.resultCost = page.getByTestId('result-cost');
     this.resultError = page.getByTestId('result-error');
     // Expand button (only visible on mobile when collapsed)
-    this.expandButton = page.getByRole('button', { name: 'Expand settings' });
+    this.expandButton = page.getByTestId('expand-settings-button');
     // Vehicle settings toggle button (collapsible advanced section)
-    this.vehicleSettingsButton = page.getByRole('button', { name: /vehicle settings/ });
+    this.vehicleSettingsButton = page.getByTestId('vehicle-settings-button');
     // Set to now button in earliest time picker
     this.setToNowButton = page.getByTestId('set-to-now-button');
   }
@@ -40,6 +41,10 @@ export class InputFormPage {
    * Ensure the form is expanded (on mobile it may be collapsed)
    */
   async ensureExpanded(): Promise<void> {
+    // Check if form fields are already visible
+    if (await this.earliestTimePicker.isVisible()) {
+      return; // Already expanded
+    }
     // If expand button is visible, click it to expand the form
     if (await this.expandButton.isVisible()) {
       await this.expandButton.click();
@@ -165,12 +170,13 @@ export class InputFormPage {
   }
 
   /**
-   * Create a time window relative to now.
+   * Create a time window relative to the frozen test time.
    * The TimePicker automatically determines Today/Tomorrow based on current time,
    * so we just need to pass the target times in HH:mm format.
+   * Uses FIXED_TEST_TIME for consistency in E2E tests.
    */
   async setRelativeTimeWindow(startOffsetHours: number, endOffsetHours: number): Promise<void> {
-    const now = new Date();
+    const now = FIXED_TEST_TIME;
     const start = new Date(now.getTime() + startOffsetHours * 60 * 60 * 1000);
     const end = new Date(now.getTime() + endOffsetHours * 60 * 60 * 1000);
     await this.setTimeWindow(

@@ -34,7 +34,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <VehicleCar20Regular style={{ color: tokens.colorNeutralForeground3 }} />
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} data-testid="no-car-message">
             No car saved
           </Text>
         </div>
@@ -42,6 +42,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
           appearance="primary"
           size="small"
           onClick={onAddCarClick}
+          data-testid="add-car-button"
         >
           Add Car
         </Button>

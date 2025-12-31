@@ -83,7 +83,7 @@ test.describe('Data Persistence', () => {
     await appPage.waitForAppReady();
 
     // Should show "Add Car" button since no cars exist
-    await expect(page.getByRole('button', { name: /add.*car/i })).toBeVisible();
+    await expect(appPage.addCarButton).toBeVisible();
   });
 
   test('selected car ID is validated against existing cars', async ({ page, appPage }) => {
@@ -100,7 +100,7 @@ test.describe('Data Persistence', () => {
     // The exact behavior depends on the implementation - it should either:
     // 1. Show the first available car, or
     // 2. Show the "Add Car" button
-    const hasAddButton = await page.getByRole('button', { name: /add.*car/i }).isVisible().catch(() => false);
+    const hasAddButton = await appPage.addCarButton.isVisible().catch(() => false);
     const hasCarSelector = await page.getByTestId('car-selector').isVisible().catch(() => false);
 
     // At least one of these should be true (app handles invalid ID gracefully)

@@ -183,6 +183,7 @@ export const InputForm: React.FC<Props> = ({
               appearance="subtle"
               icon={isCollapsed ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
               aria-label={isCollapsed ? "Expand settings" : "Collapse settings"}
+              data-testid="expand-settings-button"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsCollapsed(!isCollapsed);
@@ -215,6 +216,7 @@ export const InputForm: React.FC<Props> = ({
                 <BatteryPercentageSlider
                   value={startPercent}
                   onChange={updateStartPercent}
+                  data-testid="start-percent-input"
                 />
               </LabeledFormField>
               <LabeledFormField icon={<Battery1024Regular />} label="End %">
@@ -222,6 +224,7 @@ export const InputForm: React.FC<Props> = ({
                   value={endPercent}
                   onChange={updateEndPercent}
                   snapPoint={80}
+                  data-testid="end-percent-input"
                 />
               </LabeledFormField>
               <TimeWindowSelector
@@ -237,6 +240,7 @@ export const InputForm: React.FC<Props> = ({
                   size="small"
                   icon={isAdvancedOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
                   onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                  data-testid="vehicle-settings-button"
                   style={{
                     padding: '4px 0',
                     color: tokens.colorNeutralForeground2,
@@ -253,6 +257,7 @@ export const InputForm: React.FC<Props> = ({
                         max={150}
                         value={String(batterySize)}
                         onChange={(_ev, data) => updateBatterySize(Number(data.value))}
+                        data-testid="battery-size-input"
                         style={{ width: "100%" }}
                       />
                     </LabeledFormField>
@@ -260,6 +265,7 @@ export const InputForm: React.FC<Props> = ({
                       <Dropdown
                         value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
                         onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
+                        data-testid="charging-power-dropdown"
                         style={{ width: "100%" }}
                       >
                         {CHARGING_POWER_OPTIONS.map(power => (

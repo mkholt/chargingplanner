@@ -64,7 +64,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <CalendarClock24Regular />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <Text weight="semibold" size={400} style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
+          <Text weight="semibold" size={400} data-testid="charging-plan-header" style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
             Charging Plan
           </Text>
           <Text size={200} style={{ color: secondary }}>

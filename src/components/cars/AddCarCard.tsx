@@ -43,6 +43,7 @@ export const AddCarCard: React.FC = () => {
   return (
     <Card
       onClick={() => setFormState(DEFAULT_CAR_FORM)}
+      data-testid="add-car-card"
       style={{
         flex: '1 1 200px',
         maxWidth: '100%',

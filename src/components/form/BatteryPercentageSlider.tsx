@@ -48,6 +48,7 @@ type Props = {
   snapPoint?: number;
   snapRange?: number;
   escapeDistance?: number;
+  'data-testid'?: string;
 };
 
 export const BatteryPercentageSlider: React.FC<Props> = ({
@@ -58,6 +59,7 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
   snapPoint,
   snapRange = 3,
   escapeDistance = 7,
+  'data-testid': testId,
 }) => {
   const sliderStyles = useSliderStyles();
 
@@ -108,6 +110,7 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
         max={max}
         value={String(value)}
         onChange={(_ev, data) => handleInputChange(Number(data.value))}
+        data-testid={testId}
         style={{ width: 70 }}
       />
     </div>

@@ -15,11 +15,11 @@ export class ResultsPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.chargingPlanHeader = page.getByText('Charging Plan');
+    this.chargingPlanHeader = page.getByTestId('charging-plan-header');
     this.errorMessage = page.getByTestId('result-error');
     this.warningMessage = page.getByTestId('result-warning');
     this.priceError = page.getByTestId('price-error');
-    this.timeline = page.getByText('stromligning');
+    this.timeline = page.getByTestId('price-attribution');
     this.resultStart = page.getByTestId('result-start');
     this.resultEnd = page.getByTestId('result-end');
     this.resultDuration = page.getByTestId('result-duration');

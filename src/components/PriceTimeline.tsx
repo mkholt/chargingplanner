@@ -339,7 +339,7 @@ export const PriceTimeline: React.FC<Props> = ({
       <PriceLegend minPrice={minPrice} maxPrice={maxPrice} />
 
       {/* Strømligning attribution */}
-      <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: 8 }}>
+      <Text size={200} data-testid="price-attribution" style={{ color: tokens.colorNeutralForeground3, marginTop: 8 }}>
         Data provided by Strømligning.{' '}
         <Link href="https://stromligning.dk" target="_blank" rel="noopener noreferrer">
           stromligning.dk

@@ -40,6 +40,7 @@ test.describe('All Error Messages', () => {
 
     test('shows price error when API returns error', async ({
       resultsPage,
+      appPage,
       page,
     }) => {
       // Intercept price API and return error BEFORE navigation
@@ -68,12 +69,13 @@ test.describe('All Error Messages', () => {
       } else {
         // If no price error visible, app may handle error gracefully
         // Just verify the app is still functional
-        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        await expect(appPage.title).toBeVisible();
       }
     });
 
     test('shows price error with "Open Settings" button when API fails', async ({
       resultsPage,
+      appPage,
       page,
     }) => {
       await page.route('**/api/prices**', route =>
@@ -95,12 +97,12 @@ test.describe('All Error Messages', () => {
 
       const hasPriceError = await resultsPage.hasPriceError();
       if (hasPriceError) {
-        // Should have "Open Settings" button
+        // Should have "Open Settings" button - this is a dynamically rendered button in the error state
         const settingsButton = page.getByRole('button', { name: /open settings/i });
         await expect(settingsButton).toBeVisible();
       } else {
         // App may handle errors gracefully without showing price error
-        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        await expect(appPage.title).toBeVisible();
       }
     });
 
@@ -118,11 +120,11 @@ test.describe('All Error Messages', () => {
       await appPage.openSettings();
       await settingsDialogPage.switchToElectricityTab();
 
-      const input = page.getByPlaceholder(/postal code/i);
+      const input = page.getByTestId('postal-code-input');
       await input.fill('999');
 
       // Should show validation error
-      await expect(page.getByText('Danish postal codes are 1000-9999')).toBeVisible();
+      await expect(page.getByTestId('postal-code-error')).toBeVisible();
     });
 
     test('shows "Danish postal codes are 1000-9999" for postal code above 9999', async ({
@@ -136,10 +138,10 @@ test.describe('All Error Messages', () => {
       await appPage.openSettings();
       await settingsDialogPage.switchToElectricityTab();
 
-      const input = page.getByPlaceholder(/postal code/i);
+      const input = page.getByTestId('postal-code-input');
       await input.fill('10000');
 
-      await expect(page.getByText('Danish postal codes are 1000-9999')).toBeVisible();
+      await expect(page.getByTestId('postal-code-error')).toBeVisible();
     });
 
     // Note: Playwright cannot type non-numeric characters into input[type=number]
@@ -157,7 +159,7 @@ test.describe('All Error Messages', () => {
       await settingsDialogPage.switchToElectricityTab();
 
       // Use a valid format postal code that's not in mock data
-      const input = page.getByPlaceholder(/postal code/i);
+      const input = page.getByTestId('postal-code-input');
       await input.fill(String(POSTAL_CODES.UNKNOWN));
 
       // Wait for lookup to complete

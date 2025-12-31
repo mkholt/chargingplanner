@@ -93,7 +93,7 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Wait for "Using GPS location" indicator to appear (waits for GPS + supplier query)
-      await expect(page.getByText('Using GPS location')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
 
       // Should show DK2 supplier (Radius)
       await expect(page.getByText(/Radius/i).first()).toBeVisible();
@@ -114,7 +114,7 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Wait for "Using GPS location" indicator to appear (waits for GPS + supplier query)
-      await expect(page.getByText('Using GPS location')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
 
       // Should show DK1 supplier (Norlys or similar)
       await expect(page.getByText(/Norlys|N1|Flow/i).first()).toBeVisible();
@@ -137,7 +137,7 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Wait for error text to appear
-      await expect(page.getByText('Location access was denied')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
     });
 
     test('shows "Location information is unavailable" when position unavailable', async ({
@@ -155,7 +155,7 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Wait for error text to appear
-      await expect(page.getByText('Location information is unavailable')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
     });
 
     test('shows "Location request timed out" when geolocation times out', async ({
@@ -173,7 +173,7 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Wait for error text to appear
-      await expect(page.getByText('Location request timed out')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
     });
 
     test('shows "Geolocation is not supported by your browser" when API unavailable', async ({
@@ -191,7 +191,7 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Wait for error text to appear
-      await expect(page.getByText('Geolocation is not supported by your browser')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -210,14 +210,14 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.switchToElectricityTab();
 
       // First enter a postal code
-      const input = page.getByPlaceholder(/postal code/i);
+      const input = page.getByTestId('postal-code-input');
       await input.fill('8000');
 
       // Click GPS button
       await settingsDialogPage.clickGpsButton();
 
       // Wait for GPS to complete (indicated by "Using GPS location" appearing)
-      await expect(page.getByText('Using GPS location')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
 
       // Postal code input should be cleared
       const postalValue = await settingsDialogPage.getPostalCodeValue();
@@ -240,14 +240,14 @@ test.describe('Geolocation', () => {
       await settingsDialogPage.clickGpsButton();
 
       // Verify GPS is active (wait for indicator to appear)
-      await expect(page.getByText('Using GPS location')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
 
       // Now enter a postal code
-      const input = page.getByPlaceholder(/postal code/i);
+      const input = page.getByTestId('postal-code-input');
       await input.fill('8000');
 
       // GPS indicator should disappear (postal code takes precedence)
-      await expect(page.getByText('Using GPS location')).not.toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('gps-location-indicator')).not.toBeVisible({ timeout: 5000 });
     });
   });
 });

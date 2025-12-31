@@ -13,6 +13,14 @@ import { type Car, useCars } from '@/contexts';
 import { CarForm } from './CarForm';
 import type { CarFormState } from './carFormState';
 
+/** Slugify a car name for use in data-testid */
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 type Props = {
   car: Car;
   isSelected: boolean;
@@ -62,6 +70,7 @@ export const CarCard: React.FC<Props> = ({
   return (
     <Card
       onClick={onSelect}
+      data-testid={`car-card-${slugify(car.name)}`}
       style={{
         flex: '1 1 200px',
         maxWidth: '100%',
@@ -89,6 +98,7 @@ export const CarCard: React.FC<Props> = ({
           style={{ minWidth: 24, minHeight: 24, padding: 0 }}
           icon={<Edit20Regular />}
           aria-label="Edit car"
+          data-testid="edit-car-button"
         />
         <Button
           size="small"
@@ -100,6 +110,7 @@ export const CarCard: React.FC<Props> = ({
           style={{ minWidth: 24, minHeight: 24, padding: 0 }}
           icon={<Delete20Regular />}
           aria-label="Delete car"
+          data-testid="delete-car-button"
         />
       </div>
       <div style={{ fontWeight: 600, fontSize: 15, color: tokens.colorNeutralForeground1, paddingRight: 50 }}>

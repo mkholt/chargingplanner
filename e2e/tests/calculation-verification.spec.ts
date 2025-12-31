@@ -341,7 +341,7 @@ test.describe('Calculation Verification', () => {
       expect(teslaEnergy).toBe(40);
 
       // Switch to Porsche (via car selector dropdown)
-      const carSelector = page.getByRole('combobox').first();
+      const carSelector = page.getByTestId('car-selector');
       await carSelector.click();
       await page.getByRole('option', { name: /Porsche/i }).click();
       await inputFormPage.waitForCalculation();

@@ -72,7 +72,7 @@ const AppContent: React.FC = () => {
                   background: tokens.colorNeutralBackground2
                 }}
               />
-              <Title3 as="h1" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
+              <Title3 as="h1" data-testid="app-title" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
                 EV Charging Planner
               </Title3>
               <RefreshButton

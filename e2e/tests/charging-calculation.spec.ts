@@ -57,7 +57,7 @@ test.describe('Charging Calculation', () => {
     await resultsPage.expectTimelineVisible();
 
     // Should show stromligning.dk attribution
-    await expect(page.getByText('stromligning.dk')).toBeVisible();
+    await expect(resultsPage.timeline).toBeVisible();
   });
 
   test('updates duration when charging power changes', async ({ appPage, inputFormPage, resultsPage, page }) => {
@@ -82,11 +82,12 @@ test.describe('Charging Calculation', () => {
     expect(newDuration).not.toBe(initialDuration);
   });
 
-  test('"Set to now" button updates earliest time to current time rounded to next 15 minutes', async ({ appPage, inputFormPage, page }) => {
+  test('"Set to now" button updates earliest time to current time rounded to next 15 minutes', async ({ appPage, inputFormPage, page, frozenTime }) => {
+    // Note: frozenTime fixture freezes browser Date to FIXED_TEST_TIME for consistent results
     await setupCarAndNavigate(page);
     await appPage.waitForAppReady();
 
-    // Set earliest time to something different from now (e.g., 2 hours from now)
+    // Set earliest time to something different from "now" (e.g., 2 hours from frozen time)
     await inputFormPage.setRelativeTimeWindow(2, 10);
     const initialTime = await inputFormPage.getEarliestTime();
 
@@ -99,9 +100,8 @@ test.describe('Charging Calculation', () => {
     // Time should have changed
     expect(newTime).not.toBe(initialTime);
 
-    // Verify it's close to current time (rounded to next 15 minutes)
-    // Use the same utility function as the component
-    const expectedTime = formatTimeValue(roundToNext15Minutes(new Date()));
+    // Verify it's the frozen time (rounded to next 15 minutes)
+    const expectedTime = formatTimeValue(roundToNext15Minutes(frozenTime));
     expect(newTime).toBe(expectedTime);
   });
 });

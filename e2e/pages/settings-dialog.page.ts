@@ -1,5 +1,13 @@
 import { Page, Locator, expect } from '@playwright/test';
 
+/** Slugify a car name for use in data-testid lookup */
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export class SettingsDialogPage {
   readonly page: Page;
   readonly dialog: Locator;
@@ -10,11 +18,11 @@ export class SettingsDialogPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.dialog = page.getByRole('dialog');
-    this.carsTab = page.getByRole('tab', { name: 'Cars' });
-    this.electricityTab = page.getByRole('tab', { name: 'Electricity' });
-    this.syncTab = page.getByRole('tab', { name: 'Sync' });
-    this.doneButton = page.getByRole('button', { name: 'Done' });
+    this.dialog = page.getByTestId('settings-dialog');
+    this.carsTab = page.getByTestId('tab-cars');
+    this.electricityTab = page.getByTestId('tab-electricity');
+    this.syncTab = page.getByTestId('tab-sync');
+    this.doneButton = page.getByTestId('done-button');
   }
 
   async switchToCarsTab(): Promise<void> {
@@ -38,37 +46,36 @@ export class SettingsDialogPage {
 
   async clickAddCarCard(): Promise<void> {
     // Click the "Add Car" card in the cars grid
-    const addCarCard = this.page.locator('text=Add Car').last();
+    const addCarCard = this.page.getByTestId('add-car-card');
     await addCarCard.scrollIntoViewIfNeeded();
     // Use force:true to handle Fluent UI dialog backdrop interception on mobile
     await addCarCard.click({ force: true });
   }
 
   async fillCarForm(name: string, batterySize: number, maxPower: number): Promise<void> {
-    await this.page.getByPlaceholder('Car name').fill(name);
+    await this.page.getByTestId('car-name-input').fill(name);
 
-    // Battery size input - find the input near "kWh" label
-    const batteryInput = this.page.locator('input[type="number"]').first();
+    // Battery size input
+    const batteryInput = this.page.getByTestId('car-battery-input');
     await batteryInput.fill(String(batterySize));
 
     // Max power combobox - type and blur to close dropdown
     // Don't press Escape as it closes the parent Dialog
-    const powerInput = this.page.getByRole('combobox').last();
+    const powerInput = this.page.getByTestId('car-power-dropdown');
     await powerInput.fill(`${maxPower}`);
     // Click on the name input to blur the combobox and close its dropdown
-    await this.page.getByPlaceholder('Car name').click();
+    await this.page.getByTestId('car-name-input').click();
     // Wait for any dropdown listbox to close
     await expect(this.page.getByRole('listbox')).not.toBeVisible();
   }
 
   async saveNewCar(): Promise<void> {
-    // Use exact match to avoid matching "Add Car" card button
     // Wait for button to be stable before clicking
-    const addButton = this.page.getByRole('button', { name: 'Add car', exact: true });
-    await addButton.waitFor({ state: 'visible' });
-    await addButton.scrollIntoViewIfNeeded();
+    const saveButton = this.page.getByTestId('save-car-button');
+    await saveButton.waitFor({ state: 'visible' });
+    await saveButton.scrollIntoViewIfNeeded();
     // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await addButton.click({ force: true });
+    await saveButton.click({ force: true });
   }
 
   async addCar(name: string, batterySize: number, maxPower: number): Promise<void> {
@@ -76,7 +83,7 @@ export class SettingsDialogPage {
     await this.fillCarForm(name, batterySize, maxPower);
     await this.saveNewCar();
     // Wait for the car card to appear with the new name
-    await expect(this.page.getByText(name, { exact: true })).toBeVisible();
+    await expect(this.page.getByTestId(`car-card-${slugify(name)}`)).toBeVisible();
   }
 
   async editCar(
@@ -84,44 +91,44 @@ export class SettingsDialogPage {
     updates: { name?: string; batterySize?: number; maxPower?: number }
   ): Promise<void> {
     // Find the car card and click edit
-    const carCard = this.page.locator(`text="${currentName}"`).locator('xpath=ancestor::div[contains(@style, "border")]');
-    const editButton = carCard.getByRole('button', { name: 'Edit car' });
+    const carCard = this.page.getByTestId(`car-card-${slugify(currentName)}`);
+    const editButton = carCard.getByTestId('edit-car-button');
     await editButton.scrollIntoViewIfNeeded();
     // Use force:true to handle Fluent UI dialog backdrop interception on mobile
     await editButton.click({ force: true });
 
     if (updates.name !== undefined) {
-      await this.page.getByPlaceholder('Car name').fill(updates.name);
+      await this.page.getByTestId('car-name-input').fill(updates.name);
     }
     if (updates.batterySize !== undefined) {
-      const batteryInput = this.page.locator('input[type="number"]').first();
+      const batteryInput = this.page.getByTestId('car-battery-input');
       await batteryInput.fill(String(updates.batterySize));
     }
     if (updates.maxPower !== undefined) {
-      const powerInput = this.page.getByRole('combobox').last();
+      const powerInput = this.page.getByTestId('car-power-dropdown');
       await powerInput.fill(`${updates.maxPower}`);
       await this.page.keyboard.press('Enter');
     }
 
-    await this.page.getByRole('button', { name: 'Save' }).click();
+    await this.page.getByTestId('save-car-button').click();
   }
 
   async deleteCar(carName: string): Promise<void> {
-    const carCard = this.page.locator(`text="${carName}"`).locator('xpath=ancestor::div[contains(@style, "border")]');
-    const deleteButton = carCard.getByRole('button', { name: 'Delete car' });
+    const carCard = this.page.getByTestId(`car-card-${slugify(carName)}`);
+    const deleteButton = carCard.getByTestId('delete-car-button');
     await deleteButton.scrollIntoViewIfNeeded();
     // Use force:true to handle Fluent UI dialog backdrop interception on mobile
     await deleteButton.click({ force: true });
 
-    // Confirm deletion in dialog - use exact match to avoid "Delete car" button
-    const confirmButton = this.page.getByRole('button', { name: 'Delete', exact: true });
+    // Confirm deletion in dialog
+    const confirmButton = this.page.getByTestId('confirm-delete-button');
     await confirmButton.scrollIntoViewIfNeeded();
     // Use force:true to handle Fluent UI dialog backdrop interception on mobile
     await confirmButton.click({ force: true });
   }
 
   async selectCar(carName: string): Promise<void> {
-    await this.page.locator(`text="${carName}"`).click();
+    await this.page.getByTestId(`car-card-${slugify(carName)}`).click();
   }
 
   async getCarCardNames(): Promise<string[]> {
@@ -136,7 +143,7 @@ export class SettingsDialogPage {
 
   async setPostalCode(code: number): Promise<void> {
     await this.switchToElectricityTab();
-    const input = this.page.getByPlaceholder(/postal code/i);
+    const input = this.page.getByTestId('postal-code-input');
     await input.fill(String(code));
     // Wait for supplier lookup to complete (supplier name appears)
     // Valid postal codes will show a supplier like Radius, Norlys, N1, etc.
@@ -146,7 +153,7 @@ export class SettingsDialogPage {
   }
 
   async getPostalCodeValue(): Promise<string> {
-    const input = this.page.getByPlaceholder(/postal code/i);
+    const input = this.page.getByTestId('postal-code-input');
     return await input.inputValue();
   }
 
@@ -170,7 +177,7 @@ export class SettingsDialogPage {
 
   async clearSettings(): Promise<void> {
     await this.switchToElectricityTab();
-    const clearButton = this.page.getByRole('button', { name: /clear/i });
+    const clearButton = this.page.getByTestId('clear-settings-button');
     if (await clearButton.isVisible()) {
       await clearButton.click();
     }
@@ -189,7 +196,7 @@ export class SettingsDialogPage {
 
   async getLocationError(): Promise<string | null> {
     // Location errors are displayed as red text in the SupplierSection
-    const errorText = this.page.locator('text=/Location access was denied|Location information is unavailable|Location request timed out|Geolocation is not supported|An unknown error occurred/');
+    const errorText = this.page.getByTestId('location-error');
     if (await errorText.isVisible().catch(() => false)) {
       return await errorText.textContent();
     }
@@ -197,13 +204,13 @@ export class SettingsDialogPage {
   }
 
   async isUsingGpsLocation(): Promise<boolean> {
-    const gpsIndicator = this.page.getByText('Using GPS location');
+    const gpsIndicator = this.page.getByTestId('gps-location-indicator');
     return await gpsIndicator.isVisible().catch(() => false);
   }
 
   async getPostalCodeError(): Promise<string | null> {
     // Postal code validation errors
-    const errorText = this.page.locator('text=/Danish postal codes are 1000-9999|Enter a valid number/');
+    const errorText = this.page.getByTestId('postal-code-error');
     if (await errorText.isVisible().catch(() => false)) {
       return await errorText.textContent();
     }
@@ -212,7 +219,7 @@ export class SettingsDialogPage {
 
   async getSupplierNotFoundMessage(): Promise<string | null> {
     // "No grid operator found" message
-    const notFoundText = this.page.locator('text=/No grid operator found/');
+    const notFoundText = this.page.getByTestId('no-supplier-message');
     if (await notFoundText.isVisible().catch(() => false)) {
       return await notFoundText.textContent();
     }

@@ -111,6 +111,7 @@ export const SupplierSection: React.FC = () => {
           min={1000}
           max={9999}
           style={{ flex: 1 }}
+          data-testid="postal-code-input"
         />
         <Tooltip content="Use my location" relationship="label">
           <Button
@@ -125,19 +126,19 @@ export const SupplierSection: React.FC = () => {
       </div>
 
       {error && (
-        <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+        <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }} data-testid="postal-code-error">
           {error}
         </Text>
       )}
 
       {locationError && (
-        <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+        <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }} data-testid="location-error">
           {locationError}
         </Text>
       )}
 
       {isUsingGps && !isLoadingSuppliers && (
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} data-testid="gps-location-indicator">
           Using GPS location
         </Text>
       )}
@@ -168,7 +169,7 @@ export const SupplierSection: React.FC = () => {
 
       {/* No suppliers found */}
       {!isLoadingSuppliers && location !== null && !error && !locationError && displayedSuppliers.length === 0 && (
-        <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
+        <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }} data-testid="no-supplier-message">
           No grid operator found {postalCode ? `for postal code ${postalCode}` : 'at your location'}
         </Text>
       )}

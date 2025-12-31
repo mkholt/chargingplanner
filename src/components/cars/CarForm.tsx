@@ -53,6 +53,7 @@ export const CarForm: React.FC<Props> = ({
       style={{ width: '100%' }}
       size="small"
       autoFocus={autoFocus}
+      data-testid="car-name-input"
     />
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <Input
@@ -64,6 +65,7 @@ export const CarForm: React.FC<Props> = ({
         style={{ flex: 1, minWidth: 0 }}
         size="small"
         contentAfter={<Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>kWh</Text>}
+        data-testid="car-battery-input"
       />
       <Combobox
         freeform
@@ -81,6 +83,7 @@ export const CarForm: React.FC<Props> = ({
         }}
         style={{ flex: 1, minWidth: 0 }}
         size="small"
+        data-testid="car-power-dropdown"
       >
         {CHARGING_POWER_OPTIONS.map((opt) => (
           <Option key={opt.value} value={String(opt.value)}>
@@ -103,6 +106,7 @@ export const CarForm: React.FC<Props> = ({
         icon={<Checkmark20Regular />}
         onClick={onSave}
         aria-label={saveLabel}
+        data-testid="save-car-button"
       />
     </div>
   </Card>

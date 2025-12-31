@@ -3,6 +3,7 @@ import { AppPage } from '../pages/app.page';
 import { SettingsDialogPage } from '../pages/settings-dialog.page';
 import { InputFormPage } from '../pages/input-form.page';
 import { ResultsPage } from '../pages/results.page';
+import { freezeTime, FIXED_TEST_TIME } from './time';
 
 // localStorage keys from the app
 export const LOCAL_STORAGE_KEYS = {
@@ -39,9 +40,20 @@ type TestFixtures = {
   settingsDialogPage: SettingsDialogPage;
   inputFormPage: InputFormPage;
   resultsPage: ResultsPage;
+  frozenTime: Date;
 };
 
 export const test = base.extend<TestFixtures>({
+  // Fixture to freeze time in browser - available to tests that need it
+  // Uses Playwright's Clock API: https://playwright.dev/docs/clock
+  // Note: This is NOT an auto-fixture. Tests that need frozen time must include frozenTime in their destructured args.
+  frozenTime: async ({ page }, use) => {
+    // Freeze time in the browser context BEFORE any navigation
+    // This affects both the app (new Date()) and the MSW handlers
+    await freezeTime(page, FIXED_TEST_TIME);
+    await use(FIXED_TEST_TIME);
+  },
+
   appPage: async ({ page }, use) => {
     const appPage = new AppPage(page);
     await use(appPage);
@@ -61,3 +73,4 @@ export const test = base.extend<TestFixtures>({
 });
 
 export { expect };
+export { FIXED_TEST_TIME } from './time';

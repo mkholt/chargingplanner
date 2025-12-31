@@ -21,11 +21,11 @@ test.describe('Price Settings', () => {
     await appPage.openSettings();
     await settingsDialogPage.switchToElectricityTab();
 
-    const input = page.getByPlaceholder(/postal code/i);
+    const input = page.getByTestId('postal-code-input');
     await input.fill('999');
 
     // Should show validation error
-    await expect(page.getByText(/1000-9999/i)).toBeVisible();
+    await expect(page.getByTestId('postal-code-error')).toBeVisible();
   });
 
   test('can select company and product after entering postal code', async ({ appPage, settingsDialogPage, page }) => {
@@ -68,7 +68,7 @@ test.describe('Price Settings', () => {
     await settingsDialogPage.switchToElectricityTab();
 
     // Use a valid format postal code that's not in mock data
-    const input = page.getByPlaceholder(/postal code/i);
+    const input = page.getByTestId('postal-code-input');
     await input.fill(String(POSTAL_CODES.UNKNOWN));
 
     // Wait for lookup to complete
@@ -86,11 +86,11 @@ test.describe('Price Settings', () => {
     await appPage.openSettings();
     await settingsDialogPage.switchToElectricityTab();
 
-    const input = page.getByPlaceholder(/postal code/i);
+    const input = page.getByTestId('postal-code-input');
     await input.fill('10000');
 
     // Should show validation error
-    await expect(page.getByText('Danish postal codes are 1000-9999')).toBeVisible();
+    await expect(page.getByTestId('postal-code-error')).toBeVisible();
   });
 
   test('clears postal code input when GPS location is used', async ({ appPage, settingsDialogPage, page }) => {
@@ -127,7 +127,7 @@ test.describe('Price Settings', () => {
     await settingsDialogPage.switchToElectricityTab();
 
     // First enter a postal code
-    const input = page.getByPlaceholder(/postal code/i);
+    const input = page.getByTestId('postal-code-input');
     await input.fill('8000');
     await page.waitForTimeout(200);
 

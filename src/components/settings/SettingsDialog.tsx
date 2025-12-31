@@ -62,7 +62,7 @@ export const SettingsDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => onOpenChange(data.open)}>
-      <DialogSurface style={{ width: 600, maxHeight: '90vh' }}>
+      <DialogSurface data-testid="settings-dialog" style={{ width: 600, maxHeight: '90vh' }}>
         <DialogBody>
           <DialogTitle action={closeButton}>Settings</DialogTitle>
           <DialogContent style={{ overflow: 'auto', minHeight: 300, maxHeight: 'calc(90vh - 150px)' }}>
@@ -72,13 +72,13 @@ export const SettingsDialog: React.FC<Props> = ({
                 selectedValue={activeTab}
                 onTabSelect={handleTabSelect}
               >
-                <Tab value="cars" icon={<VehicleCar20Regular />}>
+                <Tab value="cars" icon={<VehicleCar20Regular />} data-testid="tab-cars">
                   Cars
                 </Tab>
-                <Tab value="electricity" icon={<Flash20Regular />}>
+                <Tab value="electricity" icon={<Flash20Regular />} data-testid="tab-electricity">
                   Electricity
                 </Tab>
-                <Tab value="sync" icon={<Share20Regular />}>
+                <Tab value="sync" icon={<Share20Regular />} data-testid="tab-sync">
                   Sync
                 </Tab>
               </TabList>
@@ -103,14 +103,14 @@ export const SettingsDialog: React.FC<Props> = ({
           </DialogContent>
           <DialogActions style={{ justifyContent: 'space-between' }}>
             {activeTab === 'electricity' ? (
-              <Button appearance="secondary" onClick={clearPriceSettings}>
+              <Button appearance="secondary" onClick={clearPriceSettings} data-testid="clear-settings-button">
                 Clear Settings
               </Button>
             ) : (
               <div />
             )}
             <DialogTrigger disableButtonEnhancement>
-              <Button appearance="primary">Done</Button>
+              <Button appearance="primary" data-testid="done-button">Done</Button>
             </DialogTrigger>
           </DialogActions>
         </DialogBody>

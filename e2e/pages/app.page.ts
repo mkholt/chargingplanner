@@ -12,12 +12,12 @@ export class AppPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.title = page.getByRole('heading', { name: 'EV Charging Planner' });
+    this.title = page.getByTestId('app-title');
     this.settingsButton = page.getByTestId('settings-button');
     this.carSelectorDropdown = page.getByTestId('car-selector');
-    this.addCarButton = page.getByRole('button', { name: 'Add Car' });
-    this.noCarMessage = page.getByText('No car saved');
-    this.priceAttribution = page.getByText('stromligning.dk');
+    this.addCarButton = page.getByTestId('add-car-button');
+    this.noCarMessage = page.getByTestId('no-car-message');
+    this.priceAttribution = page.getByTestId('price-attribution');
   }
 
   async goto(): Promise<void> {
@@ -40,7 +40,7 @@ export class AppPage {
 
   async openSettings(): Promise<void> {
     await this.settingsButton.click();
-    await expect(this.page.getByRole('dialog')).toBeVisible();
+    await expect(this.page.getByTestId('settings-dialog')).toBeVisible();
   }
 
   async selectCar(carName: string): Promise<void> {

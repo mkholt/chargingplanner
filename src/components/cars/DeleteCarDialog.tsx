@@ -61,7 +61,7 @@ export const DeleteCarDialog: React.FC<Props> = ({
             <Button appearance="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button appearance="primary" onClick={onConfirm} style={{ backgroundColor: tokens.colorPaletteRedBackground3 }}>
+            <Button appearance="primary" onClick={onConfirm} data-testid="confirm-delete-button" style={{ backgroundColor: tokens.colorPaletteRedBackground3 }}>
               Delete
             </Button>
           </DialogActions>
