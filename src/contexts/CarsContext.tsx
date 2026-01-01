@@ -1,17 +1,7 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext } from 'react';
 
+import { useLocalStorage } from '@/hooks';
 import { LS_KEYS, mergeCars as mergeCarData, type MergeResult } from '@/utils';
-
-/**
- * CarsContext manages car state with localStorage persistence.
- *
- * Why not useLocalStorage hook?
- * - Cross-key validation: selectedCarId must exist in cars list
- * - Conditional removal: SELECTED_CAR is removed (not set to null) when cleared
- * - Merge logic: import handles deduplication and ID generation
- *
- * @see CLAUDE.md "State Management Patterns" section
- */
 
 // ============ Types ============
 
@@ -20,6 +10,12 @@ export type Car = {
   name: string;
   batterySize: number;
   maxPower: number;
+};
+
+/** Consolidated state for cars and selection */
+type CarsState = {
+  cars: Car[];
+  selectedId: string | null;
 };
 
 type CarsContextType = {
@@ -36,116 +32,63 @@ type CarsContextType = {
 
 const CarsContext = createContext<CarsContextType | null>(null);
 
-// ============ Storage ============
+// ============ Helpers ============
 
 function generateId(): string {
   return Math.random().toString(36).slice(2);
 }
 
-function loadCars(): Car[] {
-  try {
-    const raw = localStorage.getItem(LS_KEYS.CARS);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function saveCars(cars: Car[]) {
-  localStorage.setItem(LS_KEYS.CARS, JSON.stringify(cars));
-}
-
-function loadSelectedCarId(cars: Car[]): string | null {
-  try {
-    const id = localStorage.getItem(LS_KEYS.SELECTED_CAR);
-    // Validate the ID exists in the cars list
-    if (id && cars.some(c => c.id === id)) {
-      return id;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function saveSelectedCarId(id: string | null) {
-  if (id) {
-    localStorage.setItem(LS_KEYS.SELECTED_CAR, id);
-  } else {
-    localStorage.removeItem(LS_KEYS.SELECTED_CAR);
-  }
-}
+const DEFAULT_STATE: CarsState = { cars: [], selectedId: null };
 
 // ============ Provider ============
 
 export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cars, setCars] = useState<Car[]>(() => loadCars());
-  const [selectedCarId, setSelectedCarIdState] = useState<string | null>(() => {
-    const loadedCars = loadCars();
-    return loadSelectedCarId(loadedCars);
-  });
+  const { value: state, setValue: setState } = useLocalStorage<CarsState>(
+    LS_KEYS.CARS,
+    DEFAULT_STATE
+  );
 
   const setSelectedCarId = useCallback((id: string | null) => {
-    setSelectedCarIdState(id);
-    saveSelectedCarId(id);
-  }, []);
+    setState(prev => ({ ...prev, selectedId: id }));
+  }, [setState]);
 
   const addCar = useCallback((car: Omit<Car, 'id'>) => {
-    const newCar: Car = {
-      ...car,
-      id: generateId(),
-    };
-    setCars(prev => {
-      const updated = [...prev, newCar];
-      saveCars(updated);
-      return updated;
-    });
+    const newCar: Car = { ...car, id: generateId() };
+    setState(prev => ({ ...prev, cars: [...prev.cars, newCar] }));
     return newCar;
-  }, []);
+  }, [setState]);
 
   const updateCar = useCallback((id: string, updates: Partial<Omit<Car, 'id'>>) => {
-    setCars(prev => {
-      const updated = prev.map(c => c.id === id ? { ...c, ...updates } : c);
-      saveCars(updated);
-      return updated;
-    });
-  }, []);
+    setState(prev => ({
+      ...prev,
+      cars: prev.cars.map(c => c.id === id ? { ...c, ...updates } : c),
+    }));
+  }, [setState]);
 
   const deleteCar = useCallback((id: string) => {
-    setCars(prev => {
-      const updated = prev.filter(c => c.id !== id);
-      saveCars(updated);
-      return updated;
-    });
-    // Clear selection if the deleted car was selected
-    setSelectedCarIdState(prev => {
-      if (prev === id) {
-        saveSelectedCarId(null);
-        return null;
-      }
-      return prev;
-    });
-  }, []);
+    setState(prev => ({
+      cars: prev.cars.filter(c => c.id !== id),
+      // Atomically clear selection if deleted car was selected
+      selectedId: prev.selectedId === id ? null : prev.selectedId,
+    }));
+  }, [setState]);
 
   const mergeCars = useCallback((imported: Omit<Car, 'id'>[]): MergeResult => {
     let result: MergeResult = { added: [], skipped: [], total: 0 };
 
-    setCars(prev => {
-      result = mergeCarData(prev, imported, generateId);
-      const updated = [...prev, ...result.added];
-      saveCars(updated);
-      return updated;
+    setState(prev => {
+      result = mergeCarData(prev.cars, imported, generateId);
+      return { ...prev, cars: [...prev.cars, ...result.added] };
     });
 
     return result;
-  }, []);
+  }, [setState]);
 
   return (
     <CarsContext.Provider
       value={{
-        cars,
-        selectedCarId,
+        cars: state.cars,
+        selectedCarId: state.selectedId,
         setSelectedCarId,
         addCar,
         updateCar,

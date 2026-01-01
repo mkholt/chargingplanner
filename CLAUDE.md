@@ -37,22 +37,15 @@ Do not be afraid to make breaking changes. Do not keep things for "backwards com
 
 ### localStorage Usage
 
-The app uses different patterns for localStorage based on complexity:
+All localStorage persistence uses the `useLocalStorage` hook:
 
-| Pattern | Use Case | Examples |
-|---------|----------|----------|
-| `useLocalStorage` hook | Simple key-value, no validation | `DEFAULT_EARLIEST`, `DEFAULT_LATEST` |
-| Context + manual localStorage | Cross-key validation, API sync, cascading | `CarsContext`, `PriceSettingsContext` |
+```typescript
+const { value, setValue, clearValue } = useLocalStorage(LS_KEYS.KEY, defaultValue);
+```
 
-**Why CarsContext doesn't use `useLocalStorage`:**
-- Cross-key validation: `selectedCarId` must exist in cars list
-- Conditional removeItem: null clears the key entirely, not sets to null
-- Merge logic for importing cars with duplicate detection
-
-**Why PriceSettingsContext doesn't use `useLocalStorage`:**
-- API sync: persists fresh API data to localStorage cache
-- Cascading clears: location change → clears supplier → clears company
-- Default value merging for backwards compatibility with old data
+- `value` - Current state (loaded from localStorage or default)
+- `setValue` - Update state and persist to localStorage
+- `clearValue` - Remove key from localStorage and reset to default
 
 ### Core Components
 

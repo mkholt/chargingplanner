@@ -32,8 +32,8 @@ export async function setLocalStorageItem(
   );
 }
 
-export async function seedCars(page: Page, cars: Car[]): Promise<void> {
-  await setLocalStorageItem(page, LS_KEYS.CARS, cars);
+export async function seedCars(page: Page, cars: Car[], selectedId: string | null = null): Promise<void> {
+  await setLocalStorageItem(page, LS_KEYS.CARS, { cars, selectedId });
 }
 
 /**
@@ -52,8 +52,15 @@ export async function seedLanguage(page: Page, language: 'en' | 'da'): Promise<v
 export async function seedSelectedCar(page: Page, carId: string): Promise<void> {
   await ensureOnOrigin(page);
   await page.evaluate(
-    ({ key, value }) => localStorage.setItem(key, value),
-    { key: LS_KEYS.SELECTED_CAR, value: carId }
+    ({ key, carId }) => {
+      // Read existing state or create default
+      const existing = localStorage.getItem(key);
+      const state = existing ? JSON.parse(existing) : { cars: [], selectedId: null };
+      // Update selectedId and save back
+      state.selectedId = carId;
+      localStorage.setItem(key, JSON.stringify(state));
+    },
+    { key: LS_KEYS.CARS, carId }
   );
 }
 

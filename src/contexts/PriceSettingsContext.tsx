@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo } from 'react';
 
 import {
   findCompanyById,
@@ -7,20 +7,9 @@ import {
   type Product,
   type Supplier,
 } from '@/data';
-import { type Location, useCompaniesQuery, useSuppliersByLocationQuery } from '@/hooks';
+import { useLocalStorage, type Location, useCompaniesQuery, useSuppliersByLocationQuery } from '@/hooks';
 import type { PriceArea } from '@/types';
 import { LS_KEYS } from '@/utils';
-
-/**
- * PriceSettingsContext manages electricity pricing settings with localStorage persistence.
- *
- * Why not useLocalStorage hook?
- * - API sync: persists fresh API data to localStorage for offline display
- * - Cascading clears: location change clears supplier/company
- * - Default merging: handles backwards compatibility with old data structures
- *
- * @see CLAUDE.md "State Management Patterns" section
- */
 
 export { isCoordinates, isPostalCode } from '@/hooks';
 export type { Coordinates, Location } from '@/hooks';
@@ -85,7 +74,7 @@ type PriceSettingsContextType = {
 
 const PriceSettingsContext = createContext<PriceSettingsContextType | null>(null);
 
-// ============ Storage ============
+// ============ Defaults ============
 
 const DEFAULT_SETTINGS: PriceSettings = {
   location: null,
@@ -96,30 +85,13 @@ const DEFAULT_SETTINGS: PriceSettings = {
   company: null,
 };
 
-function loadSettings(): PriceSettings {
-  try {
-    const raw = localStorage.getItem(LS_KEYS.PRICE_SETTINGS);
-    if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw);
-    // Ensure priceArea has a valid value (handles old data without priceArea field)
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      priceArea: parsed.priceArea ?? DEFAULT_SETTINGS.priceArea,
-    };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-}
-
-function saveSettings(settings: PriceSettings) {
-  localStorage.setItem(LS_KEYS.PRICE_SETTINGS, JSON.stringify(settings));
-}
-
 // ============ Provider ============
 
 export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<PriceSettings>(() => loadSettings());
+  const { value: settings, setValue: setSettings } = useLocalStorage<PriceSettings>(
+    LS_KEYS.PRICE_SETTINGS,
+    DEFAULT_SETTINGS
+  );
 
   // Fetch suppliers by location (only when location is set)
   const {
@@ -196,164 +168,70 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
   }), [settings.location, settings.aggregationSize, settings.aggregationMethod, availableSuppliers, supplier, company, product, priceArea, priceAreaSource, isLoading]);
 
-  // Sync fresh API data to localStorage (external system sync)
-  // This updates the persisted cache when API returns newer data than what we have stored.
-  // The resolved values already prefer API data, so no state update needed - just persist for next load.
-  const lastSyncedRef = useRef<string>('');
-
-  useEffect(() => {
-    // Build current cache state for comparison
-    const currentSupplier = settings.supplier;
-    const currentProduct = settings.company?.product;
-
-    // Find fresh API data (if available)
-    const apiSupplier = currentSupplier
-      ? availableSuppliers.find(s => s.id === currentSupplier.id)
-      : null;
-    const apiProduct = currentProduct
-      ? findProductById(companies, currentProduct.id)
-      : null;
-
-    // Create sync key to avoid redundant writes
-    const syncKey = JSON.stringify({ apiSupplier, apiProduct });
-    if (syncKey === lastSyncedRef.current) return;
-    lastSyncedRef.current = syncKey;
-
-    // Check what needs updating
-    let updatedSettings = settings;
-    let needsSave = false;
-
-    if (apiSupplier && currentSupplier) {
-      const supplierChanged =
-        apiSupplier.name !== currentSupplier.name ||
-        apiSupplier.companyName !== currentSupplier.companyName ||
-        apiSupplier.priceArea !== currentSupplier.priceArea;
-
-      if (supplierChanged) {
-        updatedSettings = { ...updatedSettings, supplier: apiSupplier };
-        needsSave = true;
-      }
-    }
-
-    if (apiProduct && currentProduct && settings.company) {
-      const productChanged =
-        apiProduct.name !== currentProduct.name ||
-        apiProduct.surcharge !== currentProduct.surcharge ||
-        apiProduct.subscriptionMonthly !== currentProduct.subscriptionMonthly ||
-        apiProduct.isGreen !== currentProduct.isGreen;
-
-      if (productChanged) {
-        updatedSettings = {
-          ...updatedSettings,
-          company: { ...settings.company, product: apiProduct },
-        };
-        needsSave = true;
-      }
-    }
-
-    // Persist to localStorage only (no state update - resolved values already use API data)
-    if (needsSave) {
-      saveSettings(updatedSettings);
-    }
-  }, [settings, availableSuppliers, companies]);
-
   const setLocation = useCallback((location: Location) => {
-    setSettings(prev => {
-      // When location changes, clear supplier/company selections
-      const updated: PriceSettings = {
-        ...prev,
-        location,
-        supplier: null,
-        company: null,
-      };
-
-      saveSettings(updated);
-      return updated;
-    });
-  }, []);
+    // When location changes, clear supplier/company selections
+    setSettings(prev => ({
+      ...prev,
+      location,
+      supplier: null,
+      company: null,
+    }));
+  }, [setSettings]);
 
   const setSupplier = useCallback((newSupplier: Supplier | null) => {
     setSettings(prev => {
       const supplierChanged = newSupplier?.id !== prev.supplier?.id;
-
-      const updated: PriceSettings = {
+      return {
         ...prev,
         supplier: newSupplier,
         company: supplierChanged ? null : prev.company,
       };
-
-      saveSettings(updated);
-      return updated;
     });
-  }, []);
+  }, [setSettings]);
 
   const setCompany = useCallback((newCompany: Company | null) => {
     setSettings(prev => {
       const companyChanged = newCompany?.id !== prev.company?.id;
-
       // Store selected company info (without product initially)
       const selectedCompany: SelectedCompany | null = newCompany
         ? { id: newCompany.id, name: newCompany.name, product: null }
         : null;
-
-      const updated: PriceSettings = {
+      return {
         ...prev,
         company: companyChanged ? selectedCompany : prev.company,
       };
-
-      saveSettings(updated);
-      return updated;
     });
-  }, []);
+  }, [setSettings]);
 
   const setProduct = useCallback((newProduct: Product | null) => {
     setSettings(prev => {
       if (!prev.company) return prev;
-
-      // Update cached company with the selected product
-      const updated: PriceSettings = {
+      return {
         ...prev,
         company: { ...prev.company, product: newProduct },
       };
-
-      saveSettings(updated);
-      return updated;
     });
-  }, []);
+  }, [setSettings]);
 
   const setPriceArea = useCallback((newPriceArea: PriceArea) => {
-    setSettings(prev => {
-      const updated: PriceSettings = { ...prev, priceArea: newPriceArea };
-      saveSettings(updated);
-      return updated;
-    });
-  }, []);
+    setSettings(prev => ({ ...prev, priceArea: newPriceArea }));
+  }, [setSettings]);
 
   const setAggregationSize = useCallback((aggregationSize: AggregationSize) => {
-    setSettings(prev => {
-      const updated: PriceSettings = { ...prev, aggregationSize };
-      saveSettings(updated);
-      return updated;
-    });
-  }, []);
+    setSettings(prev => ({ ...prev, aggregationSize }));
+  }, [setSettings]);
 
   const setAggregationMethod = useCallback((aggregationMethod: AggregationMethod) => {
-    setSettings(prev => {
-      const updated: PriceSettings = { ...prev, aggregationMethod };
-      saveSettings(updated);
-      return updated;
-    });
-  }, []);
+    setSettings(prev => ({ ...prev, aggregationMethod }));
+  }, [setSettings]);
 
   const clearAll = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
-    saveSettings(DEFAULT_SETTINGS);
-  }, []);
+  }, [setSettings]);
 
   const applySettings = useCallback((newSettings: PriceSettings) => {
     setSettings(newSettings);
-    saveSettings(newSettings);
-  }, []);
+  }, [setSettings]);
 
   const refetchIfStale = useCallback(() => {
     // React Query will only actually refetch if data is stale

@@ -28,10 +28,11 @@ describe('CarsContext', () => {
     });
 
     it('loads cars from localStorage on init', () => {
-      const existingCars: Car[] = [
-        { id: '1', name: 'Tesla', batterySize: 60, maxPower: 11 },
-      ];
-      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingCars);
+      const existingState = {
+        cars: [{ id: '1', name: 'Tesla', batterySize: 60, maxPower: 11 }],
+        selectedId: null,
+      };
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingState);
 
       const { result } = renderHook(() => useCars(), { wrapper });
 
@@ -39,28 +40,29 @@ describe('CarsContext', () => {
       expect(result.current.cars[0].name).toBe('Tesla');
     });
 
-    it('loads selected car ID from localStorage when car exists', () => {
-      const existingCars: Car[] = [
-        { id: 'car-1', name: 'Tesla', batterySize: 60, maxPower: 11 },
-      ];
-      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingCars);
-      localStorageStore[LS_KEYS.SELECTED_CAR] = 'car-1';
+    it('loads selected car ID from localStorage', () => {
+      const existingState = {
+        cars: [{ id: 'car-1', name: 'Tesla', batterySize: 60, maxPower: 11 }],
+        selectedId: 'car-1',
+      };
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingState);
 
       const { result } = renderHook(() => useCars(), { wrapper });
 
       expect(result.current.selectedCarId).toBe('car-1');
     });
 
-    it('ignores selected car ID if car does not exist', () => {
-      const existingCars: Car[] = [
-        { id: 'car-1', name: 'Tesla', batterySize: 60, maxPower: 11 },
-      ];
-      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingCars);
-      localStorageStore[LS_KEYS.SELECTED_CAR] = 'non-existent-id';
+    it('loads selected car ID even if car does not exist (no validation)', () => {
+      const existingState = {
+        cars: [{ id: 'car-1', name: 'Tesla', batterySize: 60, maxPower: 11 }],
+        selectedId: 'non-existent-id',
+      };
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingState);
 
       const { result } = renderHook(() => useCars(), { wrapper });
 
-      expect(result.current.selectedCarId).toBeNull();
+      // Context no longer validates - just loads the ID
+      expect(result.current.selectedCarId).toBe('non-existent-id');
     });
   });
 
@@ -222,7 +224,7 @@ describe('CarsContext', () => {
       expect(result.current.selectedCarId).toBe(carId!);
     });
 
-    it('persists selection to localStorage', () => {
+    it('persists selection to localStorage as part of consolidated state', () => {
       const { result } = renderHook(() => useCars(), { wrapper });
 
       let carId: string;
@@ -237,10 +239,18 @@ describe('CarsContext', () => {
         result.current.setSelectedCarId(carId!);
       });
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(LS_KEYS.SELECTED_CAR, carId!);
+      // Selection is now stored as part of the consolidated CARS state
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        LS_KEYS.CARS,
+        expect.stringContaining(carId!)
+      );
+
+      // Verify the stored state structure
+      const storedState = JSON.parse(localStorageStore[LS_KEYS.CARS]);
+      expect(storedState.selectedId).toBe(carId!);
     });
 
-    it('removes selection from localStorage when set to null', () => {
+    it('sets selection to null in consolidated state', () => {
       const { result } = renderHook(() => useCars(), { wrapper });
 
       act(() => {
@@ -248,13 +258,15 @@ describe('CarsContext', () => {
         result.current.setSelectedCarId(car.id);
       });
 
-      vi.mocked(localStorage.removeItem).mockClear();
+      vi.mocked(localStorage.setItem).mockClear();
 
       act(() => {
         result.current.setSelectedCarId(null);
       });
 
-      expect(localStorage.removeItem).toHaveBeenCalledWith(LS_KEYS.SELECTED_CAR);
+      // Selection is stored as null in the consolidated state (not removed)
+      const storedState = JSON.parse(localStorageStore[LS_KEYS.CARS]);
+      expect(storedState.selectedId).toBeNull();
     });
   });
 

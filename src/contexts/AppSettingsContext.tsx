@@ -41,11 +41,11 @@ const FALLBACK_TIME = '08:00';
 export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [defaultEarliest, setDefaultEarliest] = useLocalStorage<string>(
+  const { value: defaultEarliest, setValue: setDefaultEarliest } = useLocalStorage<string>(
     LS_KEYS.DEFAULT_EARLIEST,
     DEFAULT_EARLIEST
   );
-  const [defaultLatest, setDefaultLatest] = useLocalStorage<string>(
+  const { value: defaultLatest, setValue: setDefaultLatest } = useLocalStorage<string>(
     LS_KEYS.DEFAULT_LATEST,
     DEFAULT_LATEST
   );

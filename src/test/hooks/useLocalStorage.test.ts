@@ -23,7 +23,7 @@ describe('useLocalStorage', () => {
         useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
       );
 
-      expect(result.current[0]).toBe('08:00');
+      expect(result.current.value).toBe('08:00');
     });
 
     it('returns stored value when localStorage has data', () => {
@@ -33,7 +33,7 @@ describe('useLocalStorage', () => {
         useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
       );
 
-      expect(result.current[0]).toBe('06:00');
+      expect(result.current.value).toBe('06:00');
     });
 
     it('returns initialValue when localStorage has invalid JSON', () => {
@@ -43,7 +43,7 @@ describe('useLocalStorage', () => {
         useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
       );
 
-      expect(result.current[0]).toBe('08:00');
+      expect(result.current.value).toBe('08:00');
     });
   });
 
@@ -54,10 +54,10 @@ describe('useLocalStorage', () => {
       );
 
       act(() => {
-        result.current[1]('10:00');
+        result.current.setValue('10:00');
       });
 
-      expect(result.current[0]).toBe('10:00');
+      expect(result.current.value).toBe('10:00');
       expect(localStorageStore[LS_KEYS.DEFAULT_EARLIEST]).toBe(
         JSON.stringify('10:00')
       );
@@ -69,10 +69,10 @@ describe('useLocalStorage', () => {
       );
 
       act(() => {
-        result.current[1]((prev) => prev + ':30');
+        result.current.setValue((prev) => prev + ':30');
       });
 
-      expect(result.current[0]).toBe('08:00:30');
+      expect(result.current.value).toBe('08:00:30');
       expect(localStorageStore[LS_KEYS.DEFAULT_EARLIEST]).toBe(
         JSON.stringify('08:00:30')
       );
@@ -85,15 +85,54 @@ describe('useLocalStorage', () => {
 
       // First update
       act(() => {
-        result.current[1]('10:00');
+        result.current.setValue('10:00');
       });
 
       // Functional update should receive updated value
       act(() => {
-        result.current[1]((prev) => `${prev}-modified`);
+        result.current.setValue((prev) => `${prev}-modified`);
       });
 
-      expect(result.current[0]).toBe('10:00-modified');
+      expect(result.current.value).toBe('10:00-modified');
+    });
+  });
+
+  describe('clearValue', () => {
+    it('removes key from localStorage and resets to initial value', () => {
+      localStorageStore[LS_KEYS.DEFAULT_EARLIEST] = JSON.stringify('10:00');
+
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      expect(result.current.value).toBe('10:00');
+
+      act(() => {
+        result.current.clearValue();
+      });
+
+      expect(result.current.value).toBe('08:00');
+      expect(localStorageStore[LS_KEYS.DEFAULT_EARLIEST]).toBeUndefined();
+    });
+
+    it('calls localStorage.removeItem', () => {
+      const removeItemSpy = vi.fn();
+      vi.stubGlobal('localStorage', {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: removeItemSpy,
+        clear: vi.fn(),
+      });
+
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      act(() => {
+        result.current.clearValue();
+      });
+
+      expect(removeItemSpy).toHaveBeenCalledWith(LS_KEYS.DEFAULT_EARLIEST);
     });
   });
 
@@ -115,10 +154,32 @@ describe('useLocalStorage', () => {
 
       // Should not throw and state should still update
       act(() => {
-        result.current[1]('10:00');
+        result.current.setValue('10:00');
       });
 
-      expect(result.current[0]).toBe('10:00');
+      expect(result.current.value).toBe('10:00');
+    });
+
+    it('handles localStorage.removeItem throwing - state should still reset', () => {
+      vi.stubGlobal('localStorage', {
+        getItem: vi.fn(() => JSON.stringify('10:00')),
+        setItem: vi.fn(),
+        removeItem: vi.fn(() => {
+          throw new Error('StorageError');
+        }),
+        clear: vi.fn(),
+      });
+
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      // Should not throw and state should still reset
+      act(() => {
+        result.current.clearValue();
+      });
+
+      expect(result.current.value).toBe('08:00');
     });
   });
 
@@ -137,10 +198,10 @@ describe('useLocalStorage', () => {
       };
 
       const { result } = renderHook(() =>
-        useLocalStorage(LS_KEYS.SELECTED_CAR, initialValue)
+        useLocalStorage(LS_KEYS.CARS, initialValue)
       );
 
-      expect(result.current[0]).toEqual(initialValue);
+      expect(result.current.value).toEqual(initialValue);
 
       const updatedValue: CarSettings = {
         batterySize: 80,
@@ -149,11 +210,11 @@ describe('useLocalStorage', () => {
       };
 
       act(() => {
-        result.current[1](updatedValue);
+        result.current.setValue(updatedValue);
       });
 
-      expect(result.current[0]).toEqual(updatedValue);
-      expect(localStorageStore[LS_KEYS.SELECTED_CAR]).toBe(
+      expect(result.current.value).toEqual(updatedValue);
+      expect(localStorageStore[LS_KEYS.CARS]).toBe(
         JSON.stringify(updatedValue)
       );
     });
@@ -165,17 +226,17 @@ describe('useLocalStorage', () => {
         name: 'Stored Car',
       };
 
-      localStorageStore[LS_KEYS.SELECTED_CAR] = JSON.stringify(storedValue);
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(storedValue);
 
       const { result } = renderHook(() =>
-        useLocalStorage(LS_KEYS.SELECTED_CAR, {
+        useLocalStorage(LS_KEYS.CARS, {
           batterySize: 0,
           chargingPower: 0,
           name: '',
         })
       );
 
-      expect(result.current[0]).toEqual(storedValue);
+      expect(result.current.value).toEqual(storedValue);
     });
 
     it('handles arrays correctly', () => {
@@ -186,10 +247,10 @@ describe('useLocalStorage', () => {
       );
 
       act(() => {
-        result.current[1]((prev) => [...(prev as string[]), 'item3']);
+        result.current.setValue((prev) => [...(prev as string[]), 'item3']);
       });
 
-      expect(result.current[0]).toEqual(['item1', 'item2', 'item3']);
+      expect(result.current.value).toEqual(['item1', 'item2', 'item3']);
     });
 
     it('handles nested objects correctly', () => {
@@ -206,7 +267,7 @@ describe('useLocalStorage', () => {
         useLocalStorage(LS_KEYS.PRICE_SETTINGS, nestedObject)
       );
 
-      expect(result.current[0]).toEqual(nestedObject);
+      expect(result.current.value).toEqual(nestedObject);
 
       const updatedNested = {
         level1: {
@@ -218,10 +279,10 @@ describe('useLocalStorage', () => {
       };
 
       act(() => {
-        result.current[1](updatedNested);
+        result.current.setValue(updatedNested);
       });
 
-      expect(result.current[0]).toEqual(updatedNested);
+      expect(result.current.value).toEqual(updatedNested);
       expect(JSON.parse(localStorageStore[LS_KEYS.PRICE_SETTINGS])).toEqual(
         updatedNested
       );
@@ -234,13 +295,13 @@ describe('useLocalStorage', () => {
         useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, 42)
       );
 
-      expect(result.current[0]).toBe(42);
+      expect(result.current.value).toBe(42);
 
       act(() => {
-        result.current[1](100);
+        result.current.setValue(100);
       });
 
-      expect(result.current[0]).toBe(100);
+      expect(result.current.value).toBe(100);
     });
 
     it('handles boolean values', () => {
@@ -248,27 +309,119 @@ describe('useLocalStorage', () => {
         useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, false)
       );
 
-      expect(result.current[0]).toBe(false);
+      expect(result.current.value).toBe(false);
 
       act(() => {
-        result.current[1](true);
+        result.current.setValue(true);
       });
 
-      expect(result.current[0]).toBe(true);
+      expect(result.current.value).toBe(true);
     });
 
     it('handles null values', () => {
       const { result } = renderHook(() =>
-        useLocalStorage<string | null>(LS_KEYS.SELECTED_CAR, null)
+        useLocalStorage<string | null>(LS_KEYS.LANGUAGE, null)
       );
 
-      expect(result.current[0]).toBeNull();
+      expect(result.current.value).toBeNull();
 
       act(() => {
-        result.current[1]('some value');
+        result.current.setValue('some value');
       });
 
-      expect(result.current[0]).toBe('some value');
+      expect(result.current.value).toBe('some value');
+    });
+  });
+
+  describe('cross-tab sync', () => {
+    it('updates state when storage event fires with new value', () => {
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      expect(result.current.value).toBe('08:00');
+
+      // Simulate storage event from another tab
+      act(() => {
+        const event = new StorageEvent('storage', {
+          key: LS_KEYS.DEFAULT_EARLIEST,
+          newValue: JSON.stringify('10:00'),
+        });
+        window.dispatchEvent(event);
+      });
+
+      expect(result.current.value).toBe('10:00');
+    });
+
+    it('resets to initial value when storage event indicates key removal', () => {
+      localStorageStore[LS_KEYS.DEFAULT_EARLIEST] = JSON.stringify('10:00');
+
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      expect(result.current.value).toBe('10:00');
+
+      // Simulate key removal from another tab
+      act(() => {
+        const event = new StorageEvent('storage', {
+          key: LS_KEYS.DEFAULT_EARLIEST,
+          newValue: null,
+        });
+        window.dispatchEvent(event);
+      });
+
+      expect(result.current.value).toBe('08:00');
+    });
+
+    it('ignores storage events for different keys', () => {
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      act(() => {
+        const event = new StorageEvent('storage', {
+          key: LS_KEYS.DEFAULT_LATEST,
+          newValue: JSON.stringify('22:00'),
+        });
+        window.dispatchEvent(event);
+      });
+
+      expect(result.current.value).toBe('08:00');
+    });
+
+    it('ignores storage events with invalid JSON', () => {
+      const { result } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      act(() => {
+        const event = new StorageEvent('storage', {
+          key: LS_KEYS.DEFAULT_EARLIEST,
+          newValue: 'not valid json {{{',
+        });
+        window.dispatchEvent(event);
+      });
+
+      // Should remain unchanged
+      expect(result.current.value).toBe('08:00');
+    });
+
+    it('cleans up event listener on unmount', () => {
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+      const { unmount } = renderHook(() =>
+        useLocalStorage(LS_KEYS.DEFAULT_EARLIEST, '08:00')
+      );
+
+      unmount();
+
+      expect(removeEventListenerSpy).toHaveBeenCalledWith(
+        'storage',
+        expect.any(Function)
+      );
+
+      removeEventListenerSpy.mockRestore();
     });
   });
 });

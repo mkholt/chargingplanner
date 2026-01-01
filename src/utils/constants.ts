@@ -36,7 +36,6 @@ export const CHARGING_POWER_OPTIONS = [
 // LocalStorage keys - centralized to avoid duplication
 export const LS_KEYS = {
   CARS: 'ev-cars',
-  SELECTED_CAR: 'ev-selected-car',
   PRICE_SETTINGS: 'ev-price-settings',
   LANGUAGE: 'ev-language',
   DEFAULT_EARLIEST: 'ev-default-earliest',
