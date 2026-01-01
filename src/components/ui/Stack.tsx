@@ -7,6 +7,9 @@ type Props = {
   justify?: React.CSSProperties['justifyContent'];
   wrap?: boolean;
   style?: React.CSSProperties;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
+  'data-testid'?: string;
+  ref?: React.Ref<HTMLDivElement>;
   children: React.ReactNode;
 };
 
@@ -17,10 +20,16 @@ export const Stack: React.FC<Props> = ({
   justify,
   wrap = false,
   style,
+  onClick,
+  'data-testid': dataTestId,
+  ref,
   children,
 }) => {
   return (
     <div
+      ref={ref}
+      onClick={onClick}
+      data-testid={dataTestId}
       style={{
         display: 'flex',
         flexDirection: horizontal ? 'row' : 'column',

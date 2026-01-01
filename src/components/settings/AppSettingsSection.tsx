@@ -17,6 +17,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
+import { Stack } from '@/components/ui';
 import { useAppSettings } from '@/contexts';
 import { priceQueryKeys, usePricesQuery } from '@/hooks';
 import { formatTimeValue } from '@/utils';
@@ -59,16 +60,16 @@ export const AppSettingsSection: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <Stack gap={20}>
       {/* Language */}
       <LanguageSection />
 
       <Divider />
 
       {/* Data Source */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Stack gap={8}>
         <Text weight="semibold">{t('settings.dataSource.title')}</Text>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} data-testid="data-source-info">
+        <Stack horizontal align="center" gap={8} data-testid="data-source-info">
           <Database20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
           <Text size={300}>
             {isMockedData ? t('settings.dataSource.mock') : t('settings.dataSource.live')}
@@ -78,13 +79,13 @@ export const AppSettingsSection: React.FC = () => {
               Mock
             </Badge>
           )}
-        </div>
-      </div>
+        </Stack>
+      </Stack>
 
       <Divider />
 
       {/* Cache */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Stack gap={8}>
         <Text weight="semibold">{t('settings.cache.title')}</Text>
         <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           {t('settings.cache.description')}
@@ -101,25 +102,25 @@ export const AppSettingsSection: React.FC = () => {
             {cacheCleared ? t('settings.cache.cleared') : t('settings.cache.clearButton')}
           </Button>
         </div>
-      </div>
+      </Stack>
 
       <Divider />
 
       {/* Default Time Window */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Stack gap={12}>
         <Text weight="semibold">{t('settings.defaults.title')}</Text>
         <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           {t('settings.defaults.description')}
         </Text>
 
-        <div style={{ display: 'flex', gap: 16 }}>
+        <Stack horizontal gap={16}>
           {/* Earliest Start */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Stack gap={4} style={{ flex: 1 }}>
+            <Stack horizontal align="center" gap={8}>
               <Clock20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
               <Text size={200}>{t('settings.defaults.earliestStart')}</Text>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            </Stack>
+            <Stack horizontal align="center" gap={8}>
               <Switch
                 checked={earliestMode === 'now'}
                 onChange={handleEarliestModeToggle}
@@ -135,15 +136,15 @@ export const AppSettingsSection: React.FC = () => {
                 style={{ width: 100 }}
                 data-testid="earliest-time-input"
               />
-            </div>
-          </div>
+            </Stack>
+          </Stack>
 
           {/* Latest End */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Stack gap={4} style={{ flex: 1 }}>
+            <Stack horizontal align="center" gap={8}>
               <Clock20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
               <Text size={200}>{t('settings.defaults.latestEnd')}</Text>
-            </div>
+            </Stack>
             <Input
               type="time"
               step={900}
@@ -151,9 +152,9 @@ export const AppSettingsSection: React.FC = () => {
               onChange={handleLatestChange}
               data-testid="latest-time-input"
             />
-          </div>
-        </div>
-      </div>
-    </div>
+          </Stack>
+        </Stack>
+      </Stack>
+    </Stack>
   );
 };

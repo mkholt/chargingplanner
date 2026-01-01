@@ -5,6 +5,7 @@ export {
   type FormInput,
 } from './useChargingResults';
 export { useCompaniesQuery, companyQueryKeys } from './useCompaniesQuery';
+export { useTimelineData, type DayBoundary, type TimelineData } from './useTimelineData';
 export { useDebouncedCallback } from './useDebouncedCallback';
 export { useIsMobile } from './useIsMobile';
 export { useLocalStorage } from './useLocalStorage';

@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 
-import {
-  Button,
-  Card,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
+import { Button, Text, tokens } from '@fluentui/react-components';
 import { Delete20Regular, Edit20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
+import { SelectableCard, Stack } from '@/components/ui';
 import { type Car, useCars } from '@/contexts';
 
 import { CarForm } from './CarForm';
@@ -70,26 +66,12 @@ export const CarCard: React.FC<Props> = ({
   }
 
   return (
-    <Card
+    <SelectableCard
+      isSelected={isSelected}
       onClick={onSelect}
       data-testid={`car-card-${slugify(car.name)}`}
-      style={{
-        flex: '1 1 200px',
-        maxWidth: '100%',
-        background: isSelected ? tokens.colorBrandBackground2 : tokens.colorNeutralBackground3,
-        border: isSelected
-          ? `2px solid ${tokens.colorBrandStroke1}`
-          : `1px solid ${tokens.colorNeutralStroke1}`,
-        borderRadius: 10,
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        cursor: 'pointer',
-        position: 'relative',
-      }}
     >
-      <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 2 }}>
+      <Stack horizontal gap={2} style={{ position: 'absolute', top: 6, right: 6 }}>
         <Button
           size="small"
           appearance="subtle"
@@ -114,13 +96,13 @@ export const CarCard: React.FC<Props> = ({
           aria-label={t('cars.deleteCar')}
           data-testid="delete-car-button"
         />
-      </div>
+      </Stack>
       <div style={{ fontWeight: 600, fontSize: 15, color: tokens.colorNeutralForeground1, paddingRight: 50 }}>
         {car.name}
       </div>
       <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
         {car.batterySize} kWh • {car.maxPower} kW
       </Text>
-    </Card>
+    </SelectableCard>
   );
 };

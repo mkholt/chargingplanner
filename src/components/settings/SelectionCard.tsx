@@ -1,6 +1,8 @@
 import React from 'react';
 
-import { Card, Text, tokens } from '@fluentui/react-components';
+import { Text, tokens } from '@fluentui/react-components';
+
+import { SelectableCard, Stack } from '@/components/ui';
 
 type Props = {
   title: string;
@@ -18,30 +20,20 @@ export const SelectionCard: React.FC<Props> = ({
   onClick,
 }) => {
   return (
-    <Card
+    <SelectableCard
+      isSelected={isSelected}
       onClick={onClick}
-      style={{
-        flex: '1 1 180px',
-        maxWidth: '100%',
-        background: isSelected ? tokens.colorBrandBackground2 : tokens.colorNeutralBackground3,
-        border: isSelected
-          ? `2px solid ${tokens.colorBrandStroke1}`
-          : `1px solid ${tokens.colorNeutralStroke1}`,
-        borderRadius: 10,
-        padding: 12,
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
-        cursor: 'pointer',
-      }}
+      horizontal
+      flexBasis={180}
+      gap={8}
+      padding={12}
     >
       {icon && (
         <div style={{ flexShrink: 0, marginTop: 2 }}>
           {icon}
         </div>
       )}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
         <Text
           weight="semibold"
           style={{
@@ -58,13 +50,12 @@ export const SelectionCard: React.FC<Props> = ({
             style={{
               display: 'block',
               color: tokens.colorNeutralForeground2,
-              marginTop: 2,
             }}
           >
             {subtitle}
           </Text>
         )}
-      </div>
-    </Card>
+      </Stack>
+    </SelectableCard>
   );
 };

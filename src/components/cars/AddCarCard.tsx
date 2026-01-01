@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 
-import {
-  Card,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
+import { Text, tokens } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
+import { SelectableCard } from '@/components/ui';
 import { useCars } from '@/contexts';
 
 import { CarForm } from './CarForm';
@@ -43,29 +40,17 @@ export const AddCarCard: React.FC = () => {
   }
 
   return (
-    <Card
+    <SelectableCard
+      variant="add"
+      centered
       onClick={() => setFormState(DEFAULT_CAR_FORM)}
       data-testid="add-car-card"
-      style={{
-        flex: '1 1 200px',
-        maxWidth: '100%',
-        background: 'transparent',
-        border: `2px dashed ${tokens.colorNeutralStroke1}`,
-        borderRadius: 10,
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        cursor: 'pointer',
-        minHeight: 72,
-      }}
+      style={{ minHeight: 72 }}
     >
       <Add24Regular style={{ color: tokens.colorNeutralForeground3 }} />
       <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
         {t('cars.addCar')}
       </Text>
-    </Card>
+    </SelectableCard>
   );
 };
