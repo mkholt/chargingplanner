@@ -11,6 +11,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 import type { MergeResult } from '@/utils';
 
@@ -25,35 +26,41 @@ export const CarImportResultDialog: React.FC<Props> = ({
   onClose,
   result,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
       <DialogSurface>
         <DialogBody>
-          <DialogTitle>Import Complete</DialogTitle>
+          <DialogTitle>{t('importResult.title')}</DialogTitle>
           <DialogContent>
             {result && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {result.added.length > 0 && (
                   <Text>
-                    Added {result.added.length} car{result.added.length !== 1 ? 's' : ''}:
-                    {' '}{result.added.map(c => c.name).join(', ')}
+                    {t('importResult.addedCars', {
+                      count: result.added.length,
+                      names: result.added.map(c => c.name).join(', '),
+                    })}
                   </Text>
                 )}
                 {result.skipped.length > 0 && (
                   <Text style={{ color: tokens.colorNeutralForeground3 }}>
-                    Skipped {result.skipped.length} duplicate{result.skipped.length !== 1 ? 's' : ''}:
-                    {' '}{result.skipped.map(c => c.name).join(', ')}
+                    {t('importResult.skippedDuplicates', {
+                      count: result.skipped.length,
+                      names: result.skipped.map(c => c.name).join(', '),
+                    })}
                   </Text>
                 )}
                 {result.added.length === 0 && result.skipped.length === 0 && (
-                  <Text>No cars were imported.</Text>
+                  <Text>{t('importResult.noCarsImported')}</Text>
                 )}
               </div>
             )}
           </DialogContent>
           <DialogActions>
             <Button appearance="primary" onClick={onClose}>
-              Done
+              {t('common.done')}
             </Button>
           </DialogActions>
         </DialogBody>

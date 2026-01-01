@@ -9,12 +9,14 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import { Location20Regular, MyLocation20Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { SelectionCard } from '@/components/settings';
 import { isCoordinates, isPostalCode, usePriceSettings } from '@/contexts';
 import { isValidPostalCode } from '@/data';
 
 export const SupplierSection: React.FC = () => {
+  const { t } = useTranslation();
   const { resolved, setLocation, setSupplier } = usePriceSettings();
   const { location, availableSuppliers, supplier, isLoading } = resolved;
 
@@ -46,12 +48,12 @@ export const SupplierSection: React.FC = () => {
 
     const parsed = parseInt(value, 10);
     if (isNaN(parsed)) {
-      setError('Enter a valid number');
+      setError(t('supplier.invalidNumber'));
       return;
     }
 
     if (!isValidPostalCode(parsed)) {
-      setError('Danish postal codes are 1000-9999');
+      setError(t('supplier.postalCodeRange'));
       return;
     }
 
@@ -60,7 +62,7 @@ export const SupplierSection: React.FC = () => {
 
   const handleGpsClick = () => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
+      setLocationError(t('supplier.geolocationNotSupported'));
       return;
     }
 
@@ -81,16 +83,16 @@ export const SupplierSection: React.FC = () => {
         setIsLocating(false);
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            setLocationError('Location access was denied');
+            setLocationError(t('supplier.locationDenied'));
             break;
           case err.POSITION_UNAVAILABLE:
-            setLocationError('Location information is unavailable');
+            setLocationError(t('supplier.locationUnavailable'));
             break;
           case err.TIMEOUT:
-            setLocationError('Location request timed out');
+            setLocationError(t('supplier.locationTimeout'));
             break;
           default:
-            setLocationError('An unknown error occurred');
+            setLocationError(t('supplier.unknownError'));
         }
       },
       { enableHighAccuracy: false, timeout: 10000 }
@@ -99,28 +101,28 @@ export const SupplierSection: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Text weight="semibold">Grid Operator (Netselskab)</Text>
+      <Text weight="semibold">{t('supplier.title')}</Text>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Location20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
         <Input
           value={inputValue}
           onChange={(_, data) => handleInputChange(data.value)}
-          placeholder="Enter postal code (e.g., 2100)"
+          placeholder={t('supplier.placeholder')}
           type="number"
           min={1000}
           max={9999}
           style={{ flex: 1 }}
           data-testid="postal-code-input"
         />
-        <Tooltip content="Use my location" relationship="label">
+        <Tooltip content={t('supplier.useMyLocation')} relationship="label">
           <Button
             data-testid="gps-location-button"
             icon={isLocating ? <Spinner size="tiny" /> : <MyLocation20Regular />}
             appearance="subtle"
             onClick={handleGpsClick}
             disabled={isLocating}
-            aria-label="Use my location"
+            aria-label={t('supplier.useMyLocation')}
           />
         </Tooltip>
       </div>
@@ -139,7 +141,7 @@ export const SupplierSection: React.FC = () => {
 
       {isUsingGps && !isLoadingSuppliers && (
         <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} data-testid="gps-location-indicator">
-          Using GPS location
+          {t('supplier.usingGps')}
         </Text>
       )}
 
@@ -147,7 +149,7 @@ export const SupplierSection: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Spinner size="tiny" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            Looking up grid operators...
+            {t('supplier.lookingUp')}
           </Text>
         </div>
       )}
@@ -159,7 +161,7 @@ export const SupplierSection: React.FC = () => {
             <SelectionCard
               key={s.id}
               title={s.name}
-              subtitle={`${s.companyName} · ${s.priceArea === 'DK1' ? 'Vestdanmark' : 'Østdanmark'}`}
+              subtitle={`${s.companyName} · ${s.priceArea === 'DK1' ? t('supplier.westDenmark') : t('supplier.eastDenmark')}`}
               isSelected={supplier?.id === s.id}
               onClick={() => setSupplier(s)}
             />
@@ -170,7 +172,7 @@ export const SupplierSection: React.FC = () => {
       {/* No suppliers found */}
       {!isLoadingSuppliers && location !== null && !error && !locationError && displayedSuppliers.length === 0 && (
         <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }} data-testid="no-supplier-message">
-          No grid operator found {postalCode ? `for postal code ${postalCode}` : 'at your location'}
+          {postalCode ? t('supplier.notFoundForPostal', { code: postalCode }) : t('supplier.notFoundAtLocation')}
         </Text>
       )}
     </div>

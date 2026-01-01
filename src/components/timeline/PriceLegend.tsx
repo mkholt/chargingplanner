@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { tokens } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   minPrice: number;
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export const PriceLegend: React.FC<Props> = ({ minPrice, maxPrice }) => {
+  const { t } = useTranslation();
   const range = maxPrice - minPrice;
   const cheapCutoff = minPrice + range * 0.33;
   const expensiveCutoff = minPrice + range * 0.66;
@@ -36,7 +38,7 @@ export const PriceLegend: React.FC<Props> = ({ minPrice, maxPrice }) => {
             borderRadius: 2,
           }}
         />
-        <span>&lt; {cheapCutoff.toFixed(2)}</span>
+        <span>{t('priceTimeline.lessThan', { price: cheapCutoff.toFixed(2) })}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <div
@@ -47,7 +49,7 @@ export const PriceLegend: React.FC<Props> = ({ minPrice, maxPrice }) => {
             borderRadius: 2,
           }}
         />
-        <span>{cheapCutoff.toFixed(2)} - {expensiveCutoff.toFixed(2)}</span>
+        <span>{t('priceTimeline.range', { min: cheapCutoff.toFixed(2), max: expensiveCutoff.toFixed(2) })}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <div
@@ -58,9 +60,9 @@ export const PriceLegend: React.FC<Props> = ({ minPrice, maxPrice }) => {
             borderRadius: 2,
           }}
         />
-        <span>&gt; {expensiveCutoff.toFixed(2)}</span>
+        <span>{t('priceTimeline.moreThan', { price: expensiveCutoff.toFixed(2) })}</span>
       </div>
-      <span style={{ color: tokens.colorNeutralForeground3 }}>DKK/kWh</span>
+      <span style={{ color: tokens.colorNeutralForeground3 }}>{t('priceTimeline.unit')}</span>
     </div>
   );
 };

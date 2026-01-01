@@ -67,23 +67,35 @@ export function getNextOccurrence(hours: number, minutes: number, referenceDate:
 }
 
 /**
- * Get friendly label for the date (Today/Tomorrow or formatted date)
+ * Check if a date is today
  */
-export function getDateLabel(date: Date): string {
+export function isToday(date: Date): boolean {
+  const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+  return targetDate.getTime() === today.getTime();
+}
+
+/**
+ * Check if a date is tomorrow
+ */
+export function isTomorrow(date: Date): boolean {
   const now = new Date();
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0);
+  return targetDate.getTime() === tomorrow.getTime();
+}
 
-  if (targetDate.getTime() === today.getTime()) {
-    return 'Today';
-  } else if (targetDate.getTime() === tomorrow.getTime()) {
-    return 'Tomorrow';
-  }
+/**
+ * Format date as short localized string (e.g., "Mon, Jan 5")
+ */
+export function formatShortDate(date: Date): string {
   return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 

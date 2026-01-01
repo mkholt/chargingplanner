@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
-import { LOCAL_STORAGE_KEYS, type Car, type PriceSettings } from './test-fixtures';
+import { type Car, type PriceSettings } from './test-fixtures';
+import { LS_KEYS } from '../../src/utils/constants';
 import type { PriceScenario } from '../../src/test/mocks/mockPrices';
 
 /**
@@ -32,14 +33,27 @@ export async function setLocalStorageItem(
 }
 
 export async function seedCars(page: Page, cars: Car[]): Promise<void> {
-  await setLocalStorageItem(page, LOCAL_STORAGE_KEYS.CARS, cars);
+  await setLocalStorageItem(page, LS_KEYS.CARS, cars);
+}
+
+/**
+ * Seeds the language preference in localStorage.
+ * @param page - Playwright page object
+ * @param language - Language code ('en' for English, 'da' for Danish)
+ */
+export async function seedLanguage(page: Page, language: 'en' | 'da'): Promise<void> {
+  await ensureOnOrigin(page);
+  await page.evaluate(
+    ({ key, value }) => localStorage.setItem(key, value),
+    { key: LS_KEYS.LANGUAGE, value: language }
+  );
 }
 
 export async function seedSelectedCar(page: Page, carId: string): Promise<void> {
   await ensureOnOrigin(page);
   await page.evaluate(
     ({ key, value }) => localStorage.setItem(key, value),
-    { key: LOCAL_STORAGE_KEYS.SELECTED_CAR, value: carId }
+    { key: LS_KEYS.SELECTED_CAR, value: carId }
   );
 }
 
@@ -65,7 +79,7 @@ export async function seedPriceSettings(
   };
   await setLocalStorageItem(
     page,
-    LOCAL_STORAGE_KEYS.PRICE_SETTINGS,
+    LS_KEYS.PRICE_SETTINGS,
     settingsToSave
   );
 }
@@ -138,4 +152,22 @@ export async function setPriceScenario(page: Page, scenario: PriceScenario): Pro
 export async function clearPriceScenario(page: Page): Promise<void> {
   await ensureOnOrigin(page);
   await page.evaluate(() => localStorage.removeItem('mock-price-scenario'));
+}
+
+/**
+ * Seeds the default earliest start preference.
+ * @param page - Playwright page object
+ * @param value - 'now' for current time or a time string like '08:00' for specific time
+ */
+export async function seedDefaultEarliest(page: Page, value: 'now' | string): Promise<void> {
+  await setLocalStorageItem(page, LS_KEYS.DEFAULT_EARLIEST, value);
+}
+
+/**
+ * Seeds the default latest end time preference.
+ * @param page - Playwright page object
+ * @param value - Time string in 'HH:mm' format (e.g., '07:00')
+ */
+export async function seedDefaultLatest(page: Page, value: string): Promise<void> {
+  await setLocalStorageItem(page, LS_KEYS.DEFAULT_LATEST, value);
 }

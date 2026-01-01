@@ -14,17 +14,3 @@ export function getPriceColor(price: number, min: number, max: number): string {
     return tokens.colorPaletteRedBorder1;
   }
 }
-
-export function getDayLabel(date: Date): string {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (date.toDateString() === today.toDateString()) {
-    return 'Today';
-  } else if (date.toDateString() === tomorrow.toDateString()) {
-    return 'Tomorrow';
-  } else {
-    return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
-  }
-}

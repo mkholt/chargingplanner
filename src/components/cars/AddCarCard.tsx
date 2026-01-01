@@ -6,6 +6,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { useCars } from '@/contexts';
 
@@ -13,6 +14,7 @@ import { CarForm } from './CarForm';
 import { DEFAULT_CAR_FORM, type CarFormState } from './carFormState';
 
 export const AddCarCard: React.FC = () => {
+  const { t } = useTranslation();
   const { addCar, setSelectedCarId } = useCars();
   const [formState, setFormState] = useState<CarFormState | null>(null);
 
@@ -34,7 +36,7 @@ export const AddCarCard: React.FC = () => {
         onChange={setFormState}
         onSave={handleSave}
         onCancel={() => setFormState(null)}
-        saveLabel="Add car"
+        saveLabel={t('cars.addCar')}
         autoFocus
       />
     );
@@ -62,7 +64,7 @@ export const AddCarCard: React.FC = () => {
     >
       <Add24Regular style={{ color: tokens.colorNeutralForeground3 }} />
       <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-        Add Car
+        {t('cars.addCar')}
       </Text>
     </Card>
   );

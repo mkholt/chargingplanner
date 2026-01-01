@@ -5,16 +5,16 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 import {
-  getDayLabel,
   getPriceColor,
   type HourData,
   PriceLegend,
   SelectedHourDetail,
   TimelineBar,
 } from '@/components/timeline';
-import { MS_PER_MINUTE, type PriceSlot } from '@/utils';
+import { formatShortDate, isToday, isTomorrow, MS_PER_MINUTE, type PriceSlot } from '@/utils';
 
 type Props = {
   slots: PriceSlot[];
@@ -33,8 +33,16 @@ export const PriceTimeline: React.FC<Props> = ({
   chargingSpeed,
   intervalMinutes = 60,
 }) => {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  /** Get translated day label */
+  const getDayLabel = (date: Date): string => {
+    if (isToday(date)) return t('time.today');
+    if (isTomorrow(date)) return t('time.tomorrow');
+    return formatShortDate(date);
+  };
 
   if (!slots.length) return null;
 
@@ -340,7 +348,7 @@ export const PriceTimeline: React.FC<Props> = ({
 
       {/* Strømligning attribution */}
       <Text size={200} data-testid="price-attribution" style={{ color: tokens.colorNeutralForeground3, marginTop: 8 }}>
-        Data provided by Strømligning.{' '}
+        {t('priceTimeline.dataProvidedBy')}{' '}
         <Link href="https://stromligning.dk" target="_blank" rel="noopener noreferrer">
           stromligning.dk
         </Link>

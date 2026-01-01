@@ -2,12 +2,14 @@
 import {
   findSlotIndexByTime,
   formatDuration,
+  formatShortDate,
   formatTime,
   formatTimeValue,
-  getDateLabel,
   getIntervalOffset,
   getLocalDateString,
   getNextOccurrence,
+  isToday,
+  isTomorrow,
   roundToNext15Minutes,
   toDateTimeLocalString,
 } from '@/utils/dateUtils';
@@ -191,7 +193,7 @@ describe('getNextOccurrence', () => {
   });
 });
 
-describe('getDateLabel', () => {
+describe('isToday', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2024, 0, 15, 12, 0, 0)); // Jan 15, 2024 12:00
@@ -201,22 +203,55 @@ describe('getDateLabel', () => {
     vi.useRealTimers();
   });
 
-  it('returns "Today" for current date', () => {
+  it('returns true for current date', () => {
     const date = new Date(2024, 0, 15, 18, 0, 0);
-    expect(getDateLabel(date)).toBe('Today');
+    expect(isToday(date)).toBe(true);
   });
 
-  it('returns "Tomorrow" for next day', () => {
+  it('returns false for tomorrow', () => {
     const date = new Date(2024, 0, 16, 8, 0, 0);
-    expect(getDateLabel(date)).toBe('Tomorrow');
+    expect(isToday(date)).toBe(false);
   });
 
-  it('returns formatted date for other days', () => {
+  it('returns false for other days', () => {
     const date = new Date(2024, 0, 20, 12, 0, 0);
-    const result = getDateLabel(date);
-    // The exact format depends on locale, but should contain the date info
-    expect(result).not.toBe('Today');
-    expect(result).not.toBe('Tomorrow');
+    expect(isToday(date)).toBe(false);
+  });
+});
+
+describe('isTomorrow', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2024, 0, 15, 12, 0, 0)); // Jan 15, 2024 12:00
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns false for current date', () => {
+    const date = new Date(2024, 0, 15, 18, 0, 0);
+    expect(isTomorrow(date)).toBe(false);
+  });
+
+  it('returns true for next day', () => {
+    const date = new Date(2024, 0, 16, 8, 0, 0);
+    expect(isTomorrow(date)).toBe(true);
+  });
+
+  it('returns false for other days', () => {
+    const date = new Date(2024, 0, 20, 12, 0, 0);
+    expect(isTomorrow(date)).toBe(false);
+  });
+});
+
+describe('formatShortDate', () => {
+  it('returns formatted date string', () => {
+    const date = new Date(2024, 0, 20, 12, 0, 0);
+    const result = formatShortDate(date);
+    // The exact format depends on locale, but should contain date info
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
   });
 });
 

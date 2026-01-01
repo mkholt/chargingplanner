@@ -14,7 +14,9 @@ export class SettingsDialogPage {
   readonly carsTab: Locator;
   readonly electricityTab: Locator;
   readonly syncTab: Locator;
+  readonly appTab: Locator;
   readonly doneButton: Locator;
+  readonly languageSelector: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -22,7 +24,9 @@ export class SettingsDialogPage {
     this.carsTab = page.getByTestId('tab-cars');
     this.electricityTab = page.getByTestId('tab-electricity');
     this.syncTab = page.getByTestId('tab-sync');
+    this.appTab = page.getByTestId('tab-app');
     this.doneButton = page.getByTestId('done-button');
+    this.languageSelector = page.getByTestId('language-selector');
   }
 
   async switchToCarsTab(): Promise<void> {
@@ -35,6 +39,10 @@ export class SettingsDialogPage {
 
   async switchToSyncTab(): Promise<void> {
     await this.syncTab.click();
+  }
+
+  async switchToAppTab(): Promise<void> {
+    await this.appTab.click();
   }
 
   async close(): Promise<void> {
@@ -224,5 +232,88 @@ export class SettingsDialogPage {
       return await notFoundText.textContent();
     }
     return null;
+  }
+
+  // ========== App Section / Language Methods ==========
+
+  async selectLanguage(language: 'en' | 'da'): Promise<void> {
+    await this.switchToAppTab();
+    await this.languageSelector.click();
+    // Select by the native language name
+    const optionText = language === 'en' ? 'English' : 'Dansk';
+    await this.page.getByRole('option', { name: optionText }).click();
+  }
+
+  async getCurrentLanguage(): Promise<string> {
+    await this.switchToAppTab();
+    return await this.languageSelector.inputValue();
+  }
+
+  // ========== App Section / Cache Methods ==========
+
+  async clickClearCacheButton(): Promise<void> {
+    await this.switchToAppTab();
+    await this.page.getByTestId('clear-cache-button').click();
+  }
+
+  async isCacheButtonDisabled(): Promise<boolean> {
+    const button = this.page.getByTestId('clear-cache-button');
+    return await button.isDisabled();
+  }
+
+  async getClearCacheButtonText(): Promise<string> {
+    const button = this.page.getByTestId('clear-cache-button');
+    return await button.textContent() ?? '';
+  }
+
+  // ========== App Section / Data Source Methods ==========
+
+  async isMockDataBadgeVisible(): Promise<boolean> {
+    await this.switchToAppTab();
+    const badge = this.page.getByTestId('mock-data-badge');
+    return await badge.isVisible();
+  }
+
+  // ========== App Section / Default Time Window Methods ==========
+
+  async isEarliestNowToggleChecked(): Promise<boolean> {
+    await this.switchToAppTab();
+    const toggle = this.page.getByTestId('earliest-now-toggle');
+    return await toggle.isChecked();
+  }
+
+  async toggleEarliestNow(): Promise<void> {
+    await this.switchToAppTab();
+    await this.page.getByTestId('earliest-now-toggle').click();
+  }
+
+  async isEarliestTimeInputDisabled(): Promise<boolean> {
+    await this.switchToAppTab();
+    const input = this.page.getByTestId('earliest-time-input');
+    return await input.isDisabled();
+  }
+
+  async setEarliestTime(time: string): Promise<void> {
+    await this.switchToAppTab();
+    const input = this.page.getByTestId('earliest-time-input');
+    await input.fill(time);
+  }
+
+  async getEarliestTimeValue(): Promise<string> {
+    await this.switchToAppTab();
+    const input = this.page.getByTestId('earliest-time-input');
+    return await input.inputValue();
+  }
+
+  async setLatestTime(time: string): Promise<void> {
+    await this.switchToAppTab();
+    const input = this.page.getByTestId('latest-time-input');
+    await input.fill(time);
+  }
+
+  async getLatestTimeValue(): Promise<string> {
+    await this.switchToAppTab();
+    const input = this.page.getByTestId('latest-time-input');
+    return await input.inputValue();
   }
 }

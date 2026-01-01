@@ -11,12 +11,14 @@ import {
   Building20Regular,
   LeafOne20Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { SelectionCard } from '@/components/settings';
 import { usePriceSettings } from '@/contexts';
 import { useCompaniesQuery } from '@/hooks';
 
 export const CompanySection: React.FC = () => {
+  const { t } = useTranslation();
   const { resolved, setCompany, setProduct } = usePriceSettings();
   const { priceArea, company, product } = resolved;
 
@@ -34,11 +36,11 @@ export const CompanySection: React.FC = () => {
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Text weight="semibold">Electricity Supplier (Elselskab)</Text>
+        <Text weight="semibold">{t('company.title')}</Text>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Spinner size="tiny" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            Loading suppliers...
+            {t('company.loadingSuppliers')}
           </Text>
         </div>
       </div>
@@ -47,7 +49,7 @@ export const CompanySection: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Text weight="semibold">Electricity Supplier (Elselskab)</Text>
+      <Text weight="semibold">{t('company.title')}</Text>
 
       {/* Supplier combobox with search */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -61,7 +63,7 @@ export const CompanySection: React.FC = () => {
             setQuery('');
           }}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search or select supplier"
+          placeholder={t('company.searchPlaceholder')}
           style={{ flex: 1 }}
           freeform
         >
@@ -70,7 +72,7 @@ export const CompanySection: React.FC = () => {
               <div>
                 <div>{c.name}</div>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                  {c.products.length} product{c.products.length !== 1 ? 's' : ''}
+                  {t('company.productCount', { count: c.products.length })}
                 </Text>
               </div>
             </Option>

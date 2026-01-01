@@ -6,12 +6,15 @@ import {
   ClockAlarm24Regular,
   TargetArrow16Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { LabeledFormField } from '@/components/ui';
 import {
+  formatShortDate,
   formatTimeValue,
-  getDateLabel,
   getNextOccurrence,
+  isToday,
+  isTomorrow,
   roundToNext15Minutes,
   toDateTimeLocalString,
 } from '@/utils';
@@ -29,9 +32,18 @@ export const TimeWindowSelector: React.FC<Props> = ({
   onEarliestChange,
   onLatestChange,
 }) => {
+  const { t } = useTranslation();
+
   // Parse the datetime strings to Date objects
   const earliestDate = new Date(earliest);
   const latestDate = new Date(latest);
+
+  /** Get translated date label */
+  const getDateLabel = (date: Date): string => {
+    if (isToday(date)) return t('time.today');
+    if (isTomorrow(date)) return t('time.tomorrow');
+    return formatShortDate(date);
+  };
 
   const handleEarliestChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const timeValue = e.target.value; // "HH:mm" format
@@ -62,7 +74,7 @@ export const TimeWindowSelector: React.FC<Props> = ({
     <div style={{ display: 'flex', gap: 16 }}>
       <LabeledFormField
         icon={<Clock24Regular />}
-        label="Earliest Start"
+        label={t('time.earliestStart')}
         style={{ flex: 1 }}
       >
         <Input
@@ -72,13 +84,13 @@ export const TimeWindowSelector: React.FC<Props> = ({
           value={formatTimeValue(earliestDate)}
           onChange={handleEarliestChange}
           contentAfter={
-            <Tooltip content="Set to now" relationship="label">
+            <Tooltip content={t('time.setToNow')} relationship="label">
               <Button
                 size="small"
                 appearance="transparent"
                 icon={<TargetArrow16Regular />}
                 onClick={handleNowClick}
-                aria-label="Set to now"
+                aria-label={t('time.setToNow')}
                 data-testid="set-to-now-button"
               />
             </Tooltip>
@@ -90,7 +102,7 @@ export const TimeWindowSelector: React.FC<Props> = ({
       </LabeledFormField>
       <LabeledFormField
         icon={<ClockAlarm24Regular />}
-        label="Latest End"
+        label={t('time.latestEnd')}
         style={{ flex: 1 }}
       >
         <Input

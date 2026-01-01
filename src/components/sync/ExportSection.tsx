@@ -17,6 +17,7 @@ import {
   Warning20Regular,
 } from '@fluentui/react-icons';
 import { QRCodeSVG } from 'qrcode.react';
+import { useTranslation } from 'react-i18next';
 
 import type { Car, PriceSettings } from '@/contexts';
 import { encodeSyncData, generateShareableUrl, generateSyncCode } from '@/utils';
@@ -51,6 +52,7 @@ function hasAnySettings(settings?: PriceSettings | null): boolean {
 }
 
 export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ExportTab>('qr');
   const [copied, setCopied] = useState(false);
   const [includeSettings, setIncludeSettings] = useState(true);
@@ -95,17 +97,17 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
   // Build summary text
   const summaryParts: string[] = [];
   if (cars.length > 0) {
-    summaryParts.push(`${cars.length} car${cars.length !== 1 ? 's' : ''}`);
+    summaryParts.push(t('cars.carCount', { count: cars.length }));
   }
   if (settingsToInclude) {
-    summaryParts.push('settings');
+    summaryParts.push(t('common.settings').toLowerCase());
   }
   const summaryText = summaryParts.join(' + ');
 
   if (cars.length === 0 && !hasSettings) {
     return (
       <div style={{ textAlign: 'center', padding: 16, color: tokens.colorNeutralForeground3 }}>
-        <Text size={200}>No data to export. Add a car or configure settings first.</Text>
+        <Text size={200}>{t('sync.noDataToExport')}</Text>
       </div>
     );
   }
@@ -113,7 +115,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
   if (!exportData) {
     return (
       <div style={{ textAlign: 'center', padding: 16, color: tokens.colorNeutralForeground3 }}>
-        <Text size={200}>Generating...</Text>
+        <Text size={200}>{t('sync.generating')}</Text>
       </div>
     );
   }
@@ -125,7 +127,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         <Checkbox
           checked={includeSettings}
           onChange={(_, data) => setIncludeSettings(!!data.checked)}
-          label="Include electricity settings"
+          label={t('sync.includeElectricity')}
         />
       )}
 
@@ -134,15 +136,15 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         onTabSelect={(_, data) => setActiveTab(data.value as ExportTab)}
         size="small"
       >
-        <Tab value="qr" icon={<QrCode20Regular />}>QR Code</Tab>
+        <Tab value="qr" icon={<QrCode20Regular />}>{t('sync.qrCode')}</Tab>
         <Tab
           value="link"
           icon={exportData.shareUrl ? <Link20Regular /> : <Warning20Regular />}
           disabled={!exportData.shareUrl}
         >
-          Link
+          {t('sync.link')}
         </Tab>
-        <Tab value="code" icon={<Copy20Regular />}>Code</Tab>
+        <Tab value="code" icon={<Copy20Regular />}>{t('sync.code')}</Tab>
       </TabList>
 
       {activeTab === 'qr' && (
@@ -158,7 +160,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
             <QRCodeSVG value={exportData.qrData} size={180} />
           </div>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            Scan to import {summaryText}
+            {t('sync.scanToImport', { summary: summaryText })}
           </Text>
         </div>
       )}
@@ -179,16 +181,16 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
                 icon={copied ? <Checkmark20Regular /> : <Copy20Regular />}
                 onClick={() => handleCopy(exportData.shareUrl!)}
               >
-                {copied ? 'Copied!' : 'Copy Link'}
+                {copied ? t('sync.copied') : t('sync.copyLink')}
               </Button>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Share this link to import {summaryText}
+                {t('sync.shareLink', { summary: summaryText })}
               </Text>
             </>
           ) : (
             <div style={{ padding: 16, textAlign: 'center' }}>
               <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
-                Data too large for URL. Use QR Code or Code instead.
+                {t('sync.dataTooLarge')}
               </Text>
             </div>
           )}
@@ -209,10 +211,10 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
             icon={copied ? <Checkmark20Regular /> : <Copy20Regular />}
             onClick={() => handleCopy(exportData.syncCode)}
           >
-            {copied ? 'Copied!' : 'Copy Code'}
+            {copied ? t('sync.copied') : t('sync.copyCode')}
           </Button>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            Paste this code to import {summaryText}
+            {t('sync.pasteCode', { summary: summaryText })}
           </Text>
         </div>
       )}

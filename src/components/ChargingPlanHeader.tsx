@@ -16,6 +16,7 @@ import {
   Play16Regular,
   Stop16Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { useCars, usePriceSettings } from '@/contexts';
 import { CHARGING_EFFICIENCY, formatDuration, type ChargingResult } from '@/utils';
@@ -27,6 +28,7 @@ type Props = {
 export const ChargingPlanHeader: React.FC<Props> = ({
   result,
 }) => {
+  const { t } = useTranslation();
   const { cars, selectedCarId } = useCars();
   const { resolved: priceSettings } = usePriceSettings();
 
@@ -50,7 +52,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
       return `${supplier.name} (${priceArea})`;
     }
     return priceAreaSource === 'manual'
-      ? `Spot price ${priceArea}`
+      ? t('results.spotPrice', { area: priceArea })
       : `${priceArea}`;
   })();
 
@@ -65,7 +67,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
         <CalendarClock24Regular />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <Text weight="semibold" size={400} data-testid="charging-plan-header" style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
-            Charging Plan
+            {t('results.chargingPlan')}
           </Text>
           <Text size={200} style={{ color: secondary }}>
             {subtitle}
@@ -91,7 +93,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
           <div data-testid="result-start">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Play16Regular />
-              <Text size={200} style={{ color: secondary }}>Start</Text>
+              <Text size={200} style={{ color: secondary }}>{t('results.start')}</Text>
             </div>
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {result.startTime.toLocaleTimeString(undefined, {
@@ -103,7 +105,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
           <div data-testid="result-end">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Stop16Regular />
-              <Text size={200} style={{ color: secondary }}>End</Text>
+              <Text size={200} style={{ color: secondary }}>{t('results.end')}</Text>
             </div>
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {result.endTime.toLocaleTimeString(undefined, {
@@ -115,7 +117,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
           <div data-testid="result-duration">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Clock16Regular />
-              <Text size={200} style={{ color: secondary }}>Duration</Text>
+              <Text size={200} style={{ color: secondary }}>{t('results.duration')}</Text>
             </div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
               {formatDuration(result.durationHours)}
@@ -124,7 +126,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
           <div data-testid="result-energy">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Flash16Regular />
-              <Text size={200} style={{ color: secondary }}>Energy</Text>
+              <Text size={200} style={{ color: secondary }}>{t('results.energy')}</Text>
             </div>
             <Popover withArrow openOnHover>
               <PopoverTrigger disableButtonEnhancement>
@@ -143,7 +145,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
                     color: 'inherit',
                     font: 'inherit',
                   }}
-                  aria-label="Energy breakdown"
+                  aria-label={t('results.energyBreakdown')}
                 >
                   {result.energyNeeded.toFixed(1)} kWh
                   <Info12Regular style={{ color: secondary }} />
@@ -151,9 +153,9 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               </PopoverTrigger>
               <PopoverSurface>
                 <div>
-                  <div>{(result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1)} kWh to battery</div>
-                  <div>+{((1 - CHARGING_EFFICIENCY) * 100).toFixed(0)}% charging loss</div>
-                  <div style={{ fontWeight: 600, marginTop: 4 }}>= {result.energyNeeded.toFixed(1)} kWh from grid</div>
+                  <div>{t('results.toBattery', { amount: (result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1) })}</div>
+                  <div>{t('results.chargingLoss', { percent: ((1 - CHARGING_EFFICIENCY) * 100).toFixed(0) })}</div>
+                  <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.fromGrid', { amount: result.energyNeeded.toFixed(1) })}</div>
                 </div>
               </PopoverSurface>
             </Popover>
@@ -161,7 +163,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
           <div data-testid="result-cost">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
               <Money16Regular />
-              <Text size={200} style={{ color: secondary }}>Est. Cost</Text>
+              <Text size={200} style={{ color: secondary }}>{t('results.estCost')}</Text>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: brand }}>
               {result.totalCost} DKK

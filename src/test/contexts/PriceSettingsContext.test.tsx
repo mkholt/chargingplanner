@@ -1,9 +1,9 @@
-
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PriceSettingsProvider, usePriceSettings, type PriceSettings } from '@/contexts/PriceSettingsContext';
 import { stubLocalStorage } from '@/test/utils/testUtils';
 import type { Company, Product, Supplier } from '@/data';
+import { LS_KEYS } from '@/utils';
 
 // Mock the hooks that PriceSettingsContext depends on
 vi.mock('@/hooks', () => ({
@@ -81,7 +81,7 @@ describe('PriceSettingsContext', () => {
         aggregationSize: '15m',
         aggregationMethod: 'max',
       };
-      localStorageStore['ev-price-settings'] = JSON.stringify(savedSettings);
+      localStorageStore[LS_KEYS.PRICE_SETTINGS] = JSON.stringify(savedSettings);
 
       const { result } = renderHook(() => usePriceSettings(), { wrapper });
 
@@ -130,7 +130,7 @@ describe('PriceSettingsContext', () => {
       });
 
       expect(localStorage.setItem).toHaveBeenCalledWith(
-        'ev-price-settings',
+        LS_KEYS.PRICE_SETTINGS,
         expect.stringContaining('2100')
       );
     });

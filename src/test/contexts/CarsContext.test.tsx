@@ -1,7 +1,7 @@
-
 import { renderHook, act } from '@testing-library/react';
 import { CarsProvider, useCars, type Car } from '@/contexts/CarsContext';
 import { stubLocalStorage } from '@/test/utils/testUtils';
+import { LS_KEYS } from '@/utils';
 
 describe('CarsContext', () => {
   let localStorageStore: Record<string, string> = {};
@@ -31,7 +31,7 @@ describe('CarsContext', () => {
       const existingCars: Car[] = [
         { id: '1', name: 'Tesla', batterySize: 60, maxPower: 11 },
       ];
-      localStorageStore['ev-cars'] = JSON.stringify(existingCars);
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingCars);
 
       const { result } = renderHook(() => useCars(), { wrapper });
 
@@ -43,8 +43,8 @@ describe('CarsContext', () => {
       const existingCars: Car[] = [
         { id: 'car-1', name: 'Tesla', batterySize: 60, maxPower: 11 },
       ];
-      localStorageStore['ev-cars'] = JSON.stringify(existingCars);
-      localStorageStore['ev-selected-car'] = 'car-1';
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingCars);
+      localStorageStore[LS_KEYS.SELECTED_CAR] = 'car-1';
 
       const { result } = renderHook(() => useCars(), { wrapper });
 
@@ -55,8 +55,8 @@ describe('CarsContext', () => {
       const existingCars: Car[] = [
         { id: 'car-1', name: 'Tesla', batterySize: 60, maxPower: 11 },
       ];
-      localStorageStore['ev-cars'] = JSON.stringify(existingCars);
-      localStorageStore['ev-selected-car'] = 'non-existent-id';
+      localStorageStore[LS_KEYS.CARS] = JSON.stringify(existingCars);
+      localStorageStore[LS_KEYS.SELECTED_CAR] = 'non-existent-id';
 
       const { result } = renderHook(() => useCars(), { wrapper });
 
@@ -95,7 +95,7 @@ describe('CarsContext', () => {
       });
 
       expect(localStorage.setItem).toHaveBeenCalledWith(
-        'ev-cars',
+        LS_KEYS.CARS,
         expect.stringContaining('Tesla')
       );
     });
@@ -140,7 +140,7 @@ describe('CarsContext', () => {
       });
 
       expect(localStorage.setItem).toHaveBeenCalledWith(
-        'ev-cars',
+        LS_KEYS.CARS,
         expect.stringContaining('75')
       );
     });
@@ -237,7 +237,7 @@ describe('CarsContext', () => {
         result.current.setSelectedCarId(carId!);
       });
 
-      expect(localStorage.setItem).toHaveBeenCalledWith('ev-selected-car', carId!);
+      expect(localStorage.setItem).toHaveBeenCalledWith(LS_KEYS.SELECTED_CAR, carId!);
     });
 
     it('removes selection from localStorage when set to null', () => {
@@ -254,7 +254,7 @@ describe('CarsContext', () => {
         result.current.setSelectedCarId(null);
       });
 
-      expect(localStorage.removeItem).toHaveBeenCalledWith('ev-selected-car');
+      expect(localStorage.removeItem).toHaveBeenCalledWith(LS_KEYS.SELECTED_CAR);
     });
   });
 

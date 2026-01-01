@@ -9,7 +9,8 @@
       "Bash(npx vitest:*)",
       "Bash(npm run test:e2e:*)",
       "Bash(npm test:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

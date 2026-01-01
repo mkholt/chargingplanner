@@ -38,6 +38,10 @@ export class AppPage {
     await expect(this.priceAttribution).toBeVisible();
   }
 
+  async waitForReady(): Promise<void> {
+    await this.waitForAppReady();
+  }
+
   async openSettings(): Promise<void> {
     await this.settingsButton.click();
     await expect(this.page.getByTestId('settings-dialog')).toBeVisible();

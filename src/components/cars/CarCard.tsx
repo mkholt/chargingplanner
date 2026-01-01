@@ -7,6 +7,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Delete20Regular, Edit20Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { type Car, useCars } from '@/contexts';
 
@@ -34,6 +35,7 @@ export const CarCard: React.FC<Props> = ({
   onSelect,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   const { updateCar } = useCars();
   const [formState, setFormState] = useState<CarFormState | null>(null);
 
@@ -62,7 +64,7 @@ export const CarCard: React.FC<Props> = ({
         onChange={setFormState}
         onSave={handleSave}
         onCancel={() => setFormState(null)}
-        saveLabel="Save"
+        saveLabel={t('common.save')}
       />
     );
   }
@@ -97,7 +99,7 @@ export const CarCard: React.FC<Props> = ({
           }}
           style={{ minWidth: 24, minHeight: 24, padding: 0 }}
           icon={<Edit20Regular />}
-          aria-label="Edit car"
+          aria-label={t('cars.editCar')}
           data-testid="edit-car-button"
         />
         <Button
@@ -109,7 +111,7 @@ export const CarCard: React.FC<Props> = ({
           }}
           style={{ minWidth: 24, minHeight: 24, padding: 0 }}
           icon={<Delete20Regular />}
-          aria-label="Delete car"
+          aria-label={t('cars.deleteCar')}
           data-testid="delete-car-button"
         />
       </div>

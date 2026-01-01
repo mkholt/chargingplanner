@@ -11,25 +11,22 @@ import {
   Clock20Regular,
   MathFormula20Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { type AggregationMethod, usePriceSettings } from '@/contexts';
 
-const AGGREGATION_METHOD_OPTIONS: { value: AggregationMethod; label: string; description: string }[] = [
-  { value: 'mean', label: 'Mean', description: 'Average of values in interval' },
-  { value: 'min', label: 'Minimum', description: 'Lowest value in interval' },
-  { value: 'max', label: 'Maximum', description: 'Highest value in interval' },
-];
+const AGGREGATION_METHODS: AggregationMethod[] = ['mean', 'min', 'max'];
 
 export const AggregationSection: React.FC = () => {
+  const { t } = useTranslation();
   const { resolved, setAggregationSize, setAggregationMethod } = usePriceSettings();
   const { aggregationSize, aggregationMethod } = resolved;
 
   const isHourlyMode = aggregationSize === '1h';
-  const methodOption = AGGREGATION_METHOD_OPTIONS.find(o => o.value === aggregationMethod);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Text weight="semibold">Advanced</Text>
+      <Text weight="semibold">{t('aggregation.title')}</Text>
 
       {/* Hourly aggregation toggle with inline method dropdown */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -39,27 +36,27 @@ export const AggregationSection: React.FC = () => {
           onChange={(_, data) => {
             setAggregationSize(data.checked ? '1h' : '15m');
           }}
-          label="Use 1-hour aggregation"
+          label={t('aggregation.useHourly')}
         />
         {/* Aggregation method dropdown - inline, only shown in hourly mode */}
         {isHourlyMode && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>using</Text>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>{t('aggregation.using')}</Text>
             <MathFormula20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
             <Dropdown
-              value={methodOption?.label ?? 'Mean'}
+              value={t(`aggregation.methods.${aggregationMethod}.label`)}
               onOptionSelect={(_, data) => {
                 setAggregationMethod(data.optionValue as AggregationMethod);
               }}
-              placeholder="Select method"
+              placeholder={t('aggregation.selectMethod')}
               style={{ minWidth: 120 }}
             >
-              {AGGREGATION_METHOD_OPTIONS.map(opt => (
-                <Option key={opt.value} value={opt.value} text={opt.label}>
+              {AGGREGATION_METHODS.map(method => (
+                <Option key={method} value={method} text={t(`aggregation.methods.${method}.label`)}>
                   <div>
-                    <div>{opt.label}</div>
+                    <div>{t(`aggregation.methods.${method}.label`)}</div>
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      {opt.description}
+                      {t(`aggregation.methods.${method}.description`)}
                     </Text>
                   </div>
                 </Option>
@@ -71,8 +68,8 @@ export const AggregationSection: React.FC = () => {
 
       <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 28 }}>
         {isHourlyMode
-          ? `Aggregating to hourly using ${methodOption?.label.toLowerCase() ?? 'mean'}`
-          : 'Showing prices at original 15-minute resolution'}
+          ? t('aggregation.hourlyDescription', { method: t(`aggregation.methods.${aggregationMethod}.label`).toLowerCase() })
+          : t('aggregation.quarterHourDescription')}
       </Text>
     </div>
   );

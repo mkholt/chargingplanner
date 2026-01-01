@@ -8,6 +8,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { VehicleCar20Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { useCars } from '@/contexts';
 
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
+  const { t } = useTranslation();
   const { cars, selectedCarId, setSelectedCarId } = useCars();
   const selectedCar = cars.find(c => c.id === selectedCarId);
 
@@ -35,7 +37,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <VehicleCar20Regular style={{ color: tokens.colorNeutralForeground3 }} />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} data-testid="no-car-message">
-            No car saved
+            {t('cars.noCarSaved')}
           </Text>
         </div>
         <Button
@@ -44,7 +46,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
           onClick={onAddCarClick}
           data-testid="add-car-button"
         >
-          Add Car
+          {t('cars.addCar')}
         </Button>
       </div>
     );
@@ -52,7 +54,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
 
   const displayValue = selectedCar
     ? `${selectedCar.name} · ${selectedCar.batterySize} kWh · ${selectedCar.maxPower} kW`
-    : 'Select car';
+    : t('cars.selectCar');
 
   return (
     <div

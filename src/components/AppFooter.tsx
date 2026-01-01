@@ -13,23 +13,16 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Delete20Regular, Dismiss24Regular, DrinkCoffee16Regular } from '@fluentui/react-icons';
-import { useQueryClient } from '@tanstack/react-query';
+import { Dismiss24Regular, DrinkCoffee16Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
-import { priceQueryKeys, usePricesQuery } from '@/hooks';
+import { usePricesQuery } from '@/hooks';
 
 export const AppFooter: React.FC = () => {
-  const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { data: priceResult } = usePricesQuery();
   const isMockedData = priceResult?.isMocked;
   const [open, setOpen] = useState(false);
-  const [cacheCleared, setCacheCleared] = useState(false);
-
-  const handleClearCache = () => {
-    queryClient.removeQueries({ queryKey: priceQueryKeys.all });
-    setCacheCleared(true);
-    setTimeout(() => setCacheCleared(false), 2000);
-  };
 
   return (
     <footer
@@ -44,7 +37,7 @@ export const AppFooter: React.FC = () => {
       }}
     >
       <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: 4 }}>
-        Made with <DrinkCoffee16Regular /> in Denmark
+        {t('about.madeWith')} <DrinkCoffee16Regular /> {t('about.inDenmark')}
       </Text>
       <Text size={200} style={{ color: tokens.colorNeutralForeground4 }}>•</Text>
       <Dialog open={open} onOpenChange={(_, data) => setOpen(data.open)}>
@@ -53,7 +46,7 @@ export const AppFooter: React.FC = () => {
             as="button"
             style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}
           >
-            About
+            {t('about.about')}
           </Link>
         </DialogTrigger>
         <DialogSurface>
@@ -63,27 +56,26 @@ export const AppFooter: React.FC = () => {
                 <DialogTrigger action="close">
                   <Button
                     appearance="subtle"
-                    aria-label="Close"
+                    aria-label={t('common.close')}
                     icon={<Dismiss24Regular />}
                   />
                 </DialogTrigger>
               }
             >
-              About EV Charging Planner
+              {t('about.title')}
             </DialogTitle>
             <DialogContent>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Text>
-                  A simple tool to help EV owners find the cheapest time to charge
-                  their electric vehicle based on hourly electricity prices.
+                  {t('about.description')}
                 </Text>
 
                 <div>
                   <Text weight="semibold" block style={{ marginBottom: 4 }}>
-                    Data Source
+                    {t('about.dataSource')}
                   </Text>
                   <Text>
-                    Electricity prices provided by{' '}
+                    {t('about.dataSourceDescription')}{' '}
                     <Link href="https://stromligning.dk" target="_blank" rel="noopener noreferrer">
                       Strømligning.dk
                     </Link>
@@ -91,7 +83,7 @@ export const AppFooter: React.FC = () => {
                   {isMockedData && (
                     <div style={{ marginTop: 8 }}>
                       <Badge appearance="filled" color="warning">
-                        Using mock data
+                        {t('about.usingMockData')}
                       </Badge>
                     </div>
                   )}
@@ -99,33 +91,18 @@ export const AppFooter: React.FC = () => {
 
                 <div>
                   <Text weight="semibold" block style={{ marginBottom: 4 }}>
-                    Open Source
+                    {t('about.openSource')}
                   </Text>
                   <Text>
-                    This project is open source.{' '}
+                    {t('about.openSourceDescription')}{' '}
                     <Link
                       href="https://github.com/mkholt/ChargeCalculator"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      View on GitHub
+                      {t('about.viewOnGitHub')}
                     </Link>
                   </Text>
-                </div>
-
-                <div>
-                  <Text weight="semibold" block style={{ marginBottom: 4 }}>
-                    Cache
-                  </Text>
-                  <Button
-                    appearance="secondary"
-                    size="small"
-                    icon={<Delete20Regular />}
-                    onClick={handleClearCache}
-                    disabled={cacheCleared}
-                  >
-                    {cacheCleared ? 'Cache cleared!' : 'Clear price cache'}
-                  </Button>
                 </div>
 
                 <Text

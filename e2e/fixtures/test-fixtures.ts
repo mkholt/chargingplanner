@@ -4,14 +4,9 @@ import { SettingsDialogPage } from '../pages/settings-dialog.page';
 import { InputFormPage } from '../pages/input-form.page';
 import { ResultsPage } from '../pages/results.page';
 import { freezeTime, FIXED_TEST_TIME } from './time';
-
-// localStorage keys from the app
-export const LOCAL_STORAGE_KEYS = {
-  CARS: 'ev-cars',
-  SELECTED_CAR: 'ev-selected-car',
-  PRICE_SETTINGS: 'ev-price-settings',
-  QUERY_CACHE: 'ev-price-query-cache-v2',
-} as const;
+import { LS_KEYS } from '../../src/utils/constants';
+import { en } from '../../src/locales/en';
+import { da } from '../../src/locales/da';
 
 // Car type matching the app's Car type
 export type Car = {
@@ -74,3 +69,10 @@ export const test = base.extend<TestFixtures>({
 
 export { expect };
 export { FIXED_TEST_TIME } from './time';
+export { LS_KEYS };
+
+// Translation strings for type-safe E2E assertions
+export const translations = {
+  en: en.translation,
+  da: da.translation,
+} as const;

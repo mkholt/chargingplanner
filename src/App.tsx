@@ -6,6 +6,7 @@ import {
   tokens,
   webDarkTheme,
 } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 import { AppFooter, ErrorBoundary, InputForm, PriceAreaToggle, RefreshButton, Results } from '@/components';
 import { SettingsDialog } from '@/components/settings';
@@ -28,6 +29,7 @@ type FormInput = {
 };
 
 const AppContent: React.FC = () => {
+  const { t } = useTranslation();
   // UI state
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -64,7 +66,7 @@ const AppContent: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', margin: '16px', gap: 12 }}>
               <img
                 src="/ev-charging-logo.svg"
-                alt="EV Charging Logo"
+                alt={t('logoAlt')}
                 style={{
                   width: 40,
                   height: 40,
@@ -73,7 +75,7 @@ const AppContent: React.FC = () => {
                 }}
               />
               <Title3 as="h1" data-testid="app-title" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
-                EV Charging Planner
+                {t('appTitle')}
               </Title3>
               <RefreshButton
                 onRefresh={refresh}

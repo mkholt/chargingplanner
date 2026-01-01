@@ -32,3 +32,14 @@ export const CHARGING_POWER_OPTIONS = [
   { label: "11 kW (3-phase)", value: 11 },
   { label: "22 kW (3-phase)", value: 22 },
 ] as const;
+
+// LocalStorage keys - centralized to avoid duplication
+export const LS_KEYS = {
+  CARS: 'ev-cars',
+  SELECTED_CAR: 'ev-selected-car',
+  PRICE_SETTINGS: 'ev-price-settings',
+  LANGUAGE: 'ev-language',
+  DEFAULT_EARLIEST: 'ev-default-earliest',
+  DEFAULT_LATEST: 'ev-default-latest',
+  QUERY_CACHE: 'ev-price-query-cache',
+} as const;

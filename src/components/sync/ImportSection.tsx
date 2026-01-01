@@ -12,6 +12,7 @@ import {
   Camera20Regular,
   ClipboardPaste20Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import {
   CarImportResultDialog,
@@ -24,6 +25,7 @@ import { mergeCars, parseAnyFormat, type MergeResult, type SyncData } from '@/ut
 type ImportTab = 'scan' | 'paste';
 
 export const ImportSection: React.FC = () => {
+  const { t } = useTranslation();
   const { cars, addCar } = useCars();
   const { applySettings } = usePriceSettings();
 
@@ -38,7 +40,7 @@ export const ImportSection: React.FC = () => {
 
     const parsed = await parseAnyFormat(input);
     if (!parsed || (parsed.cars.length === 0 && !parsed.settings)) {
-      setError('Could not parse data. Make sure you copied the full code or link.');
+      setError(t('sync.parseError'));
       return;
     }
 
@@ -101,8 +103,8 @@ export const ImportSection: React.FC = () => {
         onTabSelect={(_, data) => setActiveTab(data.value as ImportTab)}
         size="small"
       >
-        <Tab value="paste" icon={<ClipboardPaste20Regular />}>Paste</Tab>
-        <Tab value="scan" icon={<Camera20Regular />}>Scan QR</Tab>
+        <Tab value="paste" icon={<ClipboardPaste20Regular />}>{t('sync.paste')}</Tab>
+        <Tab value="scan" icon={<Camera20Regular />}>{t('sync.scanQr')}</Tab>
       </TabList>
 
       {activeTab === 'paste' && (
@@ -110,7 +112,7 @@ export const ImportSection: React.FC = () => {
           <Textarea
             value={pasteValue}
             onChange={(_, data) => setPasteValue(data.value)}
-            placeholder="Paste a link or code here..."
+            placeholder={t('sync.pastePlaceholder')}
             resize="vertical"
             rows={3}
           />
@@ -119,7 +121,7 @@ export const ImportSection: React.FC = () => {
             onClick={handlePasteSubmit}
             disabled={!pasteValue.trim()}
           >
-            Import
+            {t('sync.importButton')}
           </Button>
         </div>
       )}

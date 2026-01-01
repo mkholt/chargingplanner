@@ -1,6 +1,17 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 
-import { mergeCars as mergeCarData, type MergeResult } from '@/utils';
+import { LS_KEYS, mergeCars as mergeCarData, type MergeResult } from '@/utils';
+
+/**
+ * CarsContext manages car state with localStorage persistence.
+ *
+ * Why not useLocalStorage hook?
+ * - Cross-key validation: selectedCarId must exist in cars list
+ * - Conditional removal: SELECTED_CAR is removed (not set to null) when cleared
+ * - Merge logic: import handles deduplication and ID generation
+ *
+ * @see CLAUDE.md "State Management Patterns" section
+ */
 
 // ============ Types ============
 
@@ -27,16 +38,13 @@ const CarsContext = createContext<CarsContextType | null>(null);
 
 // ============ Storage ============
 
-const LS_KEY = 'ev-cars';
-const LS_SELECTED_KEY = 'ev-selected-car';
-
 function generateId(): string {
   return Math.random().toString(36).slice(2);
 }
 
 function loadCars(): Car[] {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(LS_KEYS.CARS);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -45,12 +53,12 @@ function loadCars(): Car[] {
 }
 
 function saveCars(cars: Car[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(cars));
+  localStorage.setItem(LS_KEYS.CARS, JSON.stringify(cars));
 }
 
 function loadSelectedCarId(cars: Car[]): string | null {
   try {
-    const id = localStorage.getItem(LS_SELECTED_KEY);
+    const id = localStorage.getItem(LS_KEYS.SELECTED_CAR);
     // Validate the ID exists in the cars list
     if (id && cars.some(c => c.id === id)) {
       return id;
@@ -63,9 +71,9 @@ function loadSelectedCarId(cars: Car[]): string | null {
 
 function saveSelectedCarId(id: string | null) {
   if (id) {
-    localStorage.setItem(LS_SELECTED_KEY, id);
+    localStorage.setItem(LS_KEYS.SELECTED_CAR, id);
   } else {
-    localStorage.removeItem(LS_SELECTED_KEY);
+    localStorage.removeItem(LS_KEYS.SELECTED_CAR);
   }
 }
 

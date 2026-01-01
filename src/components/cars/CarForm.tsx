@@ -10,6 +10,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Checkmark20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { CHARGING_POWER_OPTIONS } from '@/utils';
 
@@ -32,7 +33,10 @@ export const CarForm: React.FC<Props> = ({
   onCancel,
   saveLabel,
   autoFocus,
-}) => (
+}) => {
+  const { t } = useTranslation();
+
+  return (
   <Card
     style={{
       flex: '1 1 200px',
@@ -47,7 +51,7 @@ export const CarForm: React.FC<Props> = ({
     }}
   >
     <Input
-      placeholder="Car name"
+      placeholder={t('cars.carName')}
       value={state.name}
       onChange={(_e, d) => onChange({ ...state, name: d.value })}
       style={{ width: '100%' }}
@@ -98,7 +102,7 @@ export const CarForm: React.FC<Props> = ({
         appearance="subtle"
         icon={<Dismiss20Regular />}
         onClick={onCancel}
-        aria-label="Cancel"
+        aria-label={t('common.cancel')}
       />
       <Button
         size="small"
@@ -110,4 +114,5 @@ export const CarForm: React.FC<Props> = ({
       />
     </div>
   </Card>
-);
+  );
+};

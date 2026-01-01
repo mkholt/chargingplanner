@@ -10,12 +10,14 @@ import {
   Dismiss20Regular,
 } from '@fluentui/react-icons';
 import { Html5Qrcode } from 'html5-qrcode';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   onScan: (data: string) => void;
 };
 
 export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
+  const { t } = useTranslation();
   const [shouldScan, setShouldScan] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,20 +66,20 @@ export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
         setShouldScan(false);
         if (err instanceof Error) {
           if (err.message.includes('NotAllowedError') || err.message.includes('Permission')) {
-            setError('Camera permission denied. Please allow camera access to scan QR codes.');
+            setError(t('qrScanner.permissionDenied'));
           } else if (err.message.includes('NotFoundError')) {
-            setError('No camera found on this device.');
+            setError(t('qrScanner.noCamera'));
           } else {
-            setError(`Camera error: ${err.message}`);
+            setError(t('qrScanner.cameraError', { error: err.message }));
           }
         } else {
-          setError('Failed to start camera');
+          setError(t('qrScanner.failedToStart'));
         }
       }
     };
 
     startCamera();
-  }, [shouldScan, isScanning, onScan, stopScanning]);
+  }, [shouldScan, isScanning, onScan, stopScanning, t]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -102,10 +104,10 @@ export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
             icon={<Camera20Regular />}
             onClick={handleStartClick}
           >
-            Start Camera
+            {t('qrScanner.startCamera')}
           </Button>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'center' }}>
-            Point your camera at a QR code to import cars
+            {t('qrScanner.scanInstructions')}
           </Text>
         </div>
       ) : (
@@ -126,7 +128,7 @@ export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
             icon={<Dismiss20Regular />}
             onClick={stopScanning}
           >
-            Stop Camera
+            {t('qrScanner.stopCamera')}
           </Button>
         </div>
       )}

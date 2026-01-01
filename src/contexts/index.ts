@@ -1,3 +1,7 @@
+// App Settings
+export { AppSettingsProvider, useAppSettings } from './AppSettingsContext';
+export type { AppSettings, DefaultTimeMode } from './AppSettingsContext';
+
 // Cars
 export { CarsProvider, useCars } from './CarsContext';
 export type { Car } from './CarsContext';

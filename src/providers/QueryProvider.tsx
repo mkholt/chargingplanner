@@ -3,7 +3,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { ReactNode } from 'react';
 
-import { QUERY_TIMING } from '@/utils';
+import { LS_KEYS, QUERY_TIMING } from '@/utils';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,10 +15,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-// Version the cache key to invalidate old cached data when data format/logic changes
-// Increment CACHE_VERSION when making breaking changes to query data structure
-const CACHE_VERSION = 2; // v2: Fixed price area differentiation in mock data
 
 // Async storage adapter for localStorage (required by createAsyncStoragePersister)
 const asyncLocalStorage = {
@@ -35,7 +31,7 @@ const asyncLocalStorage = {
 
 const persister = createAsyncStoragePersister({
   storage: asyncLocalStorage,
-  key: `ev-price-query-cache-v${CACHE_VERSION}`,
+  key: LS_KEYS.QUERY_CACHE,
 });
 
 type Props = {

@@ -21,6 +21,7 @@ import {
   Settings20Regular,
   VehicleCarProfileLtr24Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
@@ -30,6 +31,7 @@ import { useDebouncedCallback, useIsMobile } from '@/hooks';
 import {
   CHARGING_POWER_OPTIONS,
   DEBOUNCE_MS,
+  LS_KEYS,
   roundToNext15Minutes,
   toDateTimeLocalString,
 } from '@/utils';
@@ -49,13 +51,55 @@ type Props = {
   onSubmit: (input: FormInput) => void;
 };
 
-/** Get default earliest time (now, rounded forward to next 15-minute interval) */
+/** Get default earliest time based on user preference */
 function getDefaultEarliest(): string {
+  try {
+    const stored = localStorage.getItem(LS_KEYS.DEFAULT_EARLIEST);
+    const value = stored ? (JSON.parse(stored) as string) : 'now';
+
+    if (value === 'now') {
+      // "Now" mode: use current time rounded to next 15 minutes
+      return toDateTimeLocalString(roundToNext15Minutes(new Date()));
+    }
+
+    // Specific time mode: value is in "HH:mm" format
+    const [hours, minutes] = value.split(':').map(Number);
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(hours, minutes, 0, 0);
+
+    // If the time has already passed, round to next 15 minutes instead
+    if (target <= now) {
+      return toDateTimeLocalString(roundToNext15Minutes(now));
+    }
+
+    return toDateTimeLocalString(target);
+  } catch {
+    // Fall through to default
+  }
   return toDateTimeLocalString(roundToNext15Minutes(new Date()));
 }
 
-/** Get default latest time (tomorrow 7am, or today 7am if before 7am) */
+/** Get default latest time based on user preference */
 function getDefaultLatest(): string {
+  try {
+    const stored = localStorage.getItem(LS_KEYS.DEFAULT_LATEST);
+    if (stored) {
+      const timeStr = JSON.parse(stored) as string; // "HH:mm" format
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const now = new Date();
+      const target = new Date(now);
+      // If the time has already passed today, use tomorrow
+      if (now.getHours() > hours || (now.getHours() === hours && now.getMinutes() >= minutes)) {
+        target.setDate(target.getDate() + 1);
+      }
+      target.setHours(hours, minutes, 0, 0);
+      return toDateTimeLocalString(target);
+    }
+  } catch {
+    // Fall through to default
+  }
+  // Default: tomorrow 7am, or today 7am if before 7am
   const now = new Date();
   const target = new Date(now);
   target.setDate(now.getHours() < 7 ? now.getDate() : now.getDate() + 1);
@@ -68,6 +112,7 @@ export const InputForm: React.FC<Props> = ({
   onSettingsClick,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -177,12 +222,12 @@ export const InputForm: React.FC<Props> = ({
           } : undefined}
         >
           <BatteryCharge24Regular />
-          <Text weight="semibold" size={400} style={{ flex: 1 }}>Charging Settings</Text>
+          <Text weight="semibold" size={400} style={{ flex: 1 }}>{t('input.chargingSettings')}</Text>
           {showCollapsible && (
             <Button
               appearance="subtle"
               icon={isCollapsed ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
-              aria-label={isCollapsed ? "Expand settings" : "Collapse settings"}
+              aria-label={isCollapsed ? t('common.expandSettings') : t('common.collapseSettings')}
               data-testid="expand-settings-button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -190,7 +235,7 @@ export const InputForm: React.FC<Props> = ({
               }}
             />
           )}
-          <Tooltip content="Settings" relationship="label">
+          <Tooltip content={t('common.settings')} relationship="label">
             <Button
               appearance="subtle"
               icon={<Settings20Regular />}
@@ -198,7 +243,7 @@ export const InputForm: React.FC<Props> = ({
                 e.stopPropagation();
                 onSettingsClick();
               }}
-              aria-label="Settings"
+              aria-label={t('common.settings')}
               data-testid="settings-button"
             />
           </Tooltip>
@@ -212,14 +257,14 @@ export const InputForm: React.FC<Props> = ({
                 e.preventDefault();
               }}
             >
-              <LabeledFormField icon={<Battery024Regular />} label="Start %">
+              <LabeledFormField icon={<Battery024Regular />} label={t('input.startPercent')}>
                 <BatteryPercentageSlider
                   value={startPercent}
                   onChange={updateStartPercent}
                   data-testid="start-percent-input"
                 />
               </LabeledFormField>
-              <LabeledFormField icon={<Battery1024Regular />} label="End %">
+              <LabeledFormField icon={<Battery1024Regular />} label={t('input.endPercent')}>
                 <BatteryPercentageSlider
                   value={endPercent}
                   onChange={updateEndPercent}
@@ -246,11 +291,11 @@ export const InputForm: React.FC<Props> = ({
                     color: tokens.colorNeutralForeground2,
                   }}
                 >
-                  {isAdvancedOpen ? 'Hide' : 'Show'} vehicle settings ({batterySize} kWh · {chargingSpeed} kW)
+                  {isAdvancedOpen ? t('input.hideVehicleSettings') : t('input.showVehicleSettings')} ({batterySize} kWh · {chargingSpeed} kW)
                 </Button>
                 {isAdvancedOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
-                    <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label="Battery Size (kWh)">
+                    <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label={t('input.batterySize')}>
                       <Input
                         type="number"
                         min={10}
@@ -261,7 +306,7 @@ export const InputForm: React.FC<Props> = ({
                         style={{ width: "100%" }}
                       />
                     </LabeledFormField>
-                    <LabeledFormField icon={<Flash24Regular />} label="Charging Power">
+                    <LabeledFormField icon={<Flash24Regular />} label={t('input.chargingPower')}>
                       <Dropdown
                         value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
                         onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}

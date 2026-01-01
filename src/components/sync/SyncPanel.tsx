@@ -9,6 +9,7 @@ import {
   ArrowDownload20Regular,
   ArrowUpload20Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { ExportSection, ImportSection } from '@/components/sync';
 import { useCars, usePriceSettings } from '@/contexts';
@@ -16,6 +17,7 @@ import { useCars, usePriceSettings } from '@/contexts';
 type SyncTab = 'export' | 'import';
 
 export const SyncPanel: React.FC = () => {
+  const { t } = useTranslation();
   const { cars } = useCars();
   const { settings: priceSettings } = usePriceSettings();
 
@@ -28,8 +30,8 @@ export const SyncPanel: React.FC = () => {
         onTabSelect={(_, data) => setActiveTab(data.value as SyncTab)}
         style={{ marginBottom: 12 }}
       >
-        <Tab value="export" icon={<ArrowUpload20Regular />}>Export</Tab>
-        <Tab value="import" icon={<ArrowDownload20Regular />}>Import</Tab>
+        <Tab value="export" icon={<ArrowUpload20Regular />}>{t('sync.export')}</Tab>
+        <Tab value="import" icon={<ArrowDownload20Regular />}>{t('sync.import')}</Tab>
       </TabList>
 
       <div

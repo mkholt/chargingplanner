@@ -11,16 +11,20 @@ import {
   Info24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { ChargingPlanHeader, PriceTimeline } from '@/components';
 import { useCars, usePriceSettings } from '@/contexts';
+import type { en } from '@/locales/en';
 import type { PricesApiResponse } from '@/types';
 import {
   buildTimeline,
+  CALCULATION_ERROR_CODES,
   findOptimalChargingWindow,
   formatDuration,
   formatTime,
   MS_PER_MINUTE,
+  type CalculationErrorCode,
   type ChargingResult,
   type PriceSlot,
 } from '@/utils';
@@ -43,9 +47,9 @@ type Props = {
 
 type CalculationError =
   | { type: 'no_input' }
-  | { type: 'no_timeline'; reason: string }
+  | { type: 'no_timeline'; code: CalculationErrorCode }
   | { type: 'time_too_short'; availableHours: number; requiredHours: number }
-  | { type: 'invalid_params'; reason: string }
+  | { type: 'invalid_params'; code: CalculationErrorCode }
   | { type: 'incomplete_data'; validUntil: Date };
 
 type CalculationResults = {
@@ -85,7 +89,7 @@ function calculateResults(
     return {
       ...emptyResults,
       chargingSpeed: input.chargingSpeed,
-      error: { type: 'no_timeline', reason: 'No price data available for the selected time window.' },
+      error: { type: 'no_timeline', code: CALCULATION_ERROR_CODES.NO_PRICE_DATA },
     };
   }
 
@@ -96,7 +100,7 @@ function calculateResults(
     return {
       ...emptyResults,
       chargingSpeed: input.chargingSpeed,
-      error: { type: 'no_timeline', reason: 'The time window is too short.' },
+      error: { type: 'no_timeline', code: CALCULATION_ERROR_CODES.WINDOW_TOO_SHORT },
     };
   }
 
@@ -108,7 +112,7 @@ function calculateResults(
       slots: timeline.slots,
       intervalMinutes: timeline.intervalMinutes,
       chargingSpeed: input.chargingSpeed,
-      error: { type: 'no_timeline', reason: 'No price data available yet. Prices for tomorrow are usually published around 13:00.' },
+      error: { type: 'no_timeline', code: CALCULATION_ERROR_CODES.PRICES_NOT_PUBLISHED },
     };
   }
 
@@ -157,13 +161,13 @@ function calculateResults(
   let error: CalculationError | null = null;
   if (!calcResult) {
     if (input.endPercent <= input.startPercent) {
-      error = { type: 'invalid_params', reason: 'End percentage must be greater than start percentage.' };
+      error = { type: 'invalid_params', code: CALCULATION_ERROR_CODES.END_LESS_THAN_START };
     } else if (input.chargingSpeed <= 0 || input.batterySize <= 0) {
-      error = { type: 'invalid_params', reason: 'Battery size and charging speed must be positive.' };
+      error = { type: 'invalid_params', code: CALCULATION_ERROR_CODES.INVALID_POSITIVE_VALUES };
     } else if (requiredHours > availableHours) {
       error = { type: 'time_too_short', availableHours, requiredHours };
     } else {
-      error = { type: 'no_timeline', reason: 'Unable to calculate optimal charging window.' };
+      error = { type: 'no_timeline', code: CALCULATION_ERROR_CODES.CALCULATION_FAILED };
     }
   }
 
@@ -177,19 +181,45 @@ function calculateResults(
   };
 }
 
-/** Get user-friendly error message */
-function getErrorMessage(error: CalculationError): string {
+/** Infer error translation keys from the English translation object */
+type ErrorTranslationKey = `errors.${keyof typeof en.translation.errors}`;
+
+/** Get translated error message */
+function getErrorMessage(
+  error: CalculationError,
+  t: (key: ErrorTranslationKey, params?: Record<string, string>) => string
+): string {
   switch (error.type) {
     case 'no_input':
-      return 'Enter charging parameters to calculate.';
+      return t('errors.enterParameters');
     case 'no_timeline':
-      return error.reason;
+      switch (error.code) {
+        case CALCULATION_ERROR_CODES.NO_PRICE_DATA:
+          return t('errors.noPriceData');
+        case CALCULATION_ERROR_CODES.WINDOW_TOO_SHORT:
+          return t('errors.windowTooShort');
+        case CALCULATION_ERROR_CODES.PRICES_NOT_PUBLISHED:
+          return t('errors.noPriceDataYet');
+        case CALCULATION_ERROR_CODES.CALCULATION_FAILED:
+        default:
+          return t('errors.unableToCalculate');
+      }
     case 'invalid_params':
-      return error.reason;
+      switch (error.code) {
+        case CALCULATION_ERROR_CODES.END_LESS_THAN_START:
+          return t('errors.endGreaterThanStart');
+        case CALCULATION_ERROR_CODES.INVALID_POSITIVE_VALUES:
+          return t('errors.positiveValues');
+        default:
+          return t('errors.unableToCalculate');
+      }
     case 'time_too_short':
-      return `Not enough time. Charging requires ${formatDuration(error.requiredHours)}, but only ${formatDuration(error.availableHours)} available in the selected window.`;
+      return t('errors.notEnoughTime', {
+        required: formatDuration(error.requiredHours),
+        available: formatDuration(error.availableHours),
+      });
     case 'incomplete_data':
-      return `No price data available for this time window. Prices are only available until ${formatTime(error.validUntil)}. Try selecting an earlier end time.`;
+      return t('errors.incompleteData', { time: formatTime(error.validUntil) });
   }
 }
 
@@ -225,6 +255,7 @@ export const Results: React.FC<Props> = ({
   priceError,
   onOpenSettings,
 }) => {
+  const { t } = useTranslation();
   const subtitle = useSubtitle();
 
   // Calculate results from raw inputs
@@ -247,7 +278,7 @@ export const Results: React.FC<Props> = ({
           <CalendarClock24Regular />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <Text weight="semibold" size={400} style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
-              Charging Plan
+              {t('results.chargingPlan')}
             </Text>
             <Text size={200} style={{ color: secondary }}>
               {subtitle}
@@ -270,10 +301,10 @@ export const Results: React.FC<Props> = ({
             <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1, flexShrink: 0 }} />
             <div>
               <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1, display: 'block' }}>
-                Pricing data unavailable
+                {t('errors.pricingUnavailable')}
               </Text>
               <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-                Could not load prices for the selected product. Try selecting a different supplier or product.
+                {t('errors.pricingUnavailableDetail')}
               </Text>
             </div>
           </div>
@@ -283,7 +314,7 @@ export const Results: React.FC<Props> = ({
               size="small"
               onClick={onOpenSettings}
             >
-              Open Settings
+              {t('errors.openSettings')}
             </Button>
           )}
         </div>
@@ -294,7 +325,7 @@ export const Results: React.FC<Props> = ({
   if (!slots.length) {
     return (
       <Card>
-        <Text>No result to display.</Text>
+        <Text>{t('results.noResult')}</Text>
       </Card>
     );
   }
@@ -334,7 +365,7 @@ export const Results: React.FC<Props> = ({
         >
           <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
           <Text style={{ color: tokens.colorPaletteYellowForeground1 }}>
-            {getErrorMessage(error)}
+            {getErrorMessage(error, t)}
           </Text>
         </div>
       )}
@@ -354,7 +385,7 @@ export const Results: React.FC<Props> = ({
         >
           <Info24Regular style={{ color: tokens.colorPaletteBlueForeground2, flexShrink: 0 }} />
           <Text style={{ color: tokens.colorPaletteBlueForeground2 }}>
-            Price data is only available until {formatTime(warning.validUntil)}. The charging window is constrained to this period.
+            {t('warnings.partialData', { time: formatTime(warning.validUntil) })}
           </Text>
         </div>
       )}

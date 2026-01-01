@@ -13,6 +13,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 import type { SyncData } from '@/utils';
 
@@ -46,6 +47,7 @@ const ImportPreviewDialogContent: React.FC<{
   onClose: () => void;
   onConfirm: (selectedCarIndices: number[], importSettings: boolean) => void;
 }> = ({ syncData, existingCarNames, onClose, onConfirm }) => {
+  const { t } = useTranslation();
   const cars = syncData.cars;
   const settings = syncData.settings;
 
@@ -97,7 +99,7 @@ const ImportPreviewDialogContent: React.FC<{
 
   return (
     <>
-      <DialogTitle>Import Preview</DialogTitle>
+      <DialogTitle>{t('importPreview.title')}</DialogTitle>
       <DialogContent>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Cars section */}
@@ -105,14 +107,14 @@ const ImportPreviewDialogContent: React.FC<{
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text weight="semibold">
-                  Cars ({cars.length} found)
+                  {t('importPreview.carsFound', { count: cars.length })}
                 </Text>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <Button size="small" appearance="subtle" onClick={selectAll}>
-                    Select All
+                    {t('importPreview.selectAll')}
                   </Button>
                   <Button size="small" appearance="subtle" onClick={deselectAll}>
-                    Deselect All
+                    {t('importPreview.deselectAll')}
                   </Button>
                 </div>
               </div>
@@ -154,7 +156,7 @@ const ImportPreviewDialogContent: React.FC<{
                           size={200}
                           style={{ color: tokens.colorPaletteYellowForeground2 }}
                         >
-                          Duplicate
+                          {t('importPreview.duplicate')}
                         </Text>
                       )}
                     </div>
@@ -173,7 +175,7 @@ const ImportPreviewDialogContent: React.FC<{
                   <Checkbox
                     checked={importSettings}
                     onChange={(_, data) => setImportSettings(!!data.checked)}
-                    label="Import electricity settings"
+                    label={t('importPreview.importElectricity')}
                   />
                 </div>
 
@@ -188,15 +190,18 @@ const ImportPreviewDialogContent: React.FC<{
                   >
                     {resolvedSettings.supplier && (
                       <Text size={200} style={{ display: 'block' }}>
-                        Grid operator: {resolvedSettings.supplier.name} ({resolvedSettings.supplier.priceArea})
+                        {t('importPreview.gridOperator', {
+                          name: resolvedSettings.supplier.name,
+                          area: resolvedSettings.supplier.priceArea,
+                        })}
                       </Text>
                     )}
                     {resolvedSettings.company && (
                       <Text size={200} style={{ display: 'block' }}>
-                        Company: {resolvedSettings.company.name}
-                        {resolvedSettings.product && (
-                          <> - {resolvedSettings.product.name}</>
-                        )}
+                        {t('importPreview.companyProduct', {
+                          name: resolvedSettings.company.name,
+                          product: resolvedSettings.product?.name ?? '',
+                        })}
                       </Text>
                     )}
                   </div>
@@ -208,21 +213,21 @@ const ImportPreviewDialogContent: React.FC<{
           {/* Empty state */}
           {cars.length === 0 && !settings && (
             <Text style={{ color: tokens.colorNeutralForeground3 }}>
-              No data found to import.
+              {t('importPreview.noDataFound')}
             </Text>
           )}
         </div>
       </DialogContent>
       <DialogActions>
         <Button appearance="secondary" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button
           appearance="primary"
           onClick={handleConfirm}
           disabled={!hasSelections}
         >
-          Import{selectedCount > 0 ? ` (${selectedCount})` : ''}
+          {selectedCount > 0 ? t('importPreview.importCount', { count: selectedCount }) : t('sync.importButton')}
         </Button>
       </DialogActions>
     </>
@@ -236,6 +241,8 @@ export const ImportPreviewDialog: React.FC<Props> = ({
   syncData,
   existingCarNames,
 }) => {
+  const { t } = useTranslation();
+
   // Use a counter to generate unique keys when syncData changes
   // This remounts the inner component to reset its state
   // Pattern: "Adjusting state during rendering" - see React docs
@@ -263,15 +270,15 @@ export const ImportPreviewDialog: React.FC<Props> = ({
             />
           ) : (
             <>
-              <DialogTitle>Import Preview</DialogTitle>
+              <DialogTitle>{t('importPreview.title')}</DialogTitle>
               <DialogContent>
                 <Text style={{ color: tokens.colorNeutralForeground3 }}>
-                  No data found to import.
+                  {t('importPreview.noDataFound')}
                 </Text>
               </DialogContent>
               <DialogActions>
                 <Button appearance="secondary" onClick={onClose}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </DialogActions>
             </>

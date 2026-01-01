@@ -31,6 +31,29 @@ Example: `import { useCars } from "@/contexts"`
 
 Folders are barelled, and imports must always be from the folder not the specific component. Components, contexts and utilities should always be added to their barrels.
 
+Do not be afraid to make breaking changes. Do not keep things for "backwards compatibility". If things are to be marked as deprecated during a refactoring or change, remove them afterwards and update all references.
+
+## State Management Patterns
+
+### localStorage Usage
+
+The app uses different patterns for localStorage based on complexity:
+
+| Pattern | Use Case | Examples |
+|---------|----------|----------|
+| `useLocalStorage` hook | Simple key-value, no validation | `DEFAULT_EARLIEST`, `DEFAULT_LATEST` |
+| Context + manual localStorage | Cross-key validation, API sync, cascading | `CarsContext`, `PriceSettingsContext` |
+
+**Why CarsContext doesn't use `useLocalStorage`:**
+- Cross-key validation: `selectedCarId` must exist in cars list
+- Conditional removeItem: null clears the key entirely, not sets to null
+- Merge logic for importing cars with duplicate detection
+
+**Why PriceSettingsContext doesn't use `useLocalStorage`:**
+- API sync: persists fresh API data to localStorage cache
+- Cascading clears: location change → clears supplier → clears company
+- Default value merging for backwards compatibility with old data
+
 ### Core Components
 
 - **App.tsx** - Main component that orchestrates the calculation flow. Takes user input, fetches price data, calls the optimizer, and displays results.

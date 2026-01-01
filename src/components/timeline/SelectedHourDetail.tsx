@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Text, tokens } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 import type { HourData } from './types';
 
@@ -12,7 +13,7 @@ type Props = {
 };
 
 type BreakdownItem = {
-  label: string;
+  labelKey: 'selectedHour.spotPrice' | 'selectedHour.supplier' | 'selectedHour.transmission' | 'selectedHour.distribution' | 'selectedHour.tax';
   value: number;
   unit?: string;
 };
@@ -21,11 +22,11 @@ function getBreakdownItems(details: NonNullable<HourData['details']>): Breakdown
   const items: BreakdownItem[] = [];
 
   if (details.electricity?.total !== undefined) {
-    items.push({ label: 'Spot price', value: details.electricity.total, unit: 'kr/kWh' });
+    items.push({ labelKey: 'selectedHour.spotPrice', value: details.electricity.total, unit: 'kr/kWh' });
   }
 
   if (details.surcharge?.total !== undefined) {
-    items.push({ label: 'Supplier', value: details.surcharge.total, unit: 'kr/kWh' });
+    items.push({ labelKey: 'selectedHour.supplier', value: details.surcharge.total, unit: 'kr/kWh' });
   }
 
   // Combine transmission tariffs
@@ -33,15 +34,15 @@ function getBreakdownItems(details: NonNullable<HourData['details']>): Breakdown
     (details.transmission?.systemTariff?.total ?? 0) +
     (details.transmission?.netTariff?.total ?? 0);
   if (transmissionTotal > 0) {
-    items.push({ label: 'Transmission', value: transmissionTotal, unit: 'kr/kWh' });
+    items.push({ labelKey: 'selectedHour.transmission', value: transmissionTotal, unit: 'kr/kWh' });
   }
 
   if (details.distribution?.total !== undefined) {
-    items.push({ label: 'Distribution', value: details.distribution.total, unit: 'kr/kWh' });
+    items.push({ labelKey: 'selectedHour.distribution', value: details.distribution.total, unit: 'kr/kWh' });
   }
 
   if (details.electricityTax?.total !== undefined) {
-    items.push({ label: 'Tax', value: details.electricityTax.total, unit: 'kr/kWh' });
+    items.push({ labelKey: 'selectedHour.tax', value: details.electricityTax.total, unit: 'kr/kWh' });
   }
 
   return items;
@@ -53,8 +54,11 @@ export const SelectedHourDetail: React.FC<Props> = ({
   chargingSpeed,
   intervalMinutes,
 }) => {
+  const { t } = useTranslation();
   const endDate = new Date(hour.date.getTime() + intervalMinutes * 60 * 1000);
-  const durationLabel = intervalMinutes === 60 ? '1 hour' : `${intervalMinutes} min`;
+  const durationLabel = intervalMinutes === 60
+    ? t('selectedHour.oneHour')
+    : t('selectedHour.minutes', { minutes: intervalMinutes });
 
   // Check if this is a partial charging bar
   const isPartialBar = hour.isCharging &&
@@ -137,9 +141,9 @@ export const SelectedHourDetail: React.FC<Props> = ({
           }}
         >
           {breakdownItems.map((item) => (
-            <div key={item.label}>
+            <div key={item.labelKey}>
               <Text size={100} style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
-                {item.label}
+                {t(item.labelKey)}
               </Text>
               <Text size={200} weight="medium">
                 {item.value.toFixed(2)}
@@ -157,17 +161,18 @@ export const SelectedHourDetail: React.FC<Props> = ({
       {chargingSpeed !== undefined && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
           <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-            Cost for {durationLabel} @ {chargingSpeed} kW:{' '}
-            <Text weight="semibold">
-              {(hour.price * chargingSpeed * (intervalMinutes / 60)).toFixed(2)} DKK
-            </Text>
+            {t('selectedHour.costFor', {
+              duration: durationLabel,
+              power: chargingSpeed,
+              cost: (hour.price * chargingSpeed * (intervalMinutes / 60)).toFixed(2),
+            })}
           </Text>
           {isPartialBar && chargingSpeed !== undefined && (
             <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3, marginTop: 4 }}>
-              Charging portion ({Math.round(actualChargingMinutes)} min):{' '}
-              <Text weight="semibold">
-                {(hour.price * chargingSpeed * (actualChargingMinutes / 60)).toFixed(2)} DKK
-              </Text>
+              {t('selectedHour.chargingPortion', {
+                minutes: Math.round(actualChargingMinutes),
+                cost: (hour.price * chargingSpeed * (actualChargingMinutes / 60)).toFixed(2),
+              })}
             </Text>
           )}
         </div>
@@ -185,8 +190,11 @@ export const SelectedHourDetail: React.FC<Props> = ({
         >
           <Text size={200} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
             {isPartialBar
-              ? `Charging ${chargingStartDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - ${chargingEndDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
-              : 'Charging'}
+              ? t('selectedHour.chargingRange', {
+                  start: chargingStartDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+                  end: chargingEndDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+                })
+              : t('selectedHour.charging')}
           </Text>
         </div>
       )}

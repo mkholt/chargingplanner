@@ -5,6 +5,7 @@ import {
   Tooltip,
   tokens,
 } from '@fluentui/react-components';
+import { useTranslation } from 'react-i18next';
 
 import type { HourData } from './types';
 
@@ -27,6 +28,8 @@ export const TimelineBar: React.FC<Props> = ({
   intervalMinutes,
   onClick,
 }) => {
+  const { t } = useTranslation();
+
   // Interval time range
   const intervalStartTime = `${String(data.hour).padStart(2, '0')}:${String(data.minute ?? 0).padStart(2, '0')}`;
   const intervalEndDate = new Date(data.date.getTime() + intervalMinutes * 60 * 1000);
@@ -88,8 +91,8 @@ export const TimelineBar: React.FC<Props> = ({
         >
           <Text size={100} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
             {isPartialBar
-              ? `Charging ${chargingStartTime} - ${chargingEndTime}`
-              : 'Charging'}
+              ? t('selectedHour.chargingRange', { start: chargingStartTime, end: chargingEndTime })
+              : t('selectedHour.charging')}
           </Text>
         </div>
       )}

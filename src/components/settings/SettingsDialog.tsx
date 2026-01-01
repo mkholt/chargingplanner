@@ -16,19 +16,22 @@ import {
 import {
   Dismiss24Regular,
   Flash20Regular,
+  Settings20Regular,
   Share20Regular,
   VehicleCar20Regular,
 } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import { SyncPanel } from '@/components/sync';
 import { usePriceSettings } from '@/contexts';
 
 import { AggregationSection } from './AggregationSection';
+import { AppSettingsSection } from './AppSettingsSection';
 import { CarsSection } from './CarsSection';
 import { CompanySection } from './CompanySection';
 import { SupplierSection } from './SupplierSection';
 
-type SettingsTab = 'cars' | 'electricity' | 'sync';
+type SettingsTab = 'cars' | 'electricity' | 'sync' | 'app';
 
 type Props = {
   open: boolean;
@@ -39,6 +42,7 @@ export const SettingsDialog: React.FC<Props> = ({
   open,
   onOpenChange,
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>('cars');
   const { clearAll: clearPriceSettings, refetchIfStale } = usePriceSettings();
 
@@ -64,7 +68,7 @@ export const SettingsDialog: React.FC<Props> = ({
     <Dialog open={open} onOpenChange={(_, data) => onOpenChange(data.open)}>
       <DialogSurface data-testid="settings-dialog" style={{ width: 600, maxHeight: '90vh' }}>
         <DialogBody>
-          <DialogTitle action={closeButton}>Settings</DialogTitle>
+          <DialogTitle action={closeButton}>{t('settings.title')}</DialogTitle>
           <DialogContent style={{ overflow: 'auto', minHeight: 300, maxHeight: 'calc(90vh - 150px)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Tab navigation */}
@@ -73,13 +77,16 @@ export const SettingsDialog: React.FC<Props> = ({
                 onTabSelect={handleTabSelect}
               >
                 <Tab value="cars" icon={<VehicleCar20Regular />} data-testid="tab-cars">
-                  Cars
+                  {t('settings.tabs.cars')}
                 </Tab>
                 <Tab value="electricity" icon={<Flash20Regular />} data-testid="tab-electricity">
-                  Electricity
+                  {t('settings.tabs.electricity')}
                 </Tab>
                 <Tab value="sync" icon={<Share20Regular />} data-testid="tab-sync">
-                  Sync
+                  {t('settings.tabs.sync')}
+                </Tab>
+                <Tab value="app" icon={<Settings20Regular />} data-testid="tab-app">
+                  {t('settings.tabs.app')}
                 </Tab>
               </TabList>
 
@@ -99,18 +106,24 @@ export const SettingsDialog: React.FC<Props> = ({
               )}
 
               {activeTab === 'sync' && <SyncPanel />}
+
+              {activeTab === 'app' && (
+                <div style={{ paddingRight: 16 }}>
+                  <AppSettingsSection />
+                </div>
+              )}
             </div>
           </DialogContent>
           <DialogActions style={{ justifyContent: 'space-between' }}>
             {activeTab === 'electricity' ? (
               <Button appearance="secondary" onClick={clearPriceSettings} data-testid="clear-settings-button">
-                Clear Settings
+                {t('settings.clearSettings')}
               </Button>
             ) : (
               <div />
             )}
             <DialogTrigger disableButtonEnhancement>
-              <Button appearance="primary" data-testid="done-button">Done</Button>
+              <Button appearance="primary" data-testid="done-button">{t('common.done')}</Button>
             </DialogTrigger>
           </DialogActions>
         </DialogBody>

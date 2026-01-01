@@ -9,6 +9,18 @@ import {
 } from '@/data';
 import { type Location, useCompaniesQuery, useSuppliersByLocationQuery } from '@/hooks';
 import type { PriceArea } from '@/types';
+import { LS_KEYS } from '@/utils';
+
+/**
+ * PriceSettingsContext manages electricity pricing settings with localStorage persistence.
+ *
+ * Why not useLocalStorage hook?
+ * - API sync: persists fresh API data to localStorage for offline display
+ * - Cascading clears: location change clears supplier/company
+ * - Default merging: handles backwards compatibility with old data structures
+ *
+ * @see CLAUDE.md "State Management Patterns" section
+ */
 
 export { isCoordinates, isPostalCode } from '@/hooks';
 export type { Coordinates, Location } from '@/hooks';
@@ -75,8 +87,6 @@ const PriceSettingsContext = createContext<PriceSettingsContextType | null>(null
 
 // ============ Storage ============
 
-const LS_KEY = 'ev-price-settings';
-
 const DEFAULT_SETTINGS: PriceSettings = {
   location: null,
   priceArea: 'DK1', // Default to West Denmark
@@ -88,7 +98,7 @@ const DEFAULT_SETTINGS: PriceSettings = {
 
 function loadSettings(): PriceSettings {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(LS_KEYS.PRICE_SETTINGS);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
     // Ensure priceArea has a valid value (handles old data without priceArea field)
@@ -103,7 +113,7 @@ function loadSettings(): PriceSettings {
 }
 
 function saveSettings(settings: PriceSettings) {
-  localStorage.setItem(LS_KEY, JSON.stringify(settings));
+  localStorage.setItem(LS_KEYS.PRICE_SETTINGS, JSON.stringify(settings));
 }
 
 // ============ Provider ============
