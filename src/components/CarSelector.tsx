@@ -18,8 +18,7 @@ type Props = {
 
 export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
   const { t } = useTranslation();
-  const { cars, selectedCarId, setSelectedCarId } = useCars();
-  const selectedCar = cars.find(c => c.id === selectedCarId);
+  const { cars, selectedCar, setSelectedCarId } = useCars();
 
   if (cars.length === 0) {
     return (

@@ -35,7 +35,9 @@ export {
   toDateTimeLocalString,
 } from './dateUtils';
 export { getPriceUnit, mapApiResponseToPrices } from './priceMapper';
+export { getPriceSourceString } from './priceSourceUtils';
 export type { PriceDetails, PriceMapResult, PriceSlot } from './priceMapper';
 export { buildTimeline } from './timelineBuilder';
 export type { TimelineData } from './timelineBuilder';
 export { CALCULATION_ERROR_CODES, type CalculationErrorCode } from './errors';
+export { getErrorMessage } from './errorMessages';

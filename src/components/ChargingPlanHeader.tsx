@@ -1,9 +1,6 @@
 import React from 'react';
 
 import {
-  Popover,
-  PopoverSurface,
-  PopoverTrigger,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -11,15 +8,15 @@ import {
   CalendarClock24Regular,
   Clock16Regular,
   Flash16Regular,
-  Info12Regular,
   Money16Regular,
   Play16Regular,
   Stop16Regular,
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
+import { InfoPopover, Stack } from '@/components/ui';
 import { useCars, usePriceSettings } from '@/contexts';
-import { CHARGING_EFFICIENCY, formatDuration, type ChargingResult } from '@/utils';
+import { CHARGING_EFFICIENCY, formatDuration, getPriceSourceString, type ChargingResult } from '@/utils';
 
 type Props = {
   result: ChargingResult | null;
@@ -29,7 +26,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
   result,
 }) => {
   const { t } = useTranslation();
-  const { cars, selectedCarId } = useCars();
+  const { selectedCar } = useCars();
   const { resolved: priceSettings } = usePriceSettings();
 
   const secondary = tokens.colorNeutralForeground2;
@@ -38,42 +35,25 @@ export const ChargingPlanHeader: React.FC<Props> = ({
   const text = tokens.colorNeutralForeground1;
   const brand = tokens.colorBrandForeground1;
 
-  // Get selected car name
-  const selectedCar = cars.find(c => c.id === selectedCarId);
-
-  // Build price source description
-  const priceSource = (() => {
-    const { company, product, supplier, priceArea, priceAreaSource } = priceSettings;
-
-    if (company && product) {
-      return `${company.name} - ${product.name}`;
-    }
-    if (supplier) {
-      return `${supplier.name} (${priceArea})`;
-    }
-    return priceAreaSource === 'manual'
-      ? t('results.spotPrice', { area: priceArea })
-      : `${priceArea}`;
-  })();
-
   // Build subtitle with car name and price source
+  const priceSource = getPriceSourceString(priceSettings, t);
   const subtitle = selectedCar
     ? `${selectedCar.name} · ${priceSource}`
     : priceSource;
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <Stack horizontal gap={8} align="center" style={{ marginBottom: 12 }}>
         <CalendarClock24Regular />
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <Stack gap={0}>
           <Text weight="semibold" size={400} data-testid="charging-plan-header" style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
             {t('results.chargingPlan')}
           </Text>
           <Text size={200} style={{ color: secondary }}>
             {subtitle}
           </Text>
-        </div>
-      </div>
+        </Stack>
+      </Stack>
       {result && (
         <div
           style={{
@@ -91,10 +71,10 @@ export const ChargingPlanHeader: React.FC<Props> = ({
           }}
         >
           <div data-testid="result-start">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
               <Play16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.start')}</Text>
-            </div>
+            </Stack>
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {result.startTime.toLocaleTimeString(undefined, {
                 hour: '2-digit',
@@ -103,10 +83,10 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             </div>
           </div>
           <div data-testid="result-end">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
               <Stop16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.end')}</Text>
-            </div>
+            </Stack>
             <div style={{ fontSize: 20, fontWeight: 700 }}>
               {result.endTime.toLocaleTimeString(undefined, {
                 hour: '2-digit',
@@ -115,93 +95,54 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             </div>
           </div>
           <div data-testid="result-duration">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
               <Clock16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.duration')}</Text>
-            </div>
+            </Stack>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
               {formatDuration(result.durationHours)}
             </div>
           </div>
           <div data-testid="result-energy">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
               <Flash16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.energy')}</Text>
-            </div>
-            <Popover withArrow openOnHover>
-              <PopoverTrigger disableButtonEnhancement>
-                <button
-                  type="button"
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: 'inherit',
-                    font: 'inherit',
-                  }}
-                  aria-label={t('results.energyBreakdown')}
-                >
-                  {result.energyNeeded.toFixed(1)} kWh
-                  <Info12Regular style={{ color: secondary }} />
-                </button>
-              </PopoverTrigger>
-              <PopoverSurface>
-                <div>
-                  <div>{t('results.toBattery', { amount: (result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1) })}</div>
-                  <div>{t('results.chargingLoss', { percent: ((1 - CHARGING_EFFICIENCY) * 100).toFixed(0) })}</div>
-                  <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.fromGrid', { amount: result.energyNeeded.toFixed(1) })}</div>
-                </div>
-              </PopoverSurface>
-            </Popover>
+            </Stack>
+            <InfoPopover
+              trigger={<>{result.energyNeeded.toFixed(1)} kWh</>}
+              ariaLabel={t('results.energyBreakdown')}
+            >
+              <div>
+                <div>{t('results.toBattery', { amount: (result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1) })}</div>
+                <div>{t('results.chargingLoss', { percent: ((1 - CHARGING_EFFICIENCY) * 100).toFixed(0) })}</div>
+                <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.fromGrid', { amount: result.energyNeeded.toFixed(1) })}</div>
+              </div>
+            </InfoPopover>
           </div>
           <div data-testid="result-cost">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: secondary }}>
+            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
               <Money16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.estCost')}</Text>
-            </div>
-            <Popover withArrow openOnHover>
-              <PopoverTrigger disableButtonEnhancement>
-                <button
-                  type="button"
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: brand,
-                    font: 'inherit',
-                  }}
-                  aria-label={t('results.costBreakdown')}
-                >
-                  {result.totalCost} DKK
-                  <Info12Regular style={{ color: secondary }} />
-                </button>
-              </PopoverTrigger>
-              <PopoverSurface>
-                <div>
-                  {result.costBreakdown ? (
-                    <>
-                      <div>{t('results.spotPortion', { amount: result.costBreakdown.spotCost.toFixed(2) })}</div>
-                      <div>{t('results.tariffsPortion', { amount: result.costBreakdown.tariffCost.toFixed(2) })}</div>
-                    </>
-                  ) : (
-                    <div>{result.energyNeeded.toFixed(1)} kWh × {(result.totalCost / result.energyNeeded).toFixed(2)} DKK/kWh</div>
-                  )}
-                  <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.totalCost', { amount: result.totalCost.toFixed(2) })}</div>
-                </div>
-              </PopoverSurface>
-            </Popover>
+            </Stack>
+            <InfoPopover
+              trigger={<>{result.totalCost} DKK</>}
+              ariaLabel={t('results.costBreakdown')}
+              color={brand}
+              fontSize={16}
+              fontWeight={700}
+            >
+              <div>
+                {result.costBreakdown ? (
+                  <>
+                    <div>{t('results.spotPortion', { amount: result.costBreakdown.spotCost.toFixed(2) })}</div>
+                    <div>{t('results.tariffsPortion', { amount: result.costBreakdown.tariffCost.toFixed(2) })}</div>
+                  </>
+                ) : (
+                  <div>{result.energyNeeded.toFixed(1)} kWh × {(result.totalCost / result.energyNeeded).toFixed(2)} DKK/kWh</div>
+                )}
+                <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.totalCost', { amount: result.totalCost.toFixed(2) })}</div>
+              </div>
+            </InfoPopover>
           </div>
         </div>
       )}

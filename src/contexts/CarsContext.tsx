@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext } from 'react';
+import React, { createContext, useCallback, useContext, useMemo } from 'react';
 
 import { useLocalStorage } from '@/hooks';
 import { LS_KEYS, mergeCars as mergeCarData, type MergeResult } from '@/utils';
@@ -21,6 +21,8 @@ type CarsState = {
 type CarsContextType = {
   cars: Car[];
   selectedCarId: string | null;
+  /** Derived: the currently selected car, or null if none selected */
+  selectedCar: Car | null;
   setSelectedCarId: (id: string | null) => void;
   addCar: (car: Omit<Car, 'id'>) => Car;
   updateCar: (id: string, updates: Partial<Omit<Car, 'id'>>) => void;
@@ -84,11 +86,18 @@ export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return result;
   }, [setState]);
 
+  // Derived: selected car lookup (memoized to avoid repeated finds)
+  const selectedCar = useMemo(
+    () => state.cars.find(c => c.id === state.selectedId) ?? null,
+    [state.cars, state.selectedId]
+  );
+
   return (
     <CarsContext.Provider
       value={{
         cars: state.cars,
         selectedCarId: state.selectedId,
+        selectedCar,
         setSelectedCarId,
         addCar,
         updateCar,

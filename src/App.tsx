@@ -34,8 +34,7 @@ const AppContent: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Get car selection from context
-  const { cars, selectedCarId } = useCars();
-  const selectedCar = cars.find(c => c.id === selectedCarId) ?? null;
+  const { selectedCarId, selectedCar } = useCars();
 
   // Get aggregation settings from context
   const { resolved: priceSettings } = usePriceSettings();
