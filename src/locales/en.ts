@@ -48,6 +48,10 @@ export const en = {
       toBattery: '{{amount}} kWh to battery',
       chargingLoss: '+{{percent}}% charging loss',
       fromGrid: '= {{amount}} kWh from grid',
+      costBreakdown: 'Cost breakdown',
+      spotPortion: 'Spot price: {{amount}} DKK',
+      tariffsPortion: 'Tariffs: {{amount}} DKK',
+      totalCost: '= {{amount}} DKK',
     },
 
     // Result errors

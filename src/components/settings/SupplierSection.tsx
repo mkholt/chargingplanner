@@ -95,7 +95,7 @@ export const SupplierSection: React.FC = () => {
             setLocationError(t('supplier.unknownError'));
         }
       },
-      { enableHighAccuracy: false, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 20000 }
     );
   };
 

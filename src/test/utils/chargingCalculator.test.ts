@@ -1,6 +1,6 @@
 import { findOptimalChargingWindow, type ChargingInput } from '@/utils/chargingCalculator';
 import { CHARGING_EFFICIENCY } from '@/utils/constants';
-import type { PriceSlot } from '@/utils/priceMapper';
+import type { PriceSlot, PriceDetails } from '@/utils/priceMapper';
 
 /** Helper to create PriceSlot array from prices for testing */
 function createSlots(prices: number[], intervalMinutes: number = 60): PriceSlot[] {
@@ -10,6 +10,40 @@ function createSlots(prices: number[], intervalMinutes: number = 60): PriceSlot[
     total: price,
     hasData: true,
   }));
+}
+
+/** Helper to create PriceSlot array with price details (spot + tariffs) */
+function createSlotsWithDetails(
+  prices: { spot: number; tariff: number }[],
+  intervalMinutes: number = 60
+): PriceSlot[] {
+  const baseTime = new Date(2025, 0, 1, 0, 0, 0);
+  return prices.map((price, i) => {
+    const spotValue = price.spot / 1.25; // Remove VAT to get base value
+    const spotVat = spotValue * 0.25;
+    const details: PriceDetails = {
+      electricity: {
+        value: spotValue,
+        vat: spotVat,
+        total: price.spot,
+        unit: 'kr/kWh',
+      },
+      // Minimal required fields for the test
+      surcharge: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
+      transmission: {
+        systemTariff: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
+        netTariff: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
+      },
+      electricityTax: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
+      distribution: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
+    };
+    return {
+      timestamp: new Date(baseTime.getTime() + i * intervalMinutes * 60000),
+      total: price.spot + price.tariff,
+      details,
+      hasData: true,
+    };
+  });
 }
 
 describe('findOptimalChargingWindow', () => {
@@ -419,6 +453,172 @@ describe('findOptimalChargingWindow', () => {
       expect(result!.durationHours).toBe(0.5);
       expect(result!.windowSlots).toHaveLength(2);
       expect(result!.windowSlots.map(s => s.total)).toEqual([1, 1]);
+    });
+  });
+
+  describe('cost breakdown calculation', () => {
+    it('returns undefined costBreakdown when slots have no price details', () => {
+      // Using createSlots which doesn't include details
+      const slots = createSlots([2, 3]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 36, // 18kWh in battery = 20kWh from grid, 2 hours at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 60,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeUndefined();
+    });
+
+    it('calculates cost breakdown when price details are available', () => {
+      // Spot: 1 kr/kWh, Tariff: 0.5 kr/kWh, Total: 1.5 kr/kWh
+      // 10kWh at 1.5 kr/kWh = 15 kr total
+      // Spot portion: 10kWh × 1 kr/kWh = 10 kr
+      // Tariff portion: 10kWh × 0.5 kr/kWh = 5 kr
+      const slots = createSlotsWithDetails([
+        { spot: 1, tariff: 0.5 },
+      ]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 18, // 9kWh in battery = 10kWh from grid, 1 hour at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 60,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      expect(result!.costBreakdown!.spotCost).toBe(10);
+      expect(result!.costBreakdown!.tariffCost).toBe(5);
+    });
+
+    it('breakdown components sum to total cost', () => {
+      const slots = createSlotsWithDetails([
+        { spot: 1.2, tariff: 0.8 },
+        { spot: 1.5, tariff: 0.7 },
+      ]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 36, // 18kWh in battery = 20kWh from grid, 2 hours at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 60,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      // Verify spot + tariff = total (within rounding tolerance)
+      const summedCost = result!.costBreakdown!.spotCost + result!.costBreakdown!.tariffCost;
+      expect(summedCost).toBeCloseTo(result!.totalCost, 2);
+    });
+
+    it('calculates breakdown correctly with varying prices per slot', () => {
+      // Hour 1: spot=1, tariff=0.5, total=1.5
+      // Hour 2: spot=2, tariff=1.0, total=3.0
+      // 10kWh per hour at 10kW
+      // Spot cost: 10×1 + 10×2 = 30
+      // Tariff cost: 10×0.5 + 10×1.0 = 15
+      const slots = createSlotsWithDetails([
+        { spot: 1, tariff: 0.5 },
+        { spot: 2, tariff: 1.0 },
+      ]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 36, // 18kWh in battery = 20kWh from grid, 2 hours at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 60,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      expect(result!.costBreakdown!.spotCost).toBe(30);
+      expect(result!.costBreakdown!.tariffCost).toBe(15);
+      expect(result!.totalCost).toBe(45);
+    });
+
+    it('calculates breakdown correctly with 15-minute intervals', () => {
+      // 4 intervals of 15 minutes each = 1 hour
+      // Each interval: spot=1, tariff=0.5, total=1.5
+      // At 10kW for 1 hour = 10kWh total
+      // Spot cost: 10 × 1 = 10
+      // Tariff cost: 10 × 0.5 = 5
+      const slots = createSlotsWithDetails([
+        { spot: 1, tariff: 0.5 },
+        { spot: 1, tariff: 0.5 },
+        { spot: 1, tariff: 0.5 },
+        { spot: 1, tariff: 0.5 },
+      ], 15);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 18, // 9kWh in battery = 10kWh from grid, 1 hour at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 15,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      expect(result!.costBreakdown!.spotCost).toBe(10);
+      expect(result!.costBreakdown!.tariffCost).toBe(5);
+    });
+
+    it('handles partial intervals in breakdown calculation', () => {
+      // Need 0.5 hours at 10kW = 5kWh
+      // Uses first slot fully (if starting mid-slot) or partially
+      // With 2 slots at 15min each, using 2 full intervals = 0.5 hours
+      const slots = createSlotsWithDetails([
+        { spot: 2, tariff: 1 },
+        { spot: 2, tariff: 1 },
+        { spot: 4, tariff: 2 }, // More expensive, won't be selected
+      ], 15);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 9, // 4.5kWh in battery = 5kWh from grid, 0.5 hours at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 15,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      // 5kWh × 2 kr/kWh spot = 10 kr spot
+      // 5kWh × 1 kr/kWh tariff = 5 kr tariff
+      expect(result!.costBreakdown!.spotCost).toBe(10);
+      expect(result!.costBreakdown!.tariffCost).toBe(5);
+    });
+
+    it('accounts for partial start offset in breakdown', () => {
+      // Start at 00:30, so first slot only has 0.5 fraction available
+      // Need 0.5 hours = 5kWh at 10kW
+      const slots = createSlotsWithDetails([
+        { spot: 1, tariff: 0.5 }, // Only 0.5 fraction available due to earliestStart
+        { spot: 1, tariff: 0.5 },
+      ]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 9, // 4.5kWh in battery = 5kWh from grid, 0.5 hours at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 60,
+        earliestStart: new Date(2025, 0, 1, 0, 30, 0), // 00:30 - half into first slot
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      // 5kWh × 1 kr/kWh = 5 kr spot
+      // 5kWh × 0.5 kr/kWh = 2.5 kr tariff
+      expect(result!.costBreakdown!.spotCost).toBe(5);
+      expect(result!.costBreakdown!.tariffCost).toBe(2.5);
     });
   });
 });

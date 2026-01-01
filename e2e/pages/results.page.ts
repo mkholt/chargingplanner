@@ -48,9 +48,9 @@ export class ResultsPage {
   }
 
   async getCost(): Promise<string> {
-    // Get the value div (second child, after the label row)
-    const valueDiv = this.resultCost.locator('div').last();
-    return await valueDiv.textContent() ?? '';
+    // Cost uses a button with popover - get the button text
+    const button = this.resultCost.locator('button');
+    return await button.textContent() ?? '';
   }
 
   async hasResults(): Promise<boolean> {

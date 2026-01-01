@@ -165,9 +165,43 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               <Money16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.estCost')}</Text>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: brand }}>
-              {result.totalCost} DKK
-            </div>
+            <Popover withArrow openOnHover>
+              <PopoverTrigger disableButtonEnhancement>
+                <button
+                  type="button"
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: brand,
+                    font: 'inherit',
+                  }}
+                  aria-label={t('results.costBreakdown')}
+                >
+                  {result.totalCost} DKK
+                  <Info12Regular style={{ color: secondary }} />
+                </button>
+              </PopoverTrigger>
+              <PopoverSurface>
+                <div>
+                  {result.costBreakdown ? (
+                    <>
+                      <div>{t('results.spotPortion', { amount: result.costBreakdown.spotCost.toFixed(2) })}</div>
+                      <div>{t('results.tariffsPortion', { amount: result.costBreakdown.tariffCost.toFixed(2) })}</div>
+                    </>
+                  ) : (
+                    <div>{result.energyNeeded.toFixed(1)} kWh × {(result.totalCost / result.energyNeeded).toFixed(2)} DKK/kWh</div>
+                  )}
+                  <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.totalCost', { amount: result.totalCost.toFixed(2) })}</div>
+                </div>
+              </PopoverSurface>
+            </Popover>
           </div>
         </div>
       )}

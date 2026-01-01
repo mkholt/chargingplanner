@@ -26,20 +26,40 @@ export type ChargingResult = {
   totalCost: number;
   durationHours: number;
   energyNeeded: number;
+  /** Cost breakdown - only present when price details available */
+  costBreakdown?: {
+    spotCost: number;    // Electricity spot price portion
+    tariffCost: number;  // Tariffs & surcharges portion
+  };
 };
 
-export function findOptimalChargingWindow(input: ChargingInput): ChargingResult | null {
-  const { startPercent, endPercent, batterySize, chargingSpeed, slots, intervalMinutes, earliestStart, latestEnd } = input;
-  if (endPercent <= startPercent || chargingSpeed <= 0 || batterySize <= 0) return null;
-  if (slots.length === 0) return null;
+type TimeConstraints = {
+  constraintStartIdx: number;
+  constraintEndIdx: number;
+  startOffset: number; // Fraction of first slot unavailable (0-1)
+};
 
+type EnergyRequirements = {
+  kWhNeeded: number;
+  durationHours: number;
+  durationIntervals: number;
+};
+
+type WindowResult = {
+  bestStart: number;
+  minCost: number;
+};
+
+/** Calculate constraint indices and offsets from time bounds */
+function calculateTimeConstraints(
+  slots: PriceSlot[],
+  intervalMinutes: number,
+  earliestStart?: Date,
+  latestEnd?: Date
+): TimeConstraints {
   const msPerInterval = intervalMinutes * MS_PER_MINUTE;
-
-  // Extract prices from slots for the algorithm
-  const prices = slots.map(s => s.total);
   const firstSlotTime = slots[0].timestamp.getTime();
 
-  // Calculate start constraint index and offset from earliestStart timestamp
   let constraintStartIdx = 0;
   let startOffset = 0;
   if (earliestStart) {
@@ -50,73 +70,134 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
     }
   }
 
-  // Calculate end constraint index from latestEnd timestamp
-  let constraintEndIdx = prices.length;
+  let constraintEndIdx = slots.length;
   if (latestEnd) {
     const offsetMs = latestEnd.getTime() - firstSlotTime;
-    constraintEndIdx = Math.min(Math.ceil(offsetMs / msPerInterval), prices.length);
+    constraintEndIdx = Math.min(Math.ceil(offsetMs / msPerInterval), slots.length);
   }
 
-  // Slice to constrained range
-  const constrainedPrices = prices.slice(constraintStartIdx, constraintEndIdx);
+  return { constraintStartIdx, constraintEndIdx, startOffset };
+}
 
-  // Energy needed in the battery
+/** Calculate energy needed from grid and charging duration */
+function calculateEnergyRequirements(
+  startPercent: number,
+  endPercent: number,
+  batterySize: number,
+  chargingSpeed: number,
+  intervalMinutes: number
+): EnergyRequirements {
   const kWhNeededInBattery = ((endPercent - startPercent) / 100) * batterySize;
-  // Energy drawn from grid (accounting for charging losses)
   const kWhNeeded = kWhNeededInBattery / CHARGING_EFFICIENCY;
   const durationHours = kWhNeeded / chargingSpeed;
-
-  // Convert duration to intervals (e.g., 2 hours = 8 intervals at 15m, 2 intervals at 1h)
   const intervalsPerHour = 60 / intervalMinutes;
   const durationIntervals = durationHours * intervalsPerHour;
 
-  // Calculate effective available intervals considering partial first slot
-  const effectiveMaxIntervals = constrainedPrices.length - startOffset;
+  return { kWhNeeded, durationHours, durationIntervals };
+}
+
+/** Find the cheapest continuous charging window by trying all positions */
+function findCheapestWindow(
+  constrainedSlots: PriceSlot[],
+  durationIntervals: number,
+  startOffset: number,
+  chargingSpeed: number,
+  intervalMinutes: number
+): WindowResult | null {
+  const effectiveMaxIntervals = constrainedSlots.length - startOffset;
   if (durationIntervals <= 0 || durationIntervals > effectiveMaxIntervals) return null;
+
+  const energyPerInterval = chargingSpeed * (intervalMinutes / 60);
 
   let minCost = Infinity;
   let bestStart = 0;
 
-  // Try every possible continuous window within constrained range
-  for (let start = 0; start <= constrainedPrices.length - Math.ceil(durationIntervals + (start === 0 ? startOffset : 0)); start++) {
-    // Calculate cost for this window (may span partial intervals at start/end)
+  // Try each possible starting position
+  const maxStart = constrainedSlots.length - Math.ceil(durationIntervals + startOffset);
+  for (let start = 0; start <= maxStart; start++) {
     let cost = 0;
     let remaining = durationIntervals;
 
-    for (let i = start; i < constrainedPrices.length && remaining > 0; i++) {
-      // For the first slot when starting at index 0, only use the available portion
+    for (let i = start; i < constrainedSlots.length && remaining > 0; i++) {
+      // First slot at start=0 may be partial due to startOffset
       const availableFraction = (i === 0 && start === 0) ? (1 - startOffset) : 1;
       const intervalFraction = Math.min(availableFraction, remaining);
-      // Cost = price * kW * fraction of interval * hours per interval
-      cost += constrainedPrices[i] * chargingSpeed * intervalFraction * (intervalMinutes / 60);
+      cost += constrainedSlots[i].total * energyPerInterval * intervalFraction;
       remaining -= intervalFraction;
     }
-    if (remaining <= 0.0001 && cost < minCost) { // Use small epsilon for floating point
+
+    if (remaining <= 0.0001 && cost < minCost) {
       minCost = cost;
       bestStart = start;
     }
   }
 
-  if (minCost === Infinity) return null;
+  return minCost === Infinity ? null : { bestStart, minCost };
+}
 
-  // Calculate the effective start offset for the optimal window
+/** Calculate cost breakdown (spot vs tariffs) for the charging window */
+function calculateCostBreakdown(
+  windowSlots: PriceSlot[],
+  durationIntervals: number,
+  effectiveStartOffset: number,
+  chargingSpeed: number,
+  intervalMinutes: number
+): { spotCost: number; tariffCost: number } | undefined {
+  let spotCost = 0;
+  let tariffCost = 0;
+  let hasDetails = false;
+  let remaining = durationIntervals;
+
+  for (let i = 0; i < windowSlots.length && remaining > 0; i++) {
+    const slot = windowSlots[i];
+    const availableFraction = (i === 0) ? (1 - effectiveStartOffset) : 1;
+    const intervalFraction = Math.min(availableFraction, remaining);
+    const energyInSlot = chargingSpeed * intervalFraction * (intervalMinutes / 60);
+
+    if (slot.details?.electricity?.total !== undefined) {
+      hasDetails = true;
+      const spotRate = slot.details.electricity.total;
+      const tariffRate = slot.total - spotRate;
+      spotCost += spotRate * energyInSlot;
+      tariffCost += tariffRate * energyInSlot;
+    }
+
+    remaining -= intervalFraction;
+  }
+
+  if (!hasDetails) return undefined;
+
+  return {
+    spotCost: Math.round(spotCost * 100) / 100,
+    tariffCost: Math.round(tariffCost * 100) / 100,
+  };
+}
+
+/** Build the final result with timestamps and window slots */
+function buildResult(
+  slots: PriceSlot[],
+  constraintStartIdx: number,
+  bestStart: number,
+  startOffset: number,
+  durationIntervals: number,
+  intervalMinutes: number,
+  minCost: number,
+  durationHours: number,
+  kWhNeeded: number,
+  chargingSpeed: number
+): ChargingResult {
+  const msPerInterval = intervalMinutes * MS_PER_MINUTE;
   const effectiveStartOffset = bestStart === 0 ? startOffset : 0;
 
-  // Calculate intervals actually used in the window
   const totalIntervalsInWindow = durationIntervals + effectiveStartOffset;
   const fullIntervalsNeeded = Math.ceil(totalIntervalsInWindow);
 
-  // End offset is how much of the last interval is unused
-  // If totalIntervalsInWindow is 3.75, we need 4 full slots but only use 0.75 of the last one
-  // So endOffset = 1 - 0.75 = 0.25 (unused portion)
   const fractionalPart = totalIntervalsInWindow % 1;
   const endOffset = fractionalPart > 0.0001 ? (1 - fractionalPart) : 0;
 
-  // Calculate result indices relative to original slots array
   const absoluteStartIdx = constraintStartIdx + bestStart;
   const absoluteEndIdx = absoluteStartIdx + fullIntervalsNeeded;
 
-  // Calculate timestamps from slots
   const startTime = new Date(
     slots[absoluteStartIdx].timestamp.getTime() + effectiveStartOffset * msPerInterval
   );
@@ -126,8 +207,15 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
     endOffset * msPerInterval
   );
 
-  // Extract window slots
   const windowSlots = slots.slice(absoluteStartIdx, absoluteEndIdx);
+
+  const costBreakdown = calculateCostBreakdown(
+    windowSlots,
+    durationIntervals,
+    effectiveStartOffset,
+    chargingSpeed,
+    intervalMinutes
+  );
 
   return {
     startTime,
@@ -137,5 +225,58 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
     totalCost: Math.round(minCost * 100) / 100,
     durationHours: Math.round(durationHours * 100) / 100,
     energyNeeded: kWhNeeded,
+    costBreakdown,
   };
+}
+
+export function findOptimalChargingWindow(input: ChargingInput): ChargingResult | null {
+  const { startPercent, endPercent, batterySize, chargingSpeed, slots, intervalMinutes, earliestStart, latestEnd } = input;
+
+  // Validate inputs
+  if (endPercent <= startPercent || chargingSpeed <= 0 || batterySize <= 0) return null;
+  if (slots.length === 0) return null;
+
+  // Calculate time constraints
+  const { constraintStartIdx, constraintEndIdx, startOffset } = calculateTimeConstraints(
+    slots,
+    intervalMinutes,
+    earliestStart,
+    latestEnd
+  );
+
+  const constrainedSlots = slots.slice(constraintStartIdx, constraintEndIdx);
+
+  // Calculate energy requirements
+  const { kWhNeeded, durationHours, durationIntervals } = calculateEnergyRequirements(
+    startPercent,
+    endPercent,
+    batterySize,
+    chargingSpeed,
+    intervalMinutes
+  );
+
+  // Find cheapest window
+  const windowResult = findCheapestWindow(
+    constrainedSlots,
+    durationIntervals,
+    startOffset,
+    chargingSpeed,
+    intervalMinutes
+  );
+
+  if (!windowResult) return null;
+
+  // Build and return result
+  return buildResult(
+    slots,
+    constraintStartIdx,
+    windowResult.bestStart,
+    startOffset,
+    durationIntervals,
+    intervalMinutes,
+    windowResult.minCost,
+    durationHours,
+    kWhNeeded,
+    chargingSpeed
+  );
 }
