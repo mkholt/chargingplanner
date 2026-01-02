@@ -72,6 +72,19 @@ export const AppFooter: React.FC = () => {
 
                 <div>
                   <Text weight="semibold" block style={{ marginBottom: tokens.spacingHorizontalXS }}>
+                    {t('about.builtWith')}
+                  </Text>
+                  <Text>
+                    {t('about.builtWithDescription')}{' '}
+                    <Link href="https://claude.ai" target="_blank" rel="noopener noreferrer">
+                      {t('about.builtWithClaude')}
+                    </Link>
+                    {t('about.builtWithSuffix')}
+                  </Text>
+                </div>
+
+                <div>
+                  <Text weight="semibold" block style={{ marginBottom: tokens.spacingHorizontalXS }}>
                     {t('about.dataSource')}
                   </Text>
                   <Text>
