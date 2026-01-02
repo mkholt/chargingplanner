@@ -31,7 +31,7 @@ test.describe('Language Switching', () => {
   test('can switch language to Danish via settings', async ({
     page,
     appPage,
-    settingsDialogPage,
+    settingsPanePage,
   }) => {
     await appPage.goto();
 
@@ -40,8 +40,8 @@ test.describe('Language Switching', () => {
 
     // Open settings and switch to Danish
     await appPage.openSettings();
-    await settingsDialogPage.selectLanguage('da');
-    await settingsDialogPage.close();
+    await settingsPanePage.selectLanguage('da');
+    await settingsPanePage.close();
 
     // Verify the app is now in Danish
     await expect(page.getByText(translations.da.appTitle)).toBeVisible();
@@ -50,7 +50,7 @@ test.describe('Language Switching', () => {
   test('can switch language to English via settings', async ({
     page,
     appPage,
-    settingsDialogPage,
+    settingsPanePage,
   }) => {
     // Start with Danish
     await seedLanguage(page, 'da');
@@ -61,8 +61,8 @@ test.describe('Language Switching', () => {
 
     // Open settings and switch to English
     await appPage.openSettings();
-    await settingsDialogPage.selectLanguage('en');
-    await settingsDialogPage.close();
+    await settingsPanePage.selectLanguage('en');
+    await settingsPanePage.close();
 
     // Verify the app is now in English
     await expect(page.getByText(translations.en.appTitle)).toBeVisible();
@@ -71,14 +71,14 @@ test.describe('Language Switching', () => {
   test('language preference persists across page reloads', async ({
     page,
     appPage,
-    settingsDialogPage,
+    settingsPanePage,
   }) => {
     await appPage.goto();
 
     // Switch to Danish
     await appPage.openSettings();
-    await settingsDialogPage.selectLanguage('da');
-    await settingsDialogPage.close();
+    await settingsPanePage.selectLanguage('da');
+    await settingsPanePage.close();
 
     // Verify Danish
     await expect(page.getByText(translations.da.appTitle)).toBeVisible();
@@ -94,29 +94,29 @@ test.describe('Language Switching', () => {
   test('settings dialog labels update when language changes', async ({
     page,
     appPage,
-    settingsDialogPage,
+    settingsPanePage,
   }) => {
     await appPage.goto();
     await appPage.openSettings();
 
     // Verify English tab labels
-    await expect(settingsDialogPage.carsTab).toContainText(translations.en.settings.tabs.cars);
-    await expect(settingsDialogPage.electricityTab).toContainText(translations.en.settings.tabs.electricity);
-    await expect(settingsDialogPage.appTab).toContainText(translations.en.settings.tabs.app);
+    await expect(settingsPanePage.carsTab).toContainText(translations.en.settings.tabs.cars);
+    await expect(settingsPanePage.electricityTab).toContainText(translations.en.settings.tabs.electricity);
+    await expect(settingsPanePage.appTab).toContainText(translations.en.settings.tabs.app);
 
     // Switch to Danish
-    await settingsDialogPage.selectLanguage('da');
+    await settingsPanePage.selectLanguage('da');
 
     // Verify Danish tab labels
-    await expect(settingsDialogPage.carsTab).toContainText(translations.da.settings.tabs.cars);
-    await expect(settingsDialogPage.electricityTab).toContainText(translations.da.settings.tabs.electricity);
-    await expect(settingsDialogPage.appTab).toContainText(translations.da.settings.tabs.app);
+    await expect(settingsPanePage.carsTab).toContainText(translations.da.settings.tabs.cars);
+    await expect(settingsPanePage.electricityTab).toContainText(translations.da.settings.tabs.electricity);
+    await expect(settingsPanePage.appTab).toContainText(translations.da.settings.tabs.app);
   });
 
   test('input form labels update when language changes', async ({
     page,
     appPage,
-    settingsDialogPage,
+    settingsPanePage,
   }) => {
     await appPage.goto();
 
@@ -127,8 +127,8 @@ test.describe('Language Switching', () => {
 
     // Switch to Danish
     await appPage.openSettings();
-    await settingsDialogPage.selectLanguage('da');
-    await settingsDialogPage.close();
+    await settingsPanePage.selectLanguage('da');
+    await settingsPanePage.close();
 
     // Verify Danish labels in input form
     await expect(page.getByText(translations.da.input.chargingSettings)).toBeVisible();
@@ -139,7 +139,7 @@ test.describe('Language Switching', () => {
   test('car management labels update when language changes', async ({
     page,
     appPage,
-    settingsDialogPage,
+    settingsPanePage,
   }) => {
     await appPage.goto();
 
@@ -148,8 +148,8 @@ test.describe('Language Switching', () => {
 
     // Switch to Danish
     await appPage.openSettings();
-    await settingsDialogPage.selectLanguage('da');
-    await settingsDialogPage.close();
+    await settingsPanePage.selectLanguage('da');
+    await settingsPanePage.close();
 
     // Verify Danish message
     await expect(page.getByTestId('no-car-message')).toContainText(translations.da.cars.noCarSaved);

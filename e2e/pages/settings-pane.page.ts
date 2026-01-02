@@ -8,9 +8,9 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-export class SettingsDialogPage {
+export class SettingsPanePage {
   readonly page: Page;
-  readonly dialog: Locator;
+  readonly pane: Locator;
   readonly carsTab: Locator;
   readonly electricityTab: Locator;
   readonly syncTab: Locator;
@@ -20,7 +20,7 @@ export class SettingsDialogPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.dialog = page.getByTestId('settings-dialog');
+    this.pane = page.getByTestId('settings-pane');
     this.carsTab = page.getByTestId('tab-cars');
     this.electricityTab = page.getByTestId('tab-electricity');
     this.syncTab = page.getByTestId('tab-sync');
@@ -30,29 +30,24 @@ export class SettingsDialogPage {
   }
 
   async switchToCarsTab(): Promise<void> {
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.carsTab.click({ force: true });
+    await this.carsTab.click();
   }
 
   async switchToElectricityTab(): Promise<void> {
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.electricityTab.click({ force: true });
+    await this.electricityTab.click();
   }
 
   async switchToSyncTab(): Promise<void> {
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.syncTab.click({ force: true });
+    await this.syncTab.click();
   }
 
   async switchToAppTab(): Promise<void> {
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.appTab.click({ force: true });
+    await this.appTab.click();
   }
 
   async close(): Promise<void> {
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.doneButton.click({ force: true });
-    await expect(this.dialog).not.toBeVisible();
+    await this.doneButton.click();
+    await expect(this.pane).not.toBeVisible();
   }
 
   // ========== Cars Section Methods ==========
@@ -61,8 +56,7 @@ export class SettingsDialogPage {
     // Click the "Add Car" card in the cars grid
     const addCarCard = this.page.getByTestId('add-car-card');
     await addCarCard.scrollIntoViewIfNeeded();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await addCarCard.click({ force: true });
+    await addCarCard.click();
   }
 
   async fillCarForm(name: string, batterySize: number, maxPower: number): Promise<void> {
@@ -73,7 +67,6 @@ export class SettingsDialogPage {
     await batteryInput.fill(String(batterySize));
 
     // Max power combobox - type and blur to close dropdown
-    // Don't press Escape as it closes the parent Dialog
     const powerInput = this.page.getByTestId('car-power-dropdown');
     await powerInput.fill(`${maxPower}`);
     // Click on the name input to blur the combobox and close its dropdown
@@ -87,7 +80,7 @@ export class SettingsDialogPage {
     const saveButton = this.page.getByTestId('save-car-button');
     await saveButton.waitFor({ state: 'visible' });
     await saveButton.scrollIntoViewIfNeeded();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    // Use force:true to handle mobile layout where input fields may overlap button
     await saveButton.click({ force: true });
   }
 
@@ -107,8 +100,7 @@ export class SettingsDialogPage {
     const carCard = this.page.getByTestId(`car-card-${slugify(currentName)}`);
     const editButton = carCard.getByTestId('edit-car-button');
     await editButton.scrollIntoViewIfNeeded();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await editButton.click({ force: true });
+    await editButton.click();
 
     if (updates.name !== undefined) {
       await this.page.getByTestId('car-name-input').fill(updates.name);
@@ -130,19 +122,16 @@ export class SettingsDialogPage {
     const carCard = this.page.getByTestId(`car-card-${slugify(carName)}`);
     const deleteButton = carCard.getByTestId('delete-car-button');
     await deleteButton.scrollIntoViewIfNeeded();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await deleteButton.click({ force: true });
+    await deleteButton.click();
 
     // Confirm deletion in dialog
     const confirmButton = this.page.getByTestId('confirm-delete-button');
     await confirmButton.scrollIntoViewIfNeeded();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await confirmButton.click({ force: true });
+    await confirmButton.click();
   }
 
   async selectCar(carName: string): Promise<void> {
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.page.getByTestId(`car-card-${slugify(carName)}`).click({ force: true });
+    await this.page.getByTestId(`car-card-${slugify(carName)}`).click();
   }
 
   async getCarCardNames(): Promise<string[]> {
@@ -159,7 +148,7 @@ export class SettingsDialogPage {
     const input = this.page.getByTestId('postal-code-input');
     await input.fill(String(code));
     // Wait for supplier lookup to complete (supplier name appears)
-    // Valid postal codes will show a supplier like Radius, Norlys, N1, etc.
+    // Valid postal codes will show a supplier like Radius, Norlys, N1, TREFOR, etc.
     if (code >= 1000 && code <= 9999) {
       await expect(this.page.getByText(/Radius|Norlys|N1|TREFOR|EWII|Dinel|Elektrus|Ikast|RAH|Hammel|Hurup/i).first()).toBeVisible();
     }
@@ -172,31 +161,27 @@ export class SettingsDialogPage {
 
   async selectSupplier(name: string): Promise<void> {
     const dropdown = this.page.getByRole('combobox').filter({ hasText: /Select.*operator|grid operator/i });
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await dropdown.click({ force: true });
-    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click({ force: true });
+    await dropdown.click();
+    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click();
   }
 
   async selectCompany(name: string): Promise<void> {
     const dropdown = this.page.getByRole('combobox').filter({ hasText: /Select.*supplier|electricity/i });
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await dropdown.click({ force: true });
-    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click({ force: true });
+    await dropdown.click();
+    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click();
   }
 
   async selectProduct(name: string): Promise<void> {
     const dropdown = this.page.getByRole('combobox').filter({ hasText: /Select.*product/i });
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await dropdown.click({ force: true });
-    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click({ force: true });
+    await dropdown.click();
+    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click();
   }
 
   async clearSettings(): Promise<void> {
     await this.switchToElectricityTab();
     const clearButton = this.page.getByTestId('clear-settings-button');
     if (await clearButton.isVisible()) {
-      // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-      await clearButton.click({ force: true });
+      await clearButton.click();
     }
   }
 
@@ -205,10 +190,9 @@ export class SettingsDialogPage {
   async clickGpsButton(): Promise<void> {
     await this.switchToElectricityTab();
     const gpsButton = this.page.getByTestId('gps-location-button');
-    // Scroll into view on mobile where dialog content may need scrolling
+    // Scroll into view on mobile where content may need scrolling
     await gpsButton.scrollIntoViewIfNeeded();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await gpsButton.click({ force: true });
+    await gpsButton.click();
   }
 
   async getLocationError(): Promise<string | null> {
@@ -247,11 +231,10 @@ export class SettingsDialogPage {
 
   async selectLanguage(language: 'en' | 'da'): Promise<void> {
     await this.switchToAppTab();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.languageSelector.click({ force: true });
+    await this.languageSelector.click();
     // Select by the native language name
     const optionText = language === 'en' ? 'English' : 'Dansk';
-    await this.page.getByRole('option', { name: optionText }).click({ force: true });
+    await this.page.getByRole('option', { name: optionText }).click();
   }
 
   async getCurrentLanguage(): Promise<string> {
@@ -263,8 +246,7 @@ export class SettingsDialogPage {
 
   async clickClearCacheButton(): Promise<void> {
     await this.switchToAppTab();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.page.getByTestId('clear-cache-button').click({ force: true });
+    await this.page.getByTestId('clear-cache-button').click();
   }
 
   async isCacheButtonDisabled(): Promise<boolean> {
@@ -295,8 +277,7 @@ export class SettingsDialogPage {
 
   async toggleEarliestNow(): Promise<void> {
     await this.switchToAppTab();
-    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
-    await this.page.getByTestId('earliest-now-toggle').click({ force: true });
+    await this.page.getByTestId('earliest-now-toggle').click();
   }
 
   async isEarliestTimeInputDisabled(): Promise<boolean> {

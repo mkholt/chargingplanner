@@ -13,7 +13,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Dismiss24Regular, DrinkCoffee16Regular } from '@fluentui/react-icons';
+import { Bot16Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { usePricesQuery } from '@/hooks';
@@ -37,7 +37,7 @@ export const AppFooter: React.FC = () => {
       }}
     >
       <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
-        {t('about.madeWith')} <DrinkCoffee16Regular /> {t('about.inDenmark')}
+        {t('about.madeWith')} <Bot16Regular /> {t('about.inDenmark')}
       </Text>
       <Text size={200} style={{ color: tokens.colorNeutralForeground4 }}>•</Text>
       <Dialog open={open} onOpenChange={(_, data) => setOpen(data.open)}>

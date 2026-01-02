@@ -81,6 +81,7 @@ export const da = {
     // Settings dialog
     settings: {
       title: 'Indstillinger',
+      closeButton: 'Luk indstillinger',
       tabs: {
         cars: 'Biler',
         electricity: 'Elektricitet',
@@ -88,6 +89,9 @@ export const da = {
         app: 'App',
       },
       clearSettings: 'Ryd indstillinger',
+      app: {
+        title: 'App-indstillinger',
+      },
       language: {
         title: 'Sprog',
         english: 'English',
@@ -95,12 +99,13 @@ export const da = {
       },
       dataSource: {
         title: 'Datakilde',
-        live: 'Live data fra Strømligning.dk',
+        live: 'Live data fra',
         mock: 'Bruger testdata (udviklingstilstand)',
       },
       cache: {
         title: 'Cache',
-        description: 'Ryd cachede prisdata for at hente friske priser',
+        description: 'Cachede prisdata opdateres automatisk.',
+        lastSync: 'Sidst synkroniseret: {{time}}.',
         clearButton: 'Ryd priscache',
         cleared: 'Cache ryddet!',
       },
@@ -227,11 +232,6 @@ export const da = {
       eastDenmark: 'Østdanmark',
     },
 
-    // Refresh button
-    refreshButton: {
-      lastUpdated: 'Sidst opdateret: {{time}}',
-      refresh: 'Opdater priser',
-    },
 
     // Pull to refresh
     pullToRefresh: {

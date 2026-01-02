@@ -1,21 +1,26 @@
 import React, { useCallback, useState } from 'react';
 
 import {
+  Button,
   FluentProvider,
   Title3,
   tokens,
+  Tooltip,
   webDarkTheme,
 } from '@fluentui/react-components';
+import { Settings20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { AppFooter, ErrorBoundary, InputForm, PriceAreaToggle, RefreshButton, Results } from '@/components';
-import { SettingsDialog } from '@/components/settings';
+import { AppFooter, ErrorBoundary, InputForm, LanguageSelector, PriceAreaToggle, Results } from '@/components';
+import { SettingsPane } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
 import {
   CarsProvider,
   PriceSettingsProvider,
+  SettingsUIProvider,
   useCars,
   usePriceSettings,
+  useSettingsUI,
 } from '@/contexts';
 import { usePricesQuery } from '@/hooks';
 
@@ -30,8 +35,8 @@ type FormInput = {
 
 const AppContent: React.FC = () => {
   const { t } = useTranslation();
-  // UI state
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings UI state from context
+  const { isOpen: settingsOpen, toggleSettings } = useSettingsUI();
 
   // Get car selection from context
   const { selectedCarId, selectedCar } = useCars();
@@ -40,7 +45,7 @@ const AppContent: React.FC = () => {
   const { resolved: priceSettings } = usePriceSettings();
 
   // Fetch price data using TanStack Query
-  const { data: priceResult, dataUpdatedAt, isFetching, isError, error, refresh } = usePricesQuery();
+  const { data: priceResult, isError, error } = usePricesQuery();
   const priceData = priceResult?.data;
   const priceError = isError ? error : null;
 
@@ -76,11 +81,16 @@ const AppContent: React.FC = () => {
               <Title3 as="h1" data-testid="app-title" style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.25rem)', flex: 1 }}>
                 {t('appTitle')}
               </Title3>
-              <RefreshButton
-                onRefresh={refresh}
-                isRefreshing={isFetching}
-                lastUpdated={dataUpdatedAt}
-              />
+              <LanguageSelector />
+              <Tooltip content={t('common.settings')} relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<Settings20Regular />}
+                  onClick={toggleSettings}
+                  aria-label={t('common.settings')}
+                  data-testid="settings-button"
+                />
+              </Tooltip>
             </div>
             <div
               style={{
@@ -99,31 +109,31 @@ const AppContent: React.FC = () => {
                 <InputForm
                   key={selectedCarId ?? 'no-car'}
                   selectedCar={selectedCar}
-                  onSettingsClick={() => setSettingsOpen(true)}
                   onSubmit={handleSubmit}
                 />
               </div>
               <div style={{ flex: '2 1 400px' }}>
-                {/* Show price area toggle only when no supplier is selected */}
-                {priceSettings.priceAreaSource === 'manual' && (
-                  <div style={{ marginBottom: tokens.spacingHorizontalM }}>
-                    <PriceAreaToggle />
-                  </div>
+                {settingsOpen ? (
+                  <SettingsPane />
+                ) : (
+                  <>
+                    {/* Show price area toggle only when no supplier is selected */}
+                    {priceSettings.priceAreaSource === 'manual' && (
+                      <div style={{ marginBottom: tokens.spacingHorizontalM }}>
+                        <PriceAreaToggle />
+                      </div>
+                    )}
+                    <Results
+                      formInput={formInput}
+                      priceData={priceData}
+                      priceError={priceError}
+                    />
+                  </>
                 )}
-                <Results
-                  formInput={formInput}
-                  priceData={priceData}
-                  priceError={priceError}
-                  onOpenSettings={() => setSettingsOpen(true)}
-                />
               </div>
             </div>
             <AppFooter />
           </div>
-        <SettingsDialog
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-        />
         <SyncLinkHandler />
       </ErrorBoundary>
     </FluentProvider>
@@ -134,7 +144,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => (
   <CarsProvider>
     <PriceSettingsProvider>
-      <AppContent />
+      <SettingsUIProvider>
+        <AppContent />
+      </SettingsUIProvider>
     </PriceSettingsProvider>
   </CarsProvider>
 );

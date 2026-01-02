@@ -44,7 +44,11 @@ export class AppPage {
 
   async openSettings(): Promise<void> {
     await this.settingsButton.click();
-    await expect(this.page.getByTestId('settings-dialog')).toBeVisible();
+    // Wait for pane to exist in DOM, then scroll into view (needed on mobile where it renders below viewport)
+    const pane = this.page.getByTestId('settings-pane');
+    await pane.waitFor({ state: 'attached' });
+    await pane.scrollIntoViewIfNeeded();
+    await expect(pane).toBeVisible();
   }
 
   async selectCar(carName: string): Promise<void> {

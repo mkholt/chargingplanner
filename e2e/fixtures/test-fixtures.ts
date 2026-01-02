@@ -1,6 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 import { AppPage } from '../pages/app.page';
-import { SettingsDialogPage } from '../pages/settings-dialog.page';
+import { SettingsPanePage } from '../pages/settings-pane.page';
 import { InputFormPage } from '../pages/input-form.page';
 import { ResultsPage } from '../pages/results.page';
 import { freezeTime, FIXED_TEST_TIME } from './time';
@@ -32,7 +32,7 @@ export type PriceSettings = {
 
 type TestFixtures = {
   appPage: AppPage;
-  settingsDialogPage: SettingsDialogPage;
+  settingsPanePage: SettingsPanePage;
   inputFormPage: InputFormPage;
   resultsPage: ResultsPage;
   frozenTime: Date;
@@ -53,9 +53,9 @@ export const test = base.extend<TestFixtures>({
     const appPage = new AppPage(page);
     await use(appPage);
   },
-  settingsDialogPage: async ({ page }, use) => {
-    const settingsDialogPage = new SettingsDialogPage(page);
-    await use(settingsDialogPage);
+  settingsPanePage: async ({ page }, use) => {
+    const settingsPanePage = new SettingsPanePage(page);
+    await use(settingsPanePage);
   },
   inputFormPage: async ({ page }, use) => {
     const inputFormPage = new InputFormPage(page);

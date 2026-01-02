@@ -79,7 +79,7 @@ test.describe('Geolocation', () => {
   test.describe('GPS Success Scenarios', () => {
     test('GPS location in Copenhagen resolves to DK2/Radius supplier', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       // Setup geolocation mock BEFORE any navigation
@@ -90,7 +90,7 @@ test.describe('Geolocation', () => {
       await appPage.waitForAppReady();
       await appPage.openSettings();
 
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for "Using GPS location" indicator to appear (waits for GPS + supplier query)
       await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
@@ -101,7 +101,7 @@ test.describe('Geolocation', () => {
 
     test('GPS location in Aarhus resolves to DK1/Norlys supplier', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'success-aarhus');
@@ -111,7 +111,7 @@ test.describe('Geolocation', () => {
       await appPage.waitForAppReady();
       await appPage.openSettings();
 
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for "Using GPS location" indicator to appear (waits for GPS + supplier query)
       await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
@@ -124,7 +124,7 @@ test.describe('Geolocation', () => {
   test.describe('GPS Error Scenarios', () => {
     test('shows "Location access was denied" when user denies permission', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'denied');
@@ -134,7 +134,7 @@ test.describe('Geolocation', () => {
       await appPage.waitForAppReady();
       await appPage.openSettings();
 
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for error text to appear
       await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
@@ -142,7 +142,7 @@ test.describe('Geolocation', () => {
 
     test('shows "Location information is unavailable" when position unavailable', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'unavailable');
@@ -152,7 +152,7 @@ test.describe('Geolocation', () => {
       await appPage.waitForAppReady();
       await appPage.openSettings();
 
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for error text to appear
       await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
@@ -160,7 +160,7 @@ test.describe('Geolocation', () => {
 
     test('shows "Location request timed out" when geolocation times out', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'timeout');
@@ -170,7 +170,7 @@ test.describe('Geolocation', () => {
       await appPage.waitForAppReady();
       await appPage.openSettings();
 
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for error text to appear
       await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
@@ -178,7 +178,7 @@ test.describe('Geolocation', () => {
 
     test('shows "Geolocation is not supported by your browser" when API unavailable', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'unsupported');
@@ -188,7 +188,7 @@ test.describe('Geolocation', () => {
       await appPage.waitForAppReady();
       await appPage.openSettings();
 
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for error text to appear
       await expect(page.getByTestId('location-error')).toBeVisible({ timeout: 5000 });
@@ -198,7 +198,7 @@ test.describe('Geolocation', () => {
   test.describe('GPS UI Behavior', () => {
     test('GPS button clears postal code input when clicked', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'success-copenhagen');
@@ -207,26 +207,26 @@ test.describe('Geolocation', () => {
       await page.reload();
       await appPage.waitForAppReady();
       await appPage.openSettings();
-      await settingsDialogPage.switchToElectricityTab();
+      await settingsPanePage.switchToElectricityTab();
 
       // First enter a postal code
       const input = page.getByTestId('postal-code-input');
       await input.fill('8000');
 
       // Click GPS button
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Wait for GPS to complete (indicated by "Using GPS location" appearing)
       await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });
 
       // Postal code input should be cleared
-      const postalValue = await settingsDialogPage.getPostalCodeValue();
+      const postalValue = await settingsPanePage.getPostalCodeValue();
       expect(postalValue).toBe('');
     });
 
     test('switching from GPS to postal code clears GPS state', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await setupGeolocationMock(page, 'success-copenhagen');
@@ -237,7 +237,7 @@ test.describe('Geolocation', () => {
       await appPage.openSettings();
 
       // First use GPS
-      await settingsDialogPage.clickGpsButton();
+      await settingsPanePage.clickGpsButton();
 
       // Verify GPS is active (wait for indicator to appear)
       await expect(page.getByTestId('gps-location-indicator')).toBeVisible({ timeout: 5000 });

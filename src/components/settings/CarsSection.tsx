@@ -5,18 +5,13 @@ import { tokens } from '@fluentui/react-components';
 import { AddCarCard, CarCard, DeleteCarDialog } from '@/components/cars';
 import { type Car, useCars } from '@/contexts';
 
-type Props = {
-  onCloseDialog?: () => void;
-};
-
-export const CarsSection: React.FC<Props> = ({ onCloseDialog }) => {
+export const CarsSection: React.FC = () => {
   const { cars, selectedCarId, setSelectedCarId, deleteCar } = useCars();
 
   const [carToDelete, setCarToDelete] = useState<Car | null>(null);
 
   const handleSelectCar = (car: Car) => {
     setSelectedCarId(car.id);
-    onCloseDialog?.();
   };
 
   return (

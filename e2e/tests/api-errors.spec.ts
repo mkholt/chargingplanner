@@ -3,7 +3,7 @@ import { clearAllStorage } from '../fixtures/localStorage';
 
 test.describe('API Error Handling', () => {
   test.describe('Price API errors', () => {
-    test('app remains functional when price API returns 500', async ({ page, appPage, settingsDialogPage }) => {
+    test('app remains functional when price API returns 500', async ({ page, appPage, settingsPanePage }) => {
       // Intercept price API calls and return 500 error
       await page.route('**/api/prices**', route =>
         route.fulfill({
@@ -24,7 +24,7 @@ test.describe('API Error Handling', () => {
 
       // Can still open settings
       await appPage.openSettings();
-      await expect(settingsDialogPage.dialog).toBeVisible();
+      await expect(settingsPanePage.pane).toBeVisible();
     });
 
     test('app handles malformed JSON gracefully without crashing', async ({ page }) => {
@@ -47,7 +47,7 @@ test.describe('API Error Handling', () => {
   });
 
   test.describe('Supplier API errors', () => {
-    test('handles supplier lookup failure gracefully', async ({ page, appPage, settingsDialogPage }) => {
+    test('handles supplier lookup failure gracefully', async ({ page, appPage, settingsPanePage }) => {
       // Intercept supplier find API calls and return 500 error
       await page.route('**/api/suppliers/find**', route =>
         route.fulfill({
@@ -61,7 +61,7 @@ test.describe('API Error Handling', () => {
       await page.goto('/');
       await appPage.waitForAppReady();
       await appPage.openSettings();
-      await settingsDialogPage.switchToElectricityTab();
+      await settingsPanePage.switchToElectricityTab();
 
       // Enter a postal code
       const input = page.getByTestId('postal-code-input');
@@ -69,10 +69,10 @@ test.describe('API Error Handling', () => {
 
       // Should not crash - the app should handle the error gracefully
       // We just verify the dialog is still responsive
-      await expect(settingsDialogPage.dialog).toBeVisible();
+      await expect(settingsPanePage.pane).toBeVisible();
     });
 
-    test('handles supplier list failure gracefully', async ({ page, appPage, settingsDialogPage }) => {
+    test('handles supplier list failure gracefully', async ({ page, appPage, settingsPanePage }) => {
       // Intercept all supplier API calls and return 500 error
       await page.route('**/api/suppliers**', route =>
         route.fulfill({
@@ -88,12 +88,12 @@ test.describe('API Error Handling', () => {
       await appPage.openSettings();
 
       // Should still be able to navigate settings even if supplier API fails
-      await expect(settingsDialogPage.dialog).toBeVisible();
+      await expect(settingsPanePage.pane).toBeVisible();
     });
   });
 
   test.describe('Company API errors', () => {
-    test('handles company list failure gracefully', async ({ page, appPage, settingsDialogPage }) => {
+    test('handles company list failure gracefully', async ({ page, appPage, settingsPanePage }) => {
       // Intercept company API calls and return 500 error
       await page.route('**/api/companies**', route =>
         route.fulfill({
@@ -109,10 +109,10 @@ test.describe('API Error Handling', () => {
       await appPage.openSettings();
 
       // Should still be able to access settings
-      await expect(settingsDialogPage.dialog).toBeVisible();
+      await expect(settingsPanePage.pane).toBeVisible();
 
       // Tab should still be navigable
-      await settingsDialogPage.switchToElectricityTab();
+      await settingsPanePage.switchToElectricityTab();
       await expect(page.getByTestId('postal-code-input')).toBeVisible();
     });
   });
@@ -141,7 +141,7 @@ test.describe('API Error Handling', () => {
   });
 
   test.describe('Rate limiting', () => {
-    test('app remains functional when rate limited', async ({ page, appPage, settingsDialogPage }) => {
+    test('app remains functional when rate limited', async ({ page, appPage, settingsPanePage }) => {
       // Intercept price API and return rate limit error
       await page.route('**/api/prices**', route =>
         route.fulfill({
@@ -162,7 +162,7 @@ test.describe('API Error Handling', () => {
 
       // User can still interact with settings
       await appPage.openSettings();
-      await expect(settingsDialogPage.dialog).toBeVisible();
+      await expect(settingsPanePage.pane).toBeVisible();
     });
   });
 });

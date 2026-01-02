@@ -11,20 +11,20 @@ test.describe('Car Management', () => {
     await expect(appPage.noCarMessage).toBeVisible();
   });
 
-  test('can add a new car from settings dialog and it becomes selected', async ({ appPage, settingsDialogPage, page }) => {
+  test('can add a new car from settings dialog and it becomes selected', async ({ appPage, settingsPanePage, page }) => {
     await clearAllStorage(page);
     await page.goto('/');
     await appPage.waitForAppReady();
     await appPage.openSettings();
-    await settingsDialogPage.switchToCarsTab();
+    await settingsPanePage.switchToCarsTab();
 
-    await settingsDialogPage.addCar('Tesla Model 3', 60, 11);
+    await settingsPanePage.addCar('Tesla Model 3', 60, 11);
 
     // Verify car appears in list
-    const carNames = await settingsDialogPage.getCarCardNames();
+    const carNames = await settingsPanePage.getCarCardNames();
     expect(carNames).toContain('Tesla Model 3');
 
-    await settingsDialogPage.close();
+    await settingsPanePage.close();
 
     // Verify car is now shown in the selector
     const selectorText = await appPage.getSelectedCarText();
@@ -32,7 +32,7 @@ test.describe('Car Management', () => {
     expect(selectorText).toContain('60');
   });
 
-  test('can edit an existing car name and battery size', async ({ appPage, settingsDialogPage, page }) => {
+  test('can edit an existing car name and battery size', async ({ appPage, settingsPanePage, page }) => {
     const testCar = createTestCar('car-1', TEST_CARS.TESLA_MODEL_3);
     await clearAllStorage(page);
     await seedCars(page, [testCar]);
@@ -41,20 +41,20 @@ test.describe('Car Management', () => {
     await appPage.waitForAppReady();
 
     await appPage.openSettings();
-    await settingsDialogPage.switchToCarsTab();
+    await settingsPanePage.switchToCarsTab();
 
-    await settingsDialogPage.editCar('Tesla Model 3', {
+    await settingsPanePage.editCar('Tesla Model 3', {
       name: 'Tesla Model 3 LR',
       batterySize: 75,
     });
 
     // Verify updated name appears
-    const carNames = await settingsDialogPage.getCarCardNames();
+    const carNames = await settingsPanePage.getCarCardNames();
     expect(carNames).toContain('Tesla Model 3 LR');
     expect(carNames).not.toContain('Tesla Model 3');
   });
 
-  test('can delete a car with confirmation dialog', async ({ appPage, settingsDialogPage, page }) => {
+  test('can delete a car with confirmation dialog', async ({ appPage, settingsPanePage, page }) => {
     const testCar = createTestCar('car-1', TEST_CARS.TESLA_MODEL_3);
     await clearAllStorage(page);
     await seedCars(page, [testCar]);
@@ -62,15 +62,15 @@ test.describe('Car Management', () => {
     await appPage.waitForAppReady();
 
     await appPage.openSettings();
-    await settingsDialogPage.switchToCarsTab();
+    await settingsPanePage.switchToCarsTab();
 
-    await settingsDialogPage.deleteCar('Tesla Model 3');
+    await settingsPanePage.deleteCar('Tesla Model 3');
 
     // Car should be removed
-    const carNames = await settingsDialogPage.getCarCardNames();
+    const carNames = await settingsPanePage.getCarCardNames();
     expect(carNames).not.toContain('Tesla Model 3');
 
-    await settingsDialogPage.close();
+    await settingsPanePage.close();
 
     // Should show "No car saved" again
     await expect(appPage.addCarButton).toBeVisible();

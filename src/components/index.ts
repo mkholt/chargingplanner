@@ -3,7 +3,7 @@ export { CarSelector } from './CarSelector';
 export { ChargingPlanHeader } from './ChargingPlanHeader';
 export { ErrorBoundary } from './ErrorBoundary';
 export { InputForm } from './InputForm';
+export { LanguageSelector } from './LanguageSelector';
 export { PriceAreaToggle } from './PriceAreaToggle';
 export { PriceTimeline } from './PriceTimeline';
-export { RefreshButton } from './RefreshButton';
 export { Results } from './Results';

@@ -81,6 +81,7 @@ export const en = {
     // Settings dialog
     settings: {
       title: 'Settings',
+      closeButton: 'Close settings',
       tabs: {
         cars: 'Cars',
         electricity: 'Electricity',
@@ -88,6 +89,9 @@ export const en = {
         app: 'App',
       },
       clearSettings: 'Clear Settings',
+      app: {
+        title: 'App Preferences',
+      },
       language: {
         title: 'Language',
         english: 'English',
@@ -95,12 +99,13 @@ export const en = {
       },
       dataSource: {
         title: 'Data Source',
-        live: 'Live data from Strømligning.dk',
+        live: 'Live data from',
         mock: 'Using mock data (development mode)',
       },
       cache: {
         title: 'Cache',
-        description: 'Clear cached price data to fetch fresh prices',
+        description: 'Cached price data is refreshed automatically.',
+        lastSync: 'Last sync: {{time}}.',
         clearButton: 'Clear Price Cache',
         cleared: 'Cache cleared!',
       },
@@ -227,11 +232,6 @@ export const en = {
       eastDenmark: 'East Denmark',
     },
 
-    // Refresh button
-    refreshButton: {
-      lastUpdated: 'Last updated: {{time}}',
-      refresh: 'Refresh prices',
-    },
 
     // Pull to refresh
     pullToRefresh: {

@@ -31,7 +31,7 @@ test.describe('Data Persistence', () => {
     expect(newSelection).toContain('VW ID.4');
   });
 
-  test('price settings persist across page reloads', async ({ page, appPage, settingsDialogPage }) => {
+  test('price settings persist across page reloads', async ({ page, appPage, settingsPanePage }) => {
     // Clear storage and set price settings
     await clearAllStorage(page);
     const car = createTestCar('car-1', TEST_CARS.TESLA_MODEL_3);
@@ -46,21 +46,21 @@ test.describe('Data Persistence', () => {
     await page.goto('/');
     await appPage.waitForAppReady();
     await appPage.openSettings();
-    await settingsDialogPage.switchToElectricityTab();
+    await settingsPanePage.switchToElectricityTab();
 
     // Check postal code is preserved
-    const postalCode = await settingsDialogPage.getPostalCodeValue();
+    const postalCode = await settingsPanePage.getPostalCodeValue();
     expect(postalCode).toBe(String(POSTAL_CODES.COPENHAGEN));
 
     // Close and reload
-    await settingsDialogPage.close();
+    await settingsPanePage.close();
     await page.reload();
     await appPage.waitForAppReady();
 
     // Verify settings persisted
     await appPage.openSettings();
-    await settingsDialogPage.switchToElectricityTab();
-    const postalCodeAfterReload = await settingsDialogPage.getPostalCodeValue();
+    await settingsPanePage.switchToElectricityTab();
+    const postalCodeAfterReload = await settingsPanePage.getPostalCodeValue();
     expect(postalCodeAfterReload).toBe(String(POSTAL_CODES.COPENHAGEN));
   });
 

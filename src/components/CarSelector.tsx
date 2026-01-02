@@ -9,13 +9,10 @@ import {
 } from '@fluentui/react-components';
 import { useTranslation } from 'react-i18next';
 
-import { useCars } from '@/contexts';
+import { useCars, useSettingsUI } from '@/contexts';
 
-type Props = {
-  onAddCarClick?: () => void;
-};
-
-export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
+export const CarSelector: React.FC = () => {
+  const { openSettings } = useSettingsUI();
   const { t } = useTranslation();
   const { cars, selectedCar, setSelectedCarId } = useCars();
 
@@ -38,7 +35,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
         <Button
           appearance="primary"
           size="small"
-          onClick={onAddCarClick}
+          onClick={() => openSettings('cars')}
           data-testid="add-car-button"
         >
           {t('cars.addCar')}

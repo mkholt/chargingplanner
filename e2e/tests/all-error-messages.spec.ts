@@ -111,14 +111,14 @@ test.describe('All Error Messages', () => {
   test.describe('Supplier/Settings Errors (SupplierSection.tsx)', () => {
     test('shows "Danish postal codes are 1000-9999" for invalid postal code', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await clearAllStorage(page);
       await page.goto('/');
       await appPage.waitForAppReady();
       await appPage.openSettings();
-      await settingsDialogPage.switchToElectricityTab();
+      await settingsPanePage.switchToElectricityTab();
 
       const input = page.getByTestId('postal-code-input');
       await input.fill('999');
@@ -129,14 +129,14 @@ test.describe('All Error Messages', () => {
 
     test('shows "Danish postal codes are 1000-9999" for postal code above 9999', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await clearAllStorage(page);
       await page.goto('/');
       await appPage.waitForAppReady();
       await appPage.openSettings();
-      await settingsDialogPage.switchToElectricityTab();
+      await settingsPanePage.switchToElectricityTab();
 
       const input = page.getByTestId('postal-code-input');
       await input.fill('10000');
@@ -149,14 +149,14 @@ test.describe('All Error Messages', () => {
 
     test('shows "No grid operator found" for unknown postal code', async ({
       appPage,
-      settingsDialogPage,
+      settingsPanePage,
       page,
     }) => {
       await clearAllStorage(page);
       await page.goto('/');
       await appPage.waitForAppReady();
       await appPage.openSettings();
-      await settingsDialogPage.switchToElectricityTab();
+      await settingsPanePage.switchToElectricityTab();
 
       // Use a valid format postal code that's not in mock data
       const input = page.getByTestId('postal-code-input');
@@ -166,7 +166,7 @@ test.describe('All Error Messages', () => {
       await page.waitForTimeout(500);
 
       // Should show "No grid operator found" message
-      const notFoundMsg = await settingsDialogPage.getSupplierNotFoundMessage();
+      const notFoundMsg = await settingsPanePage.getSupplierNotFoundMessage();
       expect(notFoundMsg).toContain('No grid operator found');
     });
   });

@@ -8,7 +8,6 @@ import {
   Option,
   Text,
   tokens,
-  Tooltip,
 } from '@fluentui/react-components';
 import {
   BatteryCharge24Regular,
@@ -16,7 +15,6 @@ import {
   ChevronDown20Regular,
   ChevronUp16Regular,
   ChevronUp20Regular,
-  Settings20Regular,
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
@@ -43,7 +41,6 @@ type FormInput = {
 
 type Props = {
   selectedCar: Car | null;
-  onSettingsClick: () => void;
   onSubmit: (input: FormInput) => void;
 };
 
@@ -105,7 +102,6 @@ function getDefaultLatest(): string {
 
 export const InputForm: React.FC<Props> = ({
   selectedCar,
-  onSettingsClick,
   onSubmit,
 }) => {
   const { t } = useTranslation();
@@ -231,22 +227,10 @@ export const InputForm: React.FC<Props> = ({
               }}
             />
           )}
-          <Tooltip content={t('common.settings')} relationship="label">
-            <Button
-              appearance="subtle"
-              icon={<Settings20Regular />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSettingsClick();
-              }}
-              aria-label={t('common.settings')}
-              data-testid="settings-button"
-            />
-          </Tooltip>
         </div>
         {isContentVisible && (
           <>
-            <CarSelector onAddCarClick={onSettingsClick} />
+            <CarSelector />
             <form
               style={{ display: "flex", flexDirection: "column", gap: tokens.spacingHorizontalL }}
               onSubmit={e => {

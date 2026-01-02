@@ -19,3 +19,7 @@ export type {
   ResolvedPriceSettings,
   SelectedCompany,
 } from './PriceSettingsContext';
+
+// Settings UI
+export { SettingsUIProvider, useSettingsUI } from './SettingsUIContext';
+export type { SettingsTab } from './SettingsUIContext';
