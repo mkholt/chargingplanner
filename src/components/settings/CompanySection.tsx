@@ -7,10 +7,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import {
-  Building20Regular,
-  LeafOne20Regular,
-} from '@fluentui/react-icons';
+import { LeafOne20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { SelectionCard } from '@/components/settings';
@@ -35,9 +32,9 @@ export const CompanySection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
         <Text weight="semibold">{t('company.title')}</Text>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
           <Spinner size="tiny" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             {t('company.loadingSuppliers')}
@@ -48,25 +45,23 @@ export const CompanySection: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       <Text weight="semibold">{t('company.title')}</Text>
 
       {/* Supplier combobox with search */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Building20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
-        <Combobox
-          value={query || company?.name || ''}
-          selectedOptions={company ? [company.id] : []}
-          onOptionSelect={(_, data) => {
-            const selectedCompany = companies.find(c => c.id === data.optionValue) ?? null;
-            setCompany(selectedCompany);
-            setQuery('');
-          }}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('company.searchPlaceholder')}
-          style={{ flex: 1 }}
-          freeform
-        >
+      <Combobox
+        value={query || company?.name || ''}
+        selectedOptions={company ? [company.id] : []}
+        onOptionSelect={(_, data) => {
+          const selectedCompany = companies.find(c => c.id === data.optionValue) ?? null;
+          setCompany(selectedCompany);
+          setQuery('');
+        }}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t('company.searchPlaceholder')}
+        style={{ width: '100%' }}
+        freeform
+      >
           {filteredCompanies.map(c => (
             <Option key={c.id} value={c.id} text={c.name}>
               <div>
@@ -78,11 +73,10 @@ export const CompanySection: React.FC = () => {
             </Option>
           ))}
         </Combobox>
-      </div>
 
       {/* Product cards - only shown when company is selected */}
       {company && (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
           {company.products.map(p => (
             <SelectionCard
               key={p.id}

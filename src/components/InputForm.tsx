@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Button,
   Dropdown,
+  Field,
   Input,
   Option,
   Text,
@@ -10,22 +11,17 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import {
-  Battery024Regular,
-  Battery1024Regular,
   BatteryCharge24Regular,
   ChevronDown16Regular,
   ChevronDown20Regular,
   ChevronUp16Regular,
   ChevronUp20Regular,
-  Flash24Regular,
   Settings20Regular,
-  VehicleCarProfileLtr24Regular,
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
-import { LabeledFormField } from '@/components/ui';
 import { type Car } from '@/contexts';
 import { useDebouncedCallback, useIsMobile } from '@/hooks';
 import {
@@ -198,8 +194,8 @@ export const InputForm: React.FC<Props> = ({
       <div
         style={{
           background: tokens.colorNeutralBackground2,
-          borderRadius: 8,
-          padding: 16,
+          borderRadius: tokens.borderRadiusLarge,
+          padding: tokens.spacingHorizontalL,
           border: `1px solid ${tokens.colorNeutralStroke1}`,
         }}
       >
@@ -207,8 +203,8 @@ export const InputForm: React.FC<Props> = ({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            marginBottom: isContentVisible ? 16 : 0,
+            gap: tokens.spacingHorizontalS,
+            marginBottom: isContentVisible ? tokens.spacingHorizontalL : 0,
             cursor: showCollapsible ? 'pointer' : 'default',
           }}
           onClick={showCollapsible ? () => setIsCollapsed(!isCollapsed) : undefined}
@@ -252,26 +248,26 @@ export const InputForm: React.FC<Props> = ({
           <>
             <CarSelector onAddCarClick={onSettingsClick} />
             <form
-              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+              style={{ display: "flex", flexDirection: "column", gap: tokens.spacingHorizontalL }}
               onSubmit={e => {
                 e.preventDefault();
               }}
             >
-              <LabeledFormField icon={<Battery024Regular />} label={t('input.startPercent')}>
+              <Field label={t('input.startPercent')}>
                 <BatteryPercentageSlider
                   value={startPercent}
                   onChange={updateStartPercent}
                   data-testid="start-percent-input"
                 />
-              </LabeledFormField>
-              <LabeledFormField icon={<Battery1024Regular />} label={t('input.endPercent')}>
+              </Field>
+              <Field label={t('input.endPercent')}>
                 <BatteryPercentageSlider
                   value={endPercent}
                   onChange={updateEndPercent}
                   snapPoint={80}
                   data-testid="end-percent-input"
                 />
-              </LabeledFormField>
+              </Field>
               <TimeWindowSelector
                 earliest={earliest}
                 latest={latest}
@@ -287,15 +283,15 @@ export const InputForm: React.FC<Props> = ({
                   onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
                   data-testid="vehicle-settings-button"
                   style={{
-                    padding: '4px 0',
+                    padding: `${tokens.spacingHorizontalXS} 0`,
                     color: tokens.colorNeutralForeground2,
                   }}
                 >
                   {isAdvancedOpen ? t('input.hideVehicleSettings') : t('input.showVehicleSettings')} ({batterySize} kWh · {chargingSpeed} kW)
                 </Button>
                 {isAdvancedOpen && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
-                    <LabeledFormField icon={<VehicleCarProfileLtr24Regular />} label={t('input.batterySize')}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL, marginTop: tokens.spacingHorizontalM }}>
+                    <Field label={t('input.batterySize')}>
                       <Input
                         type="number"
                         min={10}
@@ -305,8 +301,8 @@ export const InputForm: React.FC<Props> = ({
                         data-testid="battery-size-input"
                         style={{ width: "100%" }}
                       />
-                    </LabeledFormField>
-                    <LabeledFormField icon={<Flash24Regular />} label={t('input.chargingPower')}>
+                    </Field>
+                    <Field label={t('input.chargingPower')}>
                       <Dropdown
                         value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
                         onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
@@ -319,7 +315,7 @@ export const InputForm: React.FC<Props> = ({
                           </Option>
                         ))}
                       </Dropdown>
-                    </LabeledFormField>
+                    </Field>
                   </div>
                 )}
               </div>

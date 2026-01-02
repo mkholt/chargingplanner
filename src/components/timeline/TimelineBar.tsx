@@ -62,8 +62,8 @@ export const TimelineBar: React.FC<Props> = ({
   }
 
   const tooltipContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalXS, minWidth: 100 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
         <Text size={200} weight="semibold">
           {intervalStartTime} - {intervalEndTime}
         </Text>
@@ -82,10 +82,10 @@ export const TimelineBar: React.FC<Props> = ({
       {data.isCharging && (
         <div
           style={{
-            marginTop: 2,
-            padding: '2px 6px',
+            marginTop: tokens.spacingHorizontalXXS,
+            padding: `${tokens.spacingHorizontalXXS} ${tokens.spacingHorizontalSNudge}`,
             background: tokens.colorBrandBackground2,
-            borderRadius: 3,
+            borderRadius: tokens.borderRadiusSmall,
             alignSelf: 'flex-start',
           }}
         >
@@ -122,7 +122,7 @@ export const TimelineBar: React.FC<Props> = ({
           flex: 1,
           height: `${normalizedHeight}%`,
           background: color,
-          borderRadius: 3,
+          borderRadius: tokens.borderRadiusSmall,
           cursor: 'pointer',
           transition: 'all 0.15s ease-out',
           transform: isSelected ? 'scaleY(1.1)' : 'none',
@@ -140,7 +140,7 @@ export const TimelineBar: React.FC<Props> = ({
               position: 'absolute',
               inset: 0,
               background: inactiveOverlay,
-              borderRadius: 3,
+              borderRadius: tokens.borderRadiusSmall,
             }}
           />
         )}

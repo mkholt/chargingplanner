@@ -94,10 +94,10 @@ export const SelectedHourDetail: React.FC<Props> = ({
   return (
     <div
       style={{
-        marginTop: 8,
-        padding: 12,
+        marginTop: tokens.spacingHorizontalS,
+        padding: tokens.spacingHorizontalM,
         background: tokens.colorNeutralBackground3,
-        borderRadius: 8,
+        borderRadius: tokens.borderRadiusLarge,
         border: `1px solid ${tokens.colorNeutralStroke1}`,
       }}
     >
@@ -132,12 +132,12 @@ export const SelectedHourDetail: React.FC<Props> = ({
       {breakdownItems.length > 0 && (
         <div
           style={{
-            marginTop: 12,
-            paddingTop: 8,
+            marginTop: tokens.spacingHorizontalM,
+            paddingTop: tokens.spacingHorizontalS,
             borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
-            gap: 8,
+            gap: tokens.spacingHorizontalS,
           }}
         >
           {breakdownItems.map((item) => (
@@ -148,7 +148,7 @@ export const SelectedHourDetail: React.FC<Props> = ({
               <Text size={200} weight="medium">
                 {item.value.toFixed(2)}
                 {item.unit && (
-                  <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginLeft: 2 }}>
+                  <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginLeft: tokens.spacingHorizontalXXS }}>
                     {item.unit}
                   </Text>
                 )}
@@ -159,7 +159,7 @@ export const SelectedHourDetail: React.FC<Props> = ({
       )}
 
       {chargingSpeed !== undefined && (
-        <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
+        <div style={{ marginTop: tokens.spacingHorizontalS, paddingTop: tokens.spacingHorizontalS, borderTop: `1px solid ${tokens.colorNeutralStroke1}` }}>
           <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
             {t('selectedHour.costFor', {
               duration: durationLabel,
@@ -168,7 +168,7 @@ export const SelectedHourDetail: React.FC<Props> = ({
             })}
           </Text>
           {isPartialBar && chargingSpeed !== undefined && (
-            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3, marginTop: tokens.spacingHorizontalXS }}>
               {t('selectedHour.chargingPortion', {
                 minutes: Math.round(actualChargingMinutes),
                 cost: (hour.price * chargingSpeed * (actualChargingMinutes / 60)).toFixed(2),
@@ -181,10 +181,10 @@ export const SelectedHourDetail: React.FC<Props> = ({
       {hour.isCharging && (
         <div
           style={{
-            marginTop: 8,
-            padding: '4px 8px',
+            marginTop: tokens.spacingHorizontalS,
+            padding: `${tokens.spacingHorizontalXS} ${tokens.spacingHorizontalS}`,
             background: tokens.colorBrandBackground2,
-            borderRadius: 4,
+            borderRadius: tokens.borderRadiusMedium,
             display: 'inline-block',
           }}
         >

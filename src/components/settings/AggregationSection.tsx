@@ -25,11 +25,11 @@ export const AggregationSection: React.FC = () => {
   const isHourlyMode = aggregationSize === '1h';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       <Text weight="semibold">{t('aggregation.title')}</Text>
 
       {/* Hourly aggregation toggle with inline method dropdown */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
         <Clock20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
         <Switch
           checked={isHourlyMode}
@@ -40,7 +40,7 @@ export const AggregationSection: React.FC = () => {
         />
         {/* Aggregation method dropdown - inline, only shown in hourly mode */}
         {isHourlyMode && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
             <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>{t('aggregation.using')}</Text>
             <MathFormula20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
             <Dropdown

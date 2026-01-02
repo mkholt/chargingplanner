@@ -14,8 +14,8 @@ export const TimeLabels: React.FC<Props> = ({ hourData, intervalMinutes }) => {
     <div
       style={{
         display: 'flex',
-        gap: 2,
-        paddingTop: 4,
+        gap: tokens.spacingHorizontalXXS,
+        paddingTop: tokens.spacingHorizontalXS,
       }}
     >
       {hourData.map((data, i) => {

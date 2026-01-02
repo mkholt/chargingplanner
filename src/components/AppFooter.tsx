@@ -27,16 +27,16 @@ export const AppFooter: React.FC = () => {
   return (
     <footer
       style={{
-        padding: '12px 16px',
+        padding: `${tokens.spacingHorizontalM} ${tokens.spacingHorizontalL}`,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
+        gap: tokens.spacingHorizontalS,
         color: tokens.colorNeutralForeground3,
         fontSize: 12,
       }}
     >
-      <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: 4 }}>
+      <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
         {t('about.madeWith')} <DrinkCoffee16Regular /> {t('about.inDenmark')}
       </Text>
       <Text size={200} style={{ color: tokens.colorNeutralForeground4 }}>•</Text>
@@ -65,13 +65,13 @@ export const AppFooter: React.FC = () => {
               {t('about.title')}
             </DialogTitle>
             <DialogContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL }}>
                 <Text>
                   {t('about.description')}
                 </Text>
 
                 <div>
-                  <Text weight="semibold" block style={{ marginBottom: 4 }}>
+                  <Text weight="semibold" block style={{ marginBottom: tokens.spacingHorizontalXS }}>
                     {t('about.dataSource')}
                   </Text>
                   <Text>
@@ -81,7 +81,7 @@ export const AppFooter: React.FC = () => {
                     </Link>
                   </Text>
                   {isMockedData && (
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: tokens.spacingHorizontalS }}>
                       <Badge appearance="filled" color="warning">
                         {t('about.usingMockData')}
                       </Badge>
@@ -90,7 +90,7 @@ export const AppFooter: React.FC = () => {
                 </div>
 
                 <div>
-                  <Text weight="semibold" block style={{ marginBottom: 4 }}>
+                  <Text weight="semibold" block style={{ marginBottom: tokens.spacingHorizontalXS }}>
                     {t('about.openSource')}
                   </Text>
                   <Text>
@@ -107,7 +107,7 @@ export const AppFooter: React.FC = () => {
 
                 <Text
                   size={200}
-                  style={{ color: tokens.colorNeutralForeground3, marginTop: 8 }}
+                  style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingHorizontalS }}
                 >
                   © {new Date().getFullYear()} Morten Holt
                 </Text>

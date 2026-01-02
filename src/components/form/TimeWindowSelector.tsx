@@ -1,14 +1,8 @@
 import React from 'react';
 
-import { Button, Input, Text, tokens, Tooltip } from '@fluentui/react-components';
-import {
-  Clock24Regular,
-  ClockAlarm24Regular,
-  TargetArrow16Regular,
-} from '@fluentui/react-icons';
+import { Button, Field, Input, Text, tokens, Tooltip } from '@fluentui/react-components';
+import { Clock16Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
-
-import { LabeledFormField } from '@/components/ui';
 import {
   formatShortDate,
   formatTimeValue,
@@ -71,12 +65,8 @@ export const TimeWindowSelector: React.FC<Props> = ({
   };
 
   return (
-    <div style={{ display: 'flex', gap: 16 }}>
-      <LabeledFormField
-        icon={<Clock24Regular />}
-        label={t('time.earliestStart')}
-        style={{ flex: 1 }}
-      >
+    <div style={{ display: 'flex', gap: tokens.spacingHorizontalL }}>
+      <Field label={t('time.earliestStart')} style={{ flex: 1 }}>
         <Input
           type="time"
           step={900}
@@ -88,7 +78,7 @@ export const TimeWindowSelector: React.FC<Props> = ({
               <Button
                 size="small"
                 appearance="transparent"
-                icon={<TargetArrow16Regular />}
+                icon={<Clock16Regular />}
                 onClick={handleNowClick}
                 aria-label={t('time.setToNow')}
                 data-testid="set-to-now-button"
@@ -96,15 +86,11 @@ export const TimeWindowSelector: React.FC<Props> = ({
             </Tooltip>
           }
         />
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: 4 }}>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: tokens.spacingHorizontalXS }}>
           {getDateLabel(earliestDate)}
         </Text>
-      </LabeledFormField>
-      <LabeledFormField
-        icon={<ClockAlarm24Regular />}
-        label={t('time.latestEnd')}
-        style={{ flex: 1 }}
-      >
+      </Field>
+      <Field label={t('time.latestEnd')} style={{ flex: 1 }}>
         <Input
           type="time"
           step={900}
@@ -112,10 +98,10 @@ export const TimeWindowSelector: React.FC<Props> = ({
           value={formatTimeValue(latestDate)}
           onChange={handleLatestChange}
         />
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: 4 }}>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: tokens.spacingHorizontalXS }}>
           {getDateLabel(latestDate)}
         </Text>
-      </LabeledFormField>
+      </Field>
     </div>
   );
 };

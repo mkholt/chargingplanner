@@ -10,7 +10,9 @@
       "Bash(npm run test:e2e:*)",
       "Bash(npm test:*)",
       "Bash(npx playwright test:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:storybooks.fluentui.dev)",
+      "WebFetch(domain:react.fluentui.dev)"
     ]
   }
 }

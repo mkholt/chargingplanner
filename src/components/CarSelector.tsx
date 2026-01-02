@@ -7,7 +7,6 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { VehicleCar20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { useCars } from '@/contexts';
@@ -27,18 +26,15 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 12px',
+          padding: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`,
           background: tokens.colorNeutralBackground3,
-          borderRadius: 6,
-          marginBottom: 16,
+          borderRadius: tokens.borderRadiusLarge,
+          marginBottom: tokens.spacingHorizontalL,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <VehicleCar20Regular style={{ color: tokens.colorNeutralForeground3 }} />
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} data-testid="no-car-message">
-            {t('cars.noCarSaved')}
-          </Text>
-        </div>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} data-testid="no-car-message">
+          {t('cars.noCarSaved')}
+        </Text>
         <Button
           appearance="primary"
           size="small"
@@ -58,13 +54,9 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 16,
+        marginBottom: tokens.spacingHorizontalL,
       }}
     >
-      <VehicleCar20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
       <Dropdown
         data-testid="car-selector"
         value={displayValue}
@@ -73,7 +65,7 @@ export const CarSelector: React.FC<Props> = ({ onAddCarClick }) => {
             setSelectedCarId(data.optionValue);
           }
         }}
-        style={{ flex: 1, minWidth: 0 }}
+        style={{ width: '100%' }}
       >
         {cars.map(car => (
           <Option key={car.id} value={car.id} text={car.name}>

@@ -13,9 +13,9 @@ export const ChargingIndicator: React.FC<Props> = ({ hourData }) => {
     <div
       style={{
         display: 'flex',
-        gap: 2,
+        gap: tokens.spacingHorizontalXXS,
         height: 4,
-        marginTop: 4,
+        marginTop: tokens.spacingHorizontalXS,
       }}
     >
       {hourData.map((data) => {
@@ -33,7 +33,7 @@ export const ChargingIndicator: React.FC<Props> = ({ hourData }) => {
                 flex: 1,
                 height: '100%',
                 background: 'transparent',
-                borderRadius: 2,
+                borderRadius: tokens.borderRadiusSmall,
               }}
             />
           );
@@ -47,7 +47,7 @@ export const ChargingIndicator: React.FC<Props> = ({ hourData }) => {
                 flex: 1,
                 height: '100%',
                 position: 'relative',
-                borderRadius: 2,
+                borderRadius: tokens.borderRadiusSmall,
                 overflow: 'hidden',
               }}
             >
@@ -59,7 +59,7 @@ export const ChargingIndicator: React.FC<Props> = ({ hourData }) => {
                   [fillFromRight ? 'right' : 'left']: 0,
                   width: `${fillFraction * 100}%`,
                   background: tokens.colorBrandStroke1,
-                  borderRadius: 2,
+                  borderRadius: tokens.borderRadiusSmall,
                 }}
               />
             </div>
@@ -73,7 +73,7 @@ export const ChargingIndicator: React.FC<Props> = ({ hourData }) => {
               flex: 1,
               height: '100%',
               background: tokens.colorBrandStroke1,
-              borderRadius: 2,
+              borderRadius: tokens.borderRadiusSmall,
             }}
           />
         );

@@ -35,7 +35,7 @@ export const CarImportResultDialog: React.FC<Props> = ({
           <DialogTitle>{t('importResult.title')}</DialogTitle>
           <DialogContent>
             {result && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
                 {result.added.length > 0 && (
                   <Text>
                     {t('importResult.addedCars', {

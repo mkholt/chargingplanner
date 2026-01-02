@@ -101,15 +101,15 @@ const ImportPreviewDialogContent: React.FC<{
     <>
       <DialogTitle>{t('importPreview.title')}</DialogTitle>
       <DialogContent>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL }}>
           {/* Cars section */}
           {cars.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text weight="semibold">
                   {t('importPreview.carsFound', { count: cars.length })}
                 </Text>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
                   <Button size="small" appearance="subtle" onClick={selectAll}>
                     {t('importPreview.selectAll')}
                   </Button>
@@ -119,7 +119,7 @@ const ImportPreviewDialogContent: React.FC<{
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalXS }}>
                 {cars.map((car, i) => {
                   const isDuplicate = existingCarNames.has(car.name.toLowerCase().trim());
                   const isSelected = selectedCars.has(i);
@@ -128,14 +128,14 @@ const ImportPreviewDialogContent: React.FC<{
                     <div
                       key={car.name}
                       style={{
-                        padding: '8px 12px',
+                        padding: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`,
                         background: isDuplicate
                           ? tokens.colorPaletteYellowBackground1
                           : tokens.colorNeutralBackground3,
-                        borderRadius: 6,
+                        borderRadius: tokens.borderRadiusLarge,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 12,
+                        gap: tokens.spacingHorizontalM,
                       }}
                     >
                       <Checkbox
@@ -170,8 +170,8 @@ const ImportPreviewDialogContent: React.FC<{
           {settings && resolvedSettings && (
             <>
               <Divider />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
                   <Checkbox
                     checked={importSettings}
                     onChange={(_, data) => setImportSettings(!!data.checked)}
@@ -182,9 +182,9 @@ const ImportPreviewDialogContent: React.FC<{
                 {importSettings && (
                   <div
                     style={{
-                      padding: 12,
+                      padding: tokens.spacingHorizontalM,
                       background: tokens.colorNeutralBackground3,
-                      borderRadius: 6,
+                      borderRadius: tokens.borderRadiusLarge,
                       marginLeft: 28,
                     }}
                   >

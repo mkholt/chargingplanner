@@ -25,15 +25,15 @@ export const SelectionCard: React.FC<Props> = ({
       onClick={onClick}
       horizontal
       flexBasis={180}
-      gap={8}
-      padding={12}
+      gap={tokens.spacingHorizontalS}
+      padding={tokens.spacingHorizontalM}
     >
       {icon && (
-        <div style={{ flexShrink: 0, marginTop: 2 }}>
+        <div style={{ flexShrink: 0, marginTop: tokens.spacingHorizontalXXS }}>
           {icon}
         </div>
       )}
-      <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+      <Stack gap={tokens.spacingHorizontalXXS} style={{ flex: 1, minWidth: 0 }}>
         <Text
           weight="semibold"
           style={{

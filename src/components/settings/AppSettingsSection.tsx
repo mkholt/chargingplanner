@@ -60,16 +60,16 @@ export const AppSettingsSection: React.FC = () => {
   };
 
   return (
-    <Stack gap={20}>
+    <Stack gap={tokens.spacingHorizontalXL}>
       {/* Language */}
       <LanguageSection />
 
       <Divider />
 
       {/* Data Source */}
-      <Stack gap={8}>
+      <Stack gap={tokens.spacingHorizontalS}>
         <Text weight="semibold">{t('settings.dataSource.title')}</Text>
-        <Stack horizontal align="center" gap={8} data-testid="data-source-info">
+        <Stack horizontal align="center" gap={tokens.spacingHorizontalS} data-testid="data-source-info">
           <Database20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
           <Text size={300}>
             {isMockedData ? t('settings.dataSource.mock') : t('settings.dataSource.live')}
@@ -85,7 +85,7 @@ export const AppSettingsSection: React.FC = () => {
       <Divider />
 
       {/* Cache */}
-      <Stack gap={8}>
+      <Stack gap={tokens.spacingHorizontalS}>
         <Text weight="semibold">{t('settings.cache.title')}</Text>
         <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           {t('settings.cache.description')}
@@ -107,20 +107,20 @@ export const AppSettingsSection: React.FC = () => {
       <Divider />
 
       {/* Default Time Window */}
-      <Stack gap={12}>
+      <Stack gap={tokens.spacingHorizontalM}>
         <Text weight="semibold">{t('settings.defaults.title')}</Text>
         <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           {t('settings.defaults.description')}
         </Text>
 
-        <Stack horizontal gap={16}>
+        <Stack horizontal gap={tokens.spacingHorizontalL}>
           {/* Earliest Start */}
-          <Stack gap={4} style={{ flex: 1 }}>
-            <Stack horizontal align="center" gap={8}>
+          <Stack gap={tokens.spacingHorizontalXS} style={{ flex: 1 }}>
+            <Stack horizontal align="center" gap={tokens.spacingHorizontalS}>
               <Clock20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
               <Text size={200}>{t('settings.defaults.earliestStart')}</Text>
             </Stack>
-            <Stack horizontal align="center" gap={8}>
+            <Stack horizontal align="center" gap={tokens.spacingHorizontalS}>
               <Switch
                 checked={earliestMode === 'now'}
                 onChange={handleEarliestModeToggle}
@@ -140,8 +140,8 @@ export const AppSettingsSection: React.FC = () => {
           </Stack>
 
           {/* Latest End */}
-          <Stack gap={4} style={{ flex: 1 }}>
-            <Stack horizontal align="center" gap={8}>
+          <Stack gap={tokens.spacingHorizontalXS} style={{ flex: 1 }}>
+            <Stack horizontal align="center" gap={tokens.spacingHorizontalS}>
               <Clock20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
               <Text size={200}>{t('settings.defaults.latestEnd')}</Text>
             </Stack>

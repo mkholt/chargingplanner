@@ -97,7 +97,7 @@ export const ImportSection: React.FC = () => {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       <TabList
         selectedValue={activeTab}
         onTabSelect={(_, data) => setActiveTab(data.value as ImportTab)}
@@ -108,7 +108,7 @@ export const ImportSection: React.FC = () => {
       </TabList>
 
       {activeTab === 'paste' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
           <Textarea
             value={pasteValue}
             onChange={(_, data) => setPasteValue(data.value)}
@@ -133,9 +133,9 @@ export const ImportSection: React.FC = () => {
       {error && (
         <div
           style={{
-            padding: 12,
+            padding: tokens.spacingHorizontalM,
             background: tokens.colorPaletteRedBackground1,
-            borderRadius: 6,
+            borderRadius: tokens.borderRadiusLarge,
             color: tokens.colorPaletteRedForeground1,
           }}
         >

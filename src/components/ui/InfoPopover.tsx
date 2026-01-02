@@ -42,7 +42,7 @@ export const InfoPopover: React.FC<Props> = ({
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 4,
+            gap: tokens.spacingHorizontalXS,
             background: 'none',
             border: 'none',
             padding: 0,

@@ -106,7 +106,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
 
   if (cars.length === 0 && !hasSettings) {
     return (
-      <div style={{ textAlign: 'center', padding: 16, color: tokens.colorNeutralForeground3 }}>
+      <div style={{ textAlign: 'center', padding: tokens.spacingHorizontalL, color: tokens.colorNeutralForeground3 }}>
         <Text size={200}>{t('sync.noDataToExport')}</Text>
       </div>
     );
@@ -114,14 +114,14 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
 
   if (!exportData) {
     return (
-      <div style={{ textAlign: 'center', padding: 16, color: tokens.colorNeutralForeground3 }}>
+      <div style={{ textAlign: 'center', padding: tokens.spacingHorizontalL, color: tokens.colorNeutralForeground3 }}>
         <Text size={200}>{t('sync.generating')}</Text>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       {/* Include settings checkbox */}
       {hasSettings && (
         <Checkbox
@@ -148,12 +148,12 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       </TabList>
 
       {activeTab === 'qr' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
           <div
             style={{
               background: '#ffffff',
-              padding: 16,
-              borderRadius: 8,
+              padding: tokens.spacingHorizontalL,
+              borderRadius: tokens.borderRadiusLarge,
               display: 'inline-block',
             }}
           >
@@ -166,7 +166,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       )}
 
       {activeTab === 'link' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
           {exportData.shareUrl ? (
             <>
               <Textarea
@@ -188,7 +188,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
               </Text>
             </>
           ) : (
-            <div style={{ padding: 16, textAlign: 'center' }}>
+            <div style={{ padding: tokens.spacingHorizontalL, textAlign: 'center' }}>
               <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
                 {t('sync.dataTooLarge')}
               </Text>
@@ -198,7 +198,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       )}
 
       {activeTab === 'code' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
           <Textarea
             value={exportData.syncCode}
             readOnly

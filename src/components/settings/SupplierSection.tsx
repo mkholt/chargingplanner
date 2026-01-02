@@ -8,7 +8,7 @@ import {
   tokens,
   Tooltip,
 } from '@fluentui/react-components';
-import { Location20Regular, MyLocation20Regular } from '@fluentui/react-icons';
+import { MyLocation16Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { SelectionCard } from '@/components/settings';
@@ -100,32 +100,31 @@ export const SupplierSection: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       <Text weight="semibold">{t('supplier.title')}</Text>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Location20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
-        <Input
-          value={inputValue}
-          onChange={(_, data) => handleInputChange(data.value)}
-          placeholder={t('supplier.placeholder')}
-          type="number"
-          min={1000}
-          max={9999}
-          style={{ flex: 1 }}
-          data-testid="postal-code-input"
-        />
-        <Tooltip content={t('supplier.useMyLocation')} relationship="label">
-          <Button
-            data-testid="gps-location-button"
-            icon={isLocating ? <Spinner size="tiny" /> : <MyLocation20Regular />}
-            appearance="subtle"
-            onClick={handleGpsClick}
-            disabled={isLocating}
-            aria-label={t('supplier.useMyLocation')}
-          />
-        </Tooltip>
-      </div>
+      <Input
+        value={inputValue}
+        onChange={(_, data) => handleInputChange(data.value)}
+        placeholder={t('supplier.placeholder')}
+        type="number"
+        min={1000}
+        max={9999}
+        data-testid="postal-code-input"
+        contentAfter={
+          <Tooltip content={t('supplier.useMyLocation')} relationship="label">
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={isLocating ? <Spinner size="tiny" /> : <MyLocation16Regular />}
+              onClick={handleGpsClick}
+              disabled={isLocating}
+              aria-label={t('supplier.useMyLocation')}
+              data-testid="gps-location-button"
+            />
+          </Tooltip>
+        }
+      />
 
       {error && (
         <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }} data-testid="postal-code-error">
@@ -146,7 +145,7 @@ export const SupplierSection: React.FC = () => {
       )}
 
       {isLoadingSuppliers && location !== null && !error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
           <Spinner size="tiny" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             {t('supplier.lookingUp')}
@@ -156,7 +155,7 @@ export const SupplierSection: React.FC = () => {
 
       {/* Supplier cards */}
       {!isLoadingSuppliers && displayedSuppliers.length > 0 && (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
           {displayedSuppliers.map(s => (
             <SelectionCard
               key={s.id}

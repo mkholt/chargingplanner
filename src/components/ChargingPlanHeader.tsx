@@ -43,7 +43,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
 
   return (
     <>
-      <Stack horizontal gap={8} align="center" style={{ marginBottom: 12 }}>
+      <Stack horizontal gap={tokens.spacingHorizontalS} align="center" style={{ marginBottom: tokens.spacingHorizontalM }}>
         <CalendarClock24Regular />
         <Stack gap={0}>
           <Text weight="semibold" size={400} data-testid="charging-plan-header" style={{ fontSize: 'clamp(0.875rem, 3vw, 1.1rem)' }}>
@@ -57,21 +57,21 @@ export const ChargingPlanHeader: React.FC<Props> = ({
       {result && (
         <div
           style={{
-            marginTop: 12,
-            marginBottom: 12,
+            marginTop: tokens.spacingHorizontalM,
+            marginBottom: tokens.spacingHorizontalM,
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-            gap: 12,
+            gap: tokens.spacingHorizontalM,
             background: bg,
-            borderRadius: 8,
-            padding: '12px 16px',
+            borderRadius: tokens.borderRadiusLarge,
+            padding: `${tokens.spacingHorizontalM} ${tokens.spacingHorizontalL}`,
             boxShadow: tokens.shadow2,
             border: `1px solid ${border}`,
             color: text,
           }}
         >
           <div data-testid="result-start">
-            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
+            <Stack horizontal gap={tokens.spacingHorizontalXS} align="center" style={{ color: secondary }}>
               <Play16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.start')}</Text>
             </Stack>
@@ -83,7 +83,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             </div>
           </div>
           <div data-testid="result-end">
-            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
+            <Stack horizontal gap={tokens.spacingHorizontalXS} align="center" style={{ color: secondary }}>
               <Stop16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.end')}</Text>
             </Stack>
@@ -95,7 +95,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             </div>
           </div>
           <div data-testid="result-duration">
-            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
+            <Stack horizontal gap={tokens.spacingHorizontalXS} align="center" style={{ color: secondary }}>
               <Clock16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.duration')}</Text>
             </Stack>
@@ -104,7 +104,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
             </div>
           </div>
           <div data-testid="result-energy">
-            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
+            <Stack horizontal gap={tokens.spacingHorizontalXS} align="center" style={{ color: secondary }}>
               <Flash16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.energy')}</Text>
             </Stack>
@@ -115,12 +115,12 @@ export const ChargingPlanHeader: React.FC<Props> = ({
               <div>
                 <div>{t('results.toBattery', { amount: (result.energyNeeded * CHARGING_EFFICIENCY).toFixed(1) })}</div>
                 <div>{t('results.chargingLoss', { percent: ((1 - CHARGING_EFFICIENCY) * 100).toFixed(0) })}</div>
-                <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.fromGrid', { amount: result.energyNeeded.toFixed(1) })}</div>
+                <div style={{ fontWeight: 600, marginTop: tokens.spacingHorizontalXS }}>{t('results.fromGrid', { amount: result.energyNeeded.toFixed(1) })}</div>
               </div>
             </InfoPopover>
           </div>
           <div data-testid="result-cost">
-            <Stack horizontal gap={4} align="center" style={{ color: secondary }}>
+            <Stack horizontal gap={tokens.spacingHorizontalXS} align="center" style={{ color: secondary }}>
               <Money16Regular />
               <Text size={200} style={{ color: secondary }}>{t('results.estCost')}</Text>
             </Stack>
@@ -140,7 +140,7 @@ export const ChargingPlanHeader: React.FC<Props> = ({
                 ) : (
                   <div>{result.energyNeeded.toFixed(1)} kWh × {(result.totalCost / result.energyNeeded).toFixed(2)} DKK/kWh</div>
                 )}
-                <div style={{ fontWeight: 600, marginTop: 4 }}>{t('results.totalCost', { amount: result.totalCost.toFixed(2) })}</div>
+                <div style={{ fontWeight: 600, marginTop: tokens.spacingHorizontalXS }}>{t('results.totalCost', { amount: result.totalCost.toFixed(2) })}</div>
               </div>
             </InfoPopover>
           </div>

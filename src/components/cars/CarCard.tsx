@@ -4,7 +4,7 @@ import { Button, Text, tokens } from '@fluentui/react-components';
 import { Delete20Regular, Edit20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { SelectableCard, Stack } from '@/components/ui';
+import { SelectableCard } from '@/components/ui';
 import { type Car, useCars } from '@/contexts';
 
 import { CarForm } from './CarForm';
@@ -70,39 +70,41 @@ export const CarCard: React.FC<Props> = ({
       isSelected={isSelected}
       onClick={onSelect}
       data-testid={`car-card-${slugify(car.name)}`}
+      horizontal
+      padding={`${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`}
+      gap={tokens.spacingHorizontalM}
+      style={{ alignItems: 'center', flex: 'none' }}
     >
-      <Stack horizontal gap={2} style={{ position: 'absolute', top: 6, right: 6 }}>
-        <Button
-          size="small"
-          appearance="subtle"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleStartEdit();
-          }}
-          style={{ minWidth: 24, minHeight: 24, padding: 0 }}
-          icon={<Edit20Regular />}
-          aria-label={t('cars.editCar')}
-          data-testid="edit-car-button"
-        />
-        <Button
-          size="small"
-          appearance="subtle"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          style={{ minWidth: 24, minHeight: 24, padding: 0 }}
-          icon={<Delete20Regular />}
-          aria-label={t('cars.deleteCar')}
-          data-testid="delete-car-button"
-        />
-      </Stack>
-      <div style={{ fontWeight: 600, fontSize: 15, color: tokens.colorNeutralForeground1, paddingRight: 50 }}>
+      <Text weight="semibold" style={{ color: tokens.colorNeutralForeground1, flex: 1 }} data-testid="car-name">
         {car.name}
-      </div>
-      <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-        {car.batterySize} kWh • {car.maxPower} kW
       </Text>
+      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+        {car.batterySize} kWh · {car.maxPower} kW
+      </Text>
+      <Button
+        size="small"
+        appearance="subtle"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleStartEdit();
+        }}
+        style={{ minWidth: 28, minHeight: 28, padding: 0 }}
+        icon={<Edit20Regular />}
+        aria-label={t('cars.editCar')}
+        data-testid="edit-car-button"
+      />
+      <Button
+        size="small"
+        appearance="subtle"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        style={{ minWidth: 28, minHeight: 28, padding: 0 }}
+        icon={<Delete20Regular />}
+        aria-label={t('cars.deleteCar')}
+        data-testid="delete-car-button"
+      />
     </SelectableCard>
   );
 };

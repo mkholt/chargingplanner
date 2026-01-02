@@ -12,6 +12,7 @@ import {
   Divider,
   Tab,
   TabList,
+  tokens,
 } from '@fluentui/react-components';
 import {
   Dismiss24Regular,
@@ -70,7 +71,7 @@ export const SettingsDialog: React.FC<Props> = ({
         <DialogBody>
           <DialogTitle action={closeButton}>{t('settings.title')}</DialogTitle>
           <DialogContent style={{ overflow: 'auto', minHeight: 300, maxHeight: 'calc(90vh - 150px)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL }}>
               {/* Tab navigation */}
               <TabList
                 selectedValue={activeTab}
@@ -96,7 +97,7 @@ export const SettingsDialog: React.FC<Props> = ({
               )}
 
               {activeTab === 'electricity' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalXL, paddingRight: tokens.spacingHorizontalL }}>
                   <SupplierSection />
                   <Divider />
                   <CompanySection />
@@ -108,7 +109,7 @@ export const SettingsDialog: React.FC<Props> = ({
               {activeTab === 'sync' && <SyncPanel />}
 
               {activeTab === 'app' && (
-                <div style={{ paddingRight: 16 }}>
+                <div style={{ paddingRight: tokens.spacingHorizontalL }}>
                   <AppSettingsSection />
                 </div>
               )}

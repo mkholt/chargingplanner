@@ -44,7 +44,7 @@ export const DeleteCarDialog: React.FC<Props> = ({
       >
         <DialogBody>
           <DialogTitle
-            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
           >
             <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
             {t('deleteCar.title')}
@@ -57,7 +57,7 @@ export const DeleteCarDialog: React.FC<Props> = ({
             </Text>
             <Text
               size={200}
-              style={{ display: 'block', marginTop: 8, color: tokens.colorNeutralForeground3 }}
+              style={{ display: 'block', marginTop: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}
             >
               {t('deleteCar.warning')}
             </Text>

@@ -21,43 +21,43 @@ export const PriceLegend: React.FC<Props> = ({ minPrice, maxPrice }) => {
         flexWrap: 'wrap',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: '8px 16px',
-        marginTop: 8,
-        padding: '8px 12px',
+        gap: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalL}`,
+        marginTop: tokens.spacingHorizontalS,
+        padding: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`,
         background: tokens.colorNeutralBackground3,
-        borderRadius: 8,
+        borderRadius: tokens.borderRadiusLarge,
         fontSize: 11,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
         <div
           style={{
             width: 12,
             height: 12,
             background: tokens.colorPaletteGreenBorder1,
-            borderRadius: 2,
+            borderRadius: tokens.borderRadiusSmall,
           }}
         />
         <span>{t('priceTimeline.lessThan', { price: cheapCutoff.toFixed(2) })}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
         <div
           style={{
             width: 12,
             height: 12,
             background: tokens.colorPaletteYellowBorder1,
-            borderRadius: 2,
+            borderRadius: tokens.borderRadiusSmall,
           }}
         />
         <span>{t('priceTimeline.range', { min: cheapCutoff.toFixed(2), max: expensiveCutoff.toFixed(2) })}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
         <div
           style={{
             width: 12,
             height: 12,
             background: tokens.colorPaletteRedBorder1,
-            borderRadius: 2,
+            borderRadius: tokens.borderRadiusSmall,
           }}
         />
         <span>{t('priceTimeline.moreThan', { price: expensiveCutoff.toFixed(2) })}</span>

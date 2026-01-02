@@ -15,9 +15,9 @@ type Props = {
   /** Flex basis for responsive sizing */
   flexBasis?: number;
   /** Gap between children */
-  gap?: number;
+  gap?: number | string;
   /** Additional padding */
-  padding?: number;
+  padding?: number | string;
   'data-testid'?: string;
   style?: React.CSSProperties;
 };
@@ -30,8 +30,8 @@ export const SelectableCard: React.FC<Props> = ({
   horizontal = false,
   centered = false,
   flexBasis = 200,
-  gap = 4,
-  padding = 16,
+  gap = tokens.spacingHorizontalXS,
+  padding = tokens.spacingHorizontalL,
   'data-testid': dataTestId,
   style,
 }) => {
@@ -58,7 +58,7 @@ export const SelectableCard: React.FC<Props> = ({
         maxWidth: '100%',
         background,
         border,
-        borderRadius: 10,
+        borderRadius: tokens.borderRadiusLarge,
         padding,
         display: 'flex',
         flexDirection: horizontal ? 'row' : 'column',

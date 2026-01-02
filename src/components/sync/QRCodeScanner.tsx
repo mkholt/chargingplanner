@@ -96,9 +96,9 @@ export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       {!shouldScan ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
           <Button
             appearance="primary"
             icon={<Camera20Regular />}
@@ -111,14 +111,14 @@ export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
           </Text>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
           <div
             id="qr-scanner-container"
             style={{
               width: '100%',
               maxWidth: 300,
               minHeight: 200,
-              borderRadius: 8,
+              borderRadius: tokens.borderRadiusLarge,
               overflow: 'hidden',
               background: tokens.colorNeutralBackground3,
             }}
@@ -136,9 +136,9 @@ export const QRCodeScanner: React.FC<Props> = ({ onScan }) => {
       {error && (
         <div
           style={{
-            padding: 12,
+            padding: tokens.spacingHorizontalM,
             background: tokens.colorPaletteRedBackground1,
-            borderRadius: 6,
+            borderRadius: tokens.borderRadiusLarge,
             color: tokens.colorPaletteRedForeground1,
           }}
         >

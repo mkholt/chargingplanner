@@ -35,16 +35,16 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <Card style={{ margin: 32, padding: 24, background: tokens.colorNeutralBackground2 }}>
-          <Text weight="semibold" size={500} style={{ marginBottom: 16, display: 'block' }}>
+        <Card style={{ margin: tokens.spacingHorizontalXXXL, padding: tokens.spacingHorizontalXXL, background: tokens.colorNeutralBackground2 }}>
+          <Text weight="semibold" size={500} style={{ marginBottom: tokens.spacingHorizontalL, display: 'block' }}>
             Something went wrong
           </Text>
-          <Text style={{ marginBottom: 16, display: 'block', color: tokens.colorNeutralForeground2 }}>
+          <Text style={{ marginBottom: tokens.spacingHorizontalL, display: 'block', color: tokens.colorNeutralForeground2 }}>
             {this.state.error?.message}
           </Text>
           {this.state.error?.stack && (
-            <details style={{ marginBottom: 16 }}>
-              <summary style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, marginBottom: 8 }}>
+            <details style={{ marginBottom: tokens.spacingHorizontalL }}>
+              <summary style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, marginBottom: tokens.spacingHorizontalS }}>
                 Technical details
               </summary>
               <pre style={{
@@ -52,8 +52,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 overflow: 'auto',
                 maxHeight: 200,
                 background: tokens.colorNeutralBackground3,
-                padding: 8,
-                borderRadius: 4,
+                padding: tokens.spacingHorizontalS,
+                borderRadius: tokens.borderRadiusMedium,
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}>

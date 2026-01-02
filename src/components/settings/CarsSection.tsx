@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { tokens } from '@fluentui/react-components';
+
 import { AddCarCard, CarCard, DeleteCarDialog } from '@/components/cars';
 import { type Car, useCars } from '@/contexts';
 
@@ -18,9 +20,9 @@ export const CarsSection: React.FC<Props> = ({ onCloseDialog }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Car cards grid */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL }}>
+      {/* Car cards - one per line */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalM }}>
         {cars.map((car) => (
           <CarCard
             key={car.id}

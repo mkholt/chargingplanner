@@ -62,14 +62,14 @@ const AppContent: React.FC = () => {
               width: '100vw',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', margin: '16px', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', margin: tokens.spacingHorizontalL, gap: tokens.spacingHorizontalM }}>
               <img
                 src="/ev-charging-logo.svg"
                 alt={t('logoAlt')}
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 10,
+                  borderRadius: tokens.borderRadiusLarge,
                   background: tokens.colorNeutralBackground2
                 }}
               />
@@ -88,10 +88,10 @@ const AppContent: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'row',
                 flexWrap: 'wrap',
-                gap: 16,
+                gap: tokens.spacingHorizontalL,
                 width: '100%',
                 alignItems: 'flex-start',
-                padding: '0 16px 16px 16px',
+                padding: `0 ${tokens.spacingHorizontalL} ${tokens.spacingHorizontalL} ${tokens.spacingHorizontalL}`,
                 boxSizing: 'border-box',
               }}
             >
@@ -106,7 +106,7 @@ const AppContent: React.FC = () => {
               <div style={{ flex: '2 1 400px' }}>
                 {/* Show price area toggle only when no supplier is selected */}
                 {priceSettings.priceAreaSource === 'manual' && (
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: tokens.spacingHorizontalM }}>
                     <PriceAreaToggle />
                   </div>
                 )}

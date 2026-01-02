@@ -140,11 +140,10 @@ export class SettingsDialogPage {
   }
 
   async getCarCardNames(): Promise<string[]> {
-    // Get all car names from cards (look for the name text which has fontWeight: 600)
-    const nameElements = this.page.locator('div[style*="fontWeight: 600"], div[style*="font-weight: 600"]');
+    // Get all car names from cards using data-testid
+    const nameElements = this.page.locator('[data-testid="car-name"]');
     const names = await nameElements.allTextContents();
-    // Filter out "Add Car" if present
-    return names.filter(n => n !== 'Add Car' && n.trim() !== '');
+    return names.filter(n => n.trim() !== '');
   }
 
   // ========== Electricity Section Methods ==========

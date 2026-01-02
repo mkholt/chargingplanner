@@ -23,7 +23,7 @@ export const RefreshButton: React.FC<Props> = ({ onRefresh, isRefreshing, lastUp
         style={{ minWidth: 'auto' }}
       >
         {lastUpdated && !isRefreshing && (
-          <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginLeft: 4 }}>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginLeft: tokens.spacingHorizontalXS }}>
             {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         )}

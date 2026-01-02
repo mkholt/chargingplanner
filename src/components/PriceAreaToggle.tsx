@@ -30,11 +30,11 @@ export const PriceAreaToggle: React.FC = () => {
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
-      padding: '8px 12px',
+      gap: tokens.spacingHorizontalS,
+      padding: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`,
       background: tokens.colorNeutralBackground3,
-      borderRadius: 6,
-      marginBottom: 12,
+      borderRadius: tokens.borderRadiusLarge,
+      marginBottom: tokens.spacingHorizontalM,
     }}>
       <Globe20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
       <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
@@ -45,7 +45,7 @@ export const PriceAreaToggle: React.FC = () => {
         onChange={(_, data) => {
           setPriceArea(data.checked ? 'DK2' : 'DK1');
         }}
-        style={{ margin: '0 4px' }}
+        style={{ margin: `0 ${tokens.spacingHorizontalXS}` }}
       />
       <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
         {PRICE_AREAS[1].description}

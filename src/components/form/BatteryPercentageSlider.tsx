@@ -95,15 +95,7 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <Slider
-        min={min}
-        max={max}
-        value={value}
-        onChange={(_ev, data) => handleSliderChange(data.value)}
-        className={getSliderClass(value, sliderStyles)}
-        style={{ flex: 1 }}
-      />
+    <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
       <Input
         type="number"
         min={min}
@@ -112,6 +104,14 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
         onChange={(_ev, data) => handleInputChange(Number(data.value))}
         data-testid={testId}
         style={{ width: 70 }}
+      />
+      <Slider
+        min={min}
+        max={max}
+        value={value}
+        onChange={(_ev, data) => handleSliderChange(data.value)}
+        className={getSliderClass(value, sliderStyles)}
+        style={{ flex: 1 }}
       />
     </div>
   );

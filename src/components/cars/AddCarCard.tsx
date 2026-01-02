@@ -43,9 +43,12 @@ export const AddCarCard: React.FC = () => {
     <SelectableCard
       variant="add"
       centered
+      horizontal
       onClick={() => setFormState(DEFAULT_CAR_FORM)}
       data-testid="add-car-card"
-      style={{ minHeight: 72 }}
+      padding={`${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`}
+      gap={tokens.spacingHorizontalS}
+      style={{ flex: 'none' }}
     >
       <Add24Regular style={{ color: tokens.colorNeutralForeground3 }} />
       <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>

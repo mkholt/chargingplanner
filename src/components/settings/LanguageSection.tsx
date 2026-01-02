@@ -26,10 +26,10 @@ export const LanguageSection: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
       <Text weight="semibold">{t('settings.language.title')}</Text>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
         <Globe20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
         <Dropdown
           data-testid="language-selector"

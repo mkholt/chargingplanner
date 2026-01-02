@@ -107,7 +107,7 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: tokens.spacingHorizontalS,
               opacity: isRefreshing ? 1 : progress,
             }}
           >

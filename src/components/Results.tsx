@@ -1,18 +1,20 @@
 import {
   Button,
   Card,
+  MessageBar,
+  MessageBarActions,
+  MessageBarBody,
+  MessageBarTitle,
   Text,
   tokens,
 } from '@fluentui/react-components';
 import {
   CalendarClock24Regular,
-  Info24Regular,
-  Warning24Regular,
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { ChargingPlanHeader, PriceTimeline } from '@/components';
-import { AlertBox, Stack } from '@/components/ui';
+import { Stack } from '@/components/ui';
 import { useCars, usePriceSettings } from '@/contexts';
 import { type FormInput, useChargingResults } from '@/hooks';
 import type { PricesApiResponse } from '@/types';
@@ -72,19 +74,19 @@ export const Results: React.FC<Props> = ({
             </Text>
           </Stack>
         </Stack>
-        <AlertBox
-          variant="error"
-          icon={<Warning24Regular />}
-          title={t('errors.pricingUnavailable')}
-          data-testid="price-error"
-          action={onOpenSettings && (
-            <Button appearance="primary" size="small" onClick={onOpenSettings}>
-              {t('errors.openSettings')}
-            </Button>
+        <MessageBar intent="error" data-testid="price-error">
+          <MessageBarBody>
+            <MessageBarTitle>{t('errors.pricingUnavailable')}</MessageBarTitle>
+            {t('errors.pricingUnavailableDetail')}
+          </MessageBarBody>
+          {onOpenSettings && (
+            <MessageBarActions>
+              <Button appearance="primary" size="small" onClick={onOpenSettings}>
+                {t('errors.openSettings')}
+              </Button>
+            </MessageBarActions>
           )}
-        >
-          {t('errors.pricingUnavailableDetail')}
-        </AlertBox>
+        </MessageBar>
       </Card>
     );
   }
@@ -117,24 +119,18 @@ export const Results: React.FC<Props> = ({
     }}>
       <ChargingPlanHeader result={result} />
       {!result && error && error.type !== 'no_input' && (
-        <AlertBox
-          variant="warning"
-          icon={<Warning24Regular />}
-          data-testid="result-error"
-          style={{ marginBottom: 12 }}
-        >
-          {getErrorMessage(error, t)}
-        </AlertBox>
+        <MessageBar intent="warning" data-testid="result-error" style={{ marginBottom: tokens.spacingHorizontalM }}>
+          <MessageBarBody>
+            {getErrorMessage(error, t)}
+          </MessageBarBody>
+        </MessageBar>
       )}
       {warning && (
-        <AlertBox
-          variant="info"
-          icon={<Info24Regular />}
-          data-testid="result-warning"
-          style={{ marginBottom: 12 }}
-        >
-          {t('warnings.partialData', { time: formatTime(warning.validUntil) })}
-        </AlertBox>
+        <MessageBar intent="info" data-testid="result-warning" style={{ marginBottom: tokens.spacingHorizontalM }}>
+          <MessageBarBody>
+            {t('warnings.partialData', { time: formatTime(warning.validUntil) })}
+          </MessageBarBody>
+        </MessageBar>
       )}
       <PriceTimeline
         slots={filteredSlots}

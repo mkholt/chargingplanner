@@ -61,8 +61,8 @@ export const PriceTimeline: React.FC<Props> = ({
     <Stack
       ref={containerRef}
       onClick={handleContainerClick}
-      gap={8}
-      style={{ marginTop: 16, width: '100%' }}
+      gap={tokens.spacingHorizontalS}
+      style={{ marginTop: tokens.spacingHorizontalL, width: '100%' }}
     >
       <DayMarkers dayBoundaries={dayBoundaries} totalBars={hourData.length} />
 
@@ -91,7 +91,7 @@ export const PriceTimeline: React.FC<Props> = ({
 
       <PriceLegend minPrice={minPrice} maxPrice={maxPrice} />
 
-      <Text size={200} data-testid="price-attribution" style={{ color: tokens.colorNeutralForeground3, marginTop: 8 }}>
+      <Text size={200} data-testid="price-attribution" style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingHorizontalS }}>
         {t('priceTimeline.dataProvidedBy')}{' '}
         <Link href="https://stromligning.dk" target="_blank" rel="noopener noreferrer">
           stromligning.dk

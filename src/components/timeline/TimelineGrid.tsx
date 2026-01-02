@@ -32,7 +32,7 @@ export const TimelineGrid: React.FC<Props> = ({
       style={{
         position: 'relative',
         display: 'flex',
-        gap: 2,
+        gap: tokens.spacingHorizontalXXS,
         height: 80,
         alignItems: 'flex-end',
       }}
