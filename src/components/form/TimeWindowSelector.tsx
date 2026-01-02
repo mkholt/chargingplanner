@@ -1,8 +1,10 @@
 import React from 'react';
 
-import { Button, Field, Input, Text, tokens, Tooltip } from '@fluentui/react-components';
+import { Button, Field, Input, Label, Text, tokens, Tooltip } from '@fluentui/react-components';
 import { Clock16Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
+
+import { useIsMobile } from '@/hooks';
 import {
   formatShortDate,
   formatTimeValue,
@@ -27,6 +29,7 @@ export const TimeWindowSelector: React.FC<Props> = ({
   onLatestChange,
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   // Parse the datetime strings to Date objects
   const earliestDate = new Date(earliest);
@@ -38,6 +41,49 @@ export const TimeWindowSelector: React.FC<Props> = ({
     if (isTomorrow(date)) return t('time.tomorrow');
     return formatShortDate(date);
   };
+
+  /** Render a time field with label and optional day marker */
+  const renderTimeField = (
+    labelText: string,
+    date: Date,
+    testId: string,
+    value: string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+    contentAfter?: React.ReactElement
+  ) => (
+    <div style={{ flex: 1 }}>
+      {/* Custom label row - on desktop shows day marker right-aligned */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: tokens.spacingVerticalXS,
+      }}>
+        <Label>{labelText}</Label>
+        {!isMobile && (
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            {getDateLabel(date)}
+          </Text>
+        )}
+      </div>
+      <Field>
+        <Input
+          type="time"
+          step={900}
+          data-testid={testId}
+          value={value}
+          onChange={onChange}
+          contentAfter={contentAfter}
+        />
+        {/* On mobile, show day marker below the input */}
+        {isMobile && (
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: tokens.spacingHorizontalXS }}>
+            {getDateLabel(date)}
+          </Text>
+        )}
+      </Field>
+    </div>
+  );
 
   const handleEarliestChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const timeValue = e.target.value; // "HH:mm" format
@@ -66,42 +112,30 @@ export const TimeWindowSelector: React.FC<Props> = ({
 
   return (
     <div style={{ display: 'flex', gap: tokens.spacingHorizontalL }}>
-      <Field label={t('time.earliestStart')} style={{ flex: 1 }}>
-        <Input
-          type="time"
-          step={900}
-          data-testid="earliest-time-picker"
-          value={formatTimeValue(earliestDate)}
-          onChange={handleEarliestChange}
-          contentAfter={
-            <Tooltip content={t('time.setToNow')} relationship="label">
-              <Button
-                size="small"
-                appearance="transparent"
-                icon={<Clock16Regular />}
-                onClick={handleNowClick}
-                aria-label={t('time.setToNow')}
-                data-testid="set-to-now-button"
-              />
-            </Tooltip>
-          }
-        />
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: tokens.spacingHorizontalXS }}>
-          {getDateLabel(earliestDate)}
-        </Text>
-      </Field>
-      <Field label={t('time.latestEnd')} style={{ flex: 1 }}>
-        <Input
-          type="time"
-          step={900}
-          data-testid="latest-time-picker"
-          value={formatTimeValue(latestDate)}
-          onChange={handleLatestChange}
-        />
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'right', marginTop: tokens.spacingHorizontalXS }}>
-          {getDateLabel(latestDate)}
-        </Text>
-      </Field>
+      {renderTimeField(
+        t('time.earliestStart'),
+        earliestDate,
+        'earliest-time-picker',
+        formatTimeValue(earliestDate),
+        handleEarliestChange,
+        <Tooltip content={t('time.setToNow')} relationship="label">
+          <Button
+            size="small"
+            appearance="transparent"
+            icon={<Clock16Regular />}
+            onClick={handleNowClick}
+            aria-label={t('time.setToNow')}
+            data-testid="set-to-now-button"
+          />
+        </Tooltip>
+      )}
+      {renderTimeField(
+        t('time.latestEnd'),
+        latestDate,
+        'latest-time-picker',
+        formatTimeValue(latestDate),
+        handleLatestChange
+      )}
     </div>
   );
 };
