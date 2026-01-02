@@ -11,7 +11,6 @@ import { useLocalStorage, type Location, useCompaniesQuery, useSuppliersByLocati
 import type { PriceArea } from '@/types';
 import { LS_KEYS } from '@/utils';
 
-export { isCoordinates, isPostalCode } from '@/hooks';
 export type { Coordinates, Location } from '@/hooks';
 export type { PriceArea } from '@/types';
 

@@ -30,23 +30,28 @@ export class SettingsDialogPage {
   }
 
   async switchToCarsTab(): Promise<void> {
-    await this.carsTab.click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.carsTab.click({ force: true });
   }
 
   async switchToElectricityTab(): Promise<void> {
-    await this.electricityTab.click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.electricityTab.click({ force: true });
   }
 
   async switchToSyncTab(): Promise<void> {
-    await this.syncTab.click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.syncTab.click({ force: true });
   }
 
   async switchToAppTab(): Promise<void> {
-    await this.appTab.click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.appTab.click({ force: true });
   }
 
   async close(): Promise<void> {
-    await this.doneButton.click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.doneButton.click({ force: true });
     await expect(this.dialog).not.toBeVisible();
   }
 
@@ -136,7 +141,8 @@ export class SettingsDialogPage {
   }
 
   async selectCar(carName: string): Promise<void> {
-    await this.page.getByTestId(`car-card-${slugify(carName)}`).click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.page.getByTestId(`car-card-${slugify(carName)}`).click({ force: true });
   }
 
   async getCarCardNames(): Promise<string[]> {
@@ -166,27 +172,31 @@ export class SettingsDialogPage {
 
   async selectSupplier(name: string): Promise<void> {
     const dropdown = this.page.getByRole('combobox').filter({ hasText: /Select.*operator|grid operator/i });
-    await dropdown.click();
-    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await dropdown.click({ force: true });
+    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click({ force: true });
   }
 
   async selectCompany(name: string): Promise<void> {
     const dropdown = this.page.getByRole('combobox').filter({ hasText: /Select.*supplier|electricity/i });
-    await dropdown.click();
-    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await dropdown.click({ force: true });
+    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click({ force: true });
   }
 
   async selectProduct(name: string): Promise<void> {
     const dropdown = this.page.getByRole('combobox').filter({ hasText: /Select.*product/i });
-    await dropdown.click();
-    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await dropdown.click({ force: true });
+    await this.page.getByRole('option', { name: new RegExp(name, 'i') }).click({ force: true });
   }
 
   async clearSettings(): Promise<void> {
     await this.switchToElectricityTab();
     const clearButton = this.page.getByTestId('clear-settings-button');
     if (await clearButton.isVisible()) {
-      await clearButton.click();
+      // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+      await clearButton.click({ force: true });
     }
   }
 
@@ -237,10 +247,11 @@ export class SettingsDialogPage {
 
   async selectLanguage(language: 'en' | 'da'): Promise<void> {
     await this.switchToAppTab();
-    await this.languageSelector.click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.languageSelector.click({ force: true });
     // Select by the native language name
     const optionText = language === 'en' ? 'English' : 'Dansk';
-    await this.page.getByRole('option', { name: optionText }).click();
+    await this.page.getByRole('option', { name: optionText }).click({ force: true });
   }
 
   async getCurrentLanguage(): Promise<string> {
@@ -252,7 +263,8 @@ export class SettingsDialogPage {
 
   async clickClearCacheButton(): Promise<void> {
     await this.switchToAppTab();
-    await this.page.getByTestId('clear-cache-button').click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.page.getByTestId('clear-cache-button').click({ force: true });
   }
 
   async isCacheButtonDisabled(): Promise<boolean> {
@@ -283,7 +295,8 @@ export class SettingsDialogPage {
 
   async toggleEarliestNow(): Promise<void> {
     await this.switchToAppTab();
-    await this.page.getByTestId('earliest-now-toggle').click();
+    // Use force:true to handle Fluent UI dialog backdrop interception on mobile
+    await this.page.getByTestId('earliest-now-toggle').click({ force: true });
   }
 
   async isEarliestTimeInputDisabled(): Promise<boolean> {
