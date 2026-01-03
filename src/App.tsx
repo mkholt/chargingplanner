@@ -11,7 +11,7 @@ import {
 import { Settings20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { AppFooter, ErrorBoundary, InputForm, LanguageSelector, PriceAreaToggle, Results } from '@/components';
+import { AppFooter, ErrorBoundary, InputForm, LanguageSelector, PriceAreaToggle, Results, Stack } from '@/components';
 import { SettingsPane } from '@/components/settings';
 import { SyncLinkHandler } from '@/components/sync';
 import {
@@ -22,7 +22,7 @@ import {
   usePriceSettings,
   useSettingsUI,
 } from '@/contexts';
-import { usePricesQuery } from '@/hooks';
+import { useIsMobile, usePricesQuery } from '@/hooks';
 
 type FormInput = {
   startPercent: number;
@@ -35,6 +35,7 @@ type FormInput = {
 
 const AppContent: React.FC = () => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   // Settings UI state from context
   const { isOpen: settingsOpen, toggleSettings } = useSettingsUI();
 
@@ -67,7 +68,7 @@ const AppContent: React.FC = () => {
               width: '100vw',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', margin: tokens.spacingHorizontalL, gap: tokens.spacingHorizontalM }}>
+            <Stack horizontal align="center" gap={tokens.spacingHorizontalM} style={{ margin: tokens.spacingHorizontalL }}>
               <img
                 src="/ev-charging-logo.svg"
                 alt={t('logoAlt')}
@@ -91,28 +92,27 @@ const AppContent: React.FC = () => {
                   data-testid="settings-button"
                 />
               </Tooltip>
-            </div>
-            <div
+            </Stack>
+            <Stack
+              horizontal={!isMobile}
+              wrap
+              gap={tokens.spacingHorizontalM}
+              align={isMobile ? 'stretch' : 'flex-start'}
               style={{
                 flex: 1,
-                display: 'flex',
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: tokens.spacingHorizontalL,
                 width: '100%',
-                alignItems: 'flex-start',
                 padding: `0 ${tokens.spacingHorizontalL} ${tokens.spacingHorizontalL} ${tokens.spacingHorizontalL}`,
                 boxSizing: 'border-box',
               }}
             >
-              <div style={{ flex: '1 1 320px', maxWidth: 400 }}>
+              <div style={{ flex: isMobile ? '0 0 auto' : '1 1 320px', maxWidth: isMobile ? '100%' : 400 }}>
                 <InputForm
                   key={selectedCarId ?? 'no-car'}
                   selectedCar={selectedCar}
                   onSubmit={handleSubmit}
                 />
               </div>
-              <div style={{ flex: '2 1 400px' }}>
+              <div style={{ flex: isMobile ? '1 1 auto' : '2 1 400px', maxWidth: '100%', minWidth: 0 }}>
                 {settingsOpen ? (
                   <SettingsPane />
                 ) : (
@@ -131,7 +131,7 @@ const AppContent: React.FC = () => {
                   </>
                 )}
               </div>
-            </div>
+            </Stack>
             <AppFooter />
           </div>
         <SyncLinkHandler />

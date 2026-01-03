@@ -12,6 +12,7 @@ import { MyLocation16Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { SelectionCard } from '@/components/settings';
+import { Stack } from '@/components/ui';
 import { isCoordinates, isPostalCode, usePriceSettings } from '@/contexts';
 import { isValidPostalCode } from '@/data';
 
@@ -100,7 +101,7 @@ export const SupplierSection: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
+    <Stack gap={tokens.spacingHorizontalM}>
       <Text weight="semibold">{t('supplier.title')}</Text>
 
       <Input
@@ -145,17 +146,17 @@ export const SupplierSection: React.FC = () => {
       )}
 
       {isLoadingSuppliers && location !== null && !error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+        <Stack horizontal align="center" gap={tokens.spacingHorizontalS}>
           <Spinner size="tiny" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             {t('supplier.lookingUp')}
           </Text>
-        </div>
+        </Stack>
       )}
 
       {/* Supplier cards */}
       {!isLoadingSuppliers && displayedSuppliers.length > 0 && (
-        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+        <Stack horizontal wrap gap={tokens.spacingHorizontalM}>
           {displayedSuppliers.map(s => (
             <SelectionCard
               key={s.id}
@@ -165,7 +166,7 @@ export const SupplierSection: React.FC = () => {
               onClick={() => setSupplier(s)}
             />
           ))}
-        </div>
+        </Stack>
       )}
 
       {/* No suppliers found */}
@@ -174,6 +175,6 @@ export const SupplierSection: React.FC = () => {
           {postalCode ? t('supplier.notFoundForPostal', { code: postalCode }) : t('supplier.notFoundAtLocation')}
         </Text>
       )}
-    </div>
+    </Stack>
   );
 };

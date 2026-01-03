@@ -4,6 +4,7 @@ import { Button, Field, Input, Label, Text, tokens, Tooltip } from '@fluentui/re
 import { Clock16Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
+import { Stack } from '@/components/ui';
 import { useIsMobile } from '@/hooks';
 import {
   formatShortDate,
@@ -53,19 +54,19 @@ export const TimeWindowSelector: React.FC<Props> = ({
   ) => (
     <div style={{ flex: 1 }}>
       {/* Custom label row - on desktop shows day marker right-aligned */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: tokens.spacingVerticalXS,
-      }}>
+      <Stack
+        horizontal
+        justify="space-between"
+        align="center"
+        style={{ marginBottom: tokens.spacingVerticalXS }}
+      >
         <Label>{labelText}</Label>
         {!isMobile && (
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             {getDateLabel(date)}
           </Text>
         )}
-      </div>
+      </Stack>
       <Field>
         <Input
           type="time"
@@ -111,7 +112,7 @@ export const TimeWindowSelector: React.FC<Props> = ({
   };
 
   return (
-    <div style={{ display: 'flex', gap: tokens.spacingHorizontalL }}>
+    <Stack horizontal gap={tokens.spacingHorizontalL}>
       {renderTimeField(
         t('time.earliestStart'),
         earliestDate,
@@ -136,6 +137,6 @@ export const TimeWindowSelector: React.FC<Props> = ({
         formatTimeValue(latestDate),
         handleLatestChange
       )}
-    </div>
+    </Stack>
   );
 };

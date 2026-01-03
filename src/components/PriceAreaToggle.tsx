@@ -7,6 +7,7 @@ import {
 } from '@fluentui/react-components';
 import { Globe20Regular } from '@fluentui/react-icons';
 
+import { Stack } from '@/components/ui';
 import { type PriceArea, usePriceSettings } from '@/contexts';
 
 const PRICE_AREAS: { value: PriceArea; label: string; description: string }[] = [
@@ -27,15 +28,17 @@ export const PriceAreaToggle: React.FC = () => {
   const currentArea = PRICE_AREAS.find(a => a.value === priceArea) ?? PRICE_AREAS[0];
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: tokens.spacingHorizontalS,
-      padding: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`,
-      background: tokens.colorNeutralBackground3,
-      borderRadius: tokens.borderRadiusLarge,
-      marginBottom: tokens.spacingHorizontalM,
-    }}>
+    <Stack
+      horizontal
+      align="center"
+      gap={tokens.spacingHorizontalS}
+      style={{
+        padding: `${tokens.spacingHorizontalS} ${tokens.spacingHorizontalM}`,
+        background: tokens.colorNeutralBackground3,
+        borderRadius: tokens.borderRadiusLarge,
+        marginBottom: tokens.spacingHorizontalM,
+      }}
+    >
       <Globe20Regular style={{ color: tokens.colorNeutralForeground2, flexShrink: 0 }} />
       <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
         {PRICE_AREAS[0].description}
@@ -57,6 +60,6 @@ export const PriceAreaToggle: React.FC = () => {
       >
         {currentArea.label}
       </Text>
-    </div>
+    </Stack>
   );
 };
