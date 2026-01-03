@@ -22,6 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.local.json
 
 # Playwright Test artifacts
 .playwright-mcp/*
