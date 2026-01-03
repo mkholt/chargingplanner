@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Spinner, Text, tokens } from '@fluentui/react-components';
 import { ArrowSync20Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   children: ReactNode;
@@ -9,38 +10,73 @@ type Props = {
   disabled?: boolean;
 };
 
-const THRESHOLD = 80; // Pull distance needed to trigger refresh
-const RESISTANCE = 2.5; // Resistance factor for pull distance
+const THRESHOLD = 50; // Pull distance needed to trigger refresh
+const MAX_PULL = 70; // Maximum pull distance with tension
+
+/**
+ * Exponential tension function for natural spring-like resistance.
+ * As the user pulls further, the resistance increases exponentially.
+ * Higher k = less resistance (easier to pull).
+ */
+const applyTension = (x: number, max: number, k = 0.8): number =>
+  max * (1 - Math.exp((-k * x) / max));
+
+/**
+ * Check if the page is scrolled to the top.
+ * Works with both document-level scroll and scrollable containers.
+ */
+const isPageAtTop = (): boolean => {
+  return window.scrollY === 0 && document.documentElement.scrollTop === 0;
+};
 
 export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled = false }) => {
+  const { t } = useTranslation();
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const startY = useRef(0);
-  const startScrollTop = useRef(0); // Track scroll position at touch start
+  const [isReleased, setIsReleased] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+
+  // Use refs to avoid re-renders during touch movement
+  const touchStartY = useRef(0);
+  const wasAtTopOnStart = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (disabled || isRefreshing) return;
-    startY.current = e.touches[0].clientY;
-    startScrollTop.current = containerRef.current?.scrollTop ?? 0;
+
+    // Only track touch if we're at the top of the page
+    const atTop = isPageAtTop();
+    wasAtTopOnStart.current = atTop;
+
+    if (atTop) {
+      touchStartY.current = e.touches[0].clientY;
+      setIsReleased(false);
+    }
   }, [disabled, isRefreshing]);
 
   const handleTouchEnd = useCallback(async () => {
-    if (disabled || isRefreshing) return;
+    if (disabled || isRefreshing || !isPulling) return;
+
+    setIsReleased(true);
+    setIsPulling(false);
 
     if (pullDistance >= THRESHOLD) {
       setIsRefreshing(true);
+      // Keep indicator visible during refresh
+      setPullDistance(THRESHOLD);
       try {
         await onRefresh();
       } finally {
         setIsRefreshing(false);
+        setPullDistance(0);
       }
+    } else {
+      setPullDistance(0);
     }
 
-    setPullDistance(0);
-    startY.current = 0;
-    startScrollTop.current = 0;
-  }, [disabled, isRefreshing, pullDistance, onRefresh]);
+    touchStartY.current = 0;
+    wasAtTopOnStart.current = false;
+  }, [disabled, isRefreshing, isPulling, pullDistance, onRefresh]);
 
   // Add non-passive touch event listener to allow preventDefault
   useEffect(() => {
@@ -48,35 +84,51 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
     if (!container) return;
 
     const touchMoveHandler = (e: TouchEvent) => {
-      if (disabled || isRefreshing || startY.current === 0) return;
+      if (disabled || isRefreshing) return;
 
-      const currentY = e.touches[0].clientY;
-      const diff = currentY - startY.current;
-      const currentScrollTop = container.scrollTop;
+      // If we didn't start at the top, allow normal scrolling
+      if (!wasAtTopOnStart.current) return;
 
-      // Only activate pull-to-refresh when:
-      // 1. Started at the top (scrollTop was 0 at touch start)
-      // 2. Currently at the top (scrollTop is 0)
-      // 3. Pulling down (diff > 0)
-      // 4. Already showing pull indicator (pullDistance > 0) OR just starting
-      const isAtTop = startScrollTop.current === 0 && currentScrollTop === 0;
+      // If we're not at the top anymore (user scrolled), stop tracking
+      if (!isPageAtTop() && !isPulling) {
+        touchStartY.current = 0;
+        return;
+      }
 
-      if (isAtTop && diff > 0) {
+      if (touchStartY.current === 0) return;
+
+      const currentY = e.touches[0]?.clientY ?? 0;
+      const diff = currentY - touchStartY.current;
+
+      // Only activate pull-to-refresh when pulling DOWN from the top
+      if (diff > 0 && isPageAtTop()) {
+        // Prevent default scroll behavior when pulling down at top
         e.preventDefault();
-        const distance = Math.min(diff / RESISTANCE, THRESHOLD * 1.5);
+        setIsPulling(true);
+        // Apply exponential tension for natural feel
+        const distance = applyTension(diff, MAX_PULL);
         setPullDistance(distance);
+      } else if (diff <= 0) {
+        // User is scrolling up or hasn't moved - reset and allow normal scroll
+        if (isPulling) {
+          setPullDistance(0);
+          setIsPulling(false);
+        }
+        // Don't prevent default - allow normal scrolling
       }
     };
 
     // Must use { passive: false } to allow preventDefault
     container.addEventListener('touchmove', touchMoveHandler, { passive: false });
     return () => container.removeEventListener('touchmove', touchMoveHandler);
-  }, [disabled, isRefreshing]);
+  }, [disabled, isRefreshing, isPulling]);
 
   const showIndicator = pullDistance > 0 || isRefreshing;
-  const indicatorHeight = isRefreshing ? 50 : pullDistance;
   const progress = Math.min(pullDistance / THRESHOLD, 1);
   const shouldTrigger = pullDistance >= THRESHOLD;
+
+  // Apply transition only after release, not during drag
+  const transition = isReleased ? 'transform 0.3s ease-out' : 'none';
 
   return (
     <div
@@ -84,69 +136,78 @@ export const PullToRefresh: React.FC<Props> = ({ children, onRefresh, disabled =
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       style={{
-        height: '100%',
-        overflow: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        overscrollBehavior: 'none',
+        minHeight: '100%',
+        position: 'relative',
       }}
     >
-      {/* Pull indicator */}
+      {/* Pull indicator - fixed position at top of viewport */}
       <div
         style={{
-          height: indicatorHeight,
-          overflow: 'hidden',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: THRESHOLD,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: isRefreshing ? 'none' : 'height 0.2s ease-out',
+          pointerEvents: 'none',
+          opacity: showIndicator ? progress : 0,
+          transition: isReleased ? 'opacity 0.3s ease-out' : 'none',
           background: tokens.colorNeutralBackground1,
+          zIndex: 1000,
         }}
       >
-        {showIndicator && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: tokens.spacingHorizontalS,
-              opacity: isRefreshing ? 1 : progress,
-            }}
-          >
-            {isRefreshing ? (
-              <>
-                <Spinner size="tiny" />
-                <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-                  Refreshing...
-                </Text>
-              </>
-            ) : (
-              <>
-                <ArrowSync20Regular
-                  style={{
-                    color: shouldTrigger
-                      ? tokens.colorBrandForeground1
-                      : tokens.colorNeutralForeground3,
-                    transform: `rotate(${progress * 180}deg)`,
-                    transition: 'transform 0.1s ease-out',
-                  }}
-                />
-                <Text
-                  size={200}
-                  style={{
-                    color: shouldTrigger
-                      ? tokens.colorBrandForeground1
-                      : tokens.colorNeutralForeground3,
-                  }}
-                >
-                  {shouldTrigger ? 'Release to refresh' : 'Pull to refresh'}
-                </Text>
-              </>
-            )}
-          </div>
-        )}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalS,
+          }}
+        >
+          {isRefreshing ? (
+            <>
+              <Spinner size="tiny" />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                {t('pullToRefresh.refreshing')}
+              </Text>
+            </>
+          ) : (
+            <>
+              <ArrowSync20Regular
+                style={{
+                  color: shouldTrigger
+                    ? tokens.colorBrandForeground1
+                    : tokens.colorNeutralForeground3,
+                  transform: `rotate(${progress * 180}deg)`,
+                  transition: 'transform 0.1s ease-out, color 0.1s ease-out',
+                }}
+              />
+              <Text
+                size={200}
+                style={{
+                  color: shouldTrigger
+                    ? tokens.colorBrandForeground1
+                    : tokens.colorNeutralForeground3,
+                  transition: 'color 0.1s ease-out',
+                }}
+              >
+                {shouldTrigger ? t('pullToRefresh.release') : t('pullToRefresh.pull')}
+              </Text>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      {children}
+      {/* Content - transformed down during pull */}
+      <div
+        style={{
+          transform: `translateY(${pullDistance}px)`,
+          transition,
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };

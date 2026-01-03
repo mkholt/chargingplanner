@@ -13,8 +13,8 @@ import {
   TimelineGrid,
 } from '@/components/timeline';
 import { Stack } from '@/components/ui';
-import { useTimelineData } from '@/hooks';
-import type { PriceSlot } from '@/utils';
+import { useIsMobile, useTimelineData } from '@/hooks';
+import { formatTime, type PriceSlot } from '@/utils';
 
 type Props = {
   slots: PriceSlot[];
@@ -24,6 +24,8 @@ type Props = {
   chargingEnd?: Date;
   chargingSpeed?: number;
   intervalMinutes?: number;
+  /** Timestamp when price data was last fetched */
+  dataUpdatedAt?: number;
 };
 
 export const PriceTimeline: React.FC<Props> = ({
@@ -32,8 +34,10 @@ export const PriceTimeline: React.FC<Props> = ({
   chargingEnd,
   chargingSpeed,
   intervalMinutes = 60,
+  dataUpdatedAt,
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -91,12 +95,27 @@ export const PriceTimeline: React.FC<Props> = ({
 
       <PriceLegend minPrice={minPrice} maxPrice={maxPrice} />
 
-      <Text size={200} data-testid="price-attribution" style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingHorizontalS }}>
-        {t('priceTimeline.dataProvidedBy')}{' '}
-        <Link href="https://stromligning.dk" target="_blank" rel="noopener noreferrer">
-          stromligning.dk
-        </Link>
-      </Text>
+      <Stack
+        horizontal={!isMobile}
+        align={isMobile ? 'flex-start' : 'center'}
+        justify="space-between"
+        gap={tokens.spacingHorizontalS}
+        style={{ marginTop: tokens.spacingHorizontalS }}
+      >
+        <Text size={200} data-testid="price-attribution" style={{ color: tokens.colorNeutralForeground3 }}>
+          {t('priceTimeline.dataProvidedBy')}{' '}
+          <Link href="https://stromligning.dk" target="_blank" rel="noopener noreferrer">
+            stromligning.dk
+          </Link>
+        </Text>
+        {dataUpdatedAt && (
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            {t('priceTimeline.lastUpdated', {
+              time: formatTime(new Date(dataUpdatedAt))
+            })}
+          </Text>
+        )}
+      </Stack>
     </Stack>
   );
 };

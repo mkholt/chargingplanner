@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
+import '@/i18n'; // Initialize i18n for tests
 import { server } from './mocks/server';
 
 // Start MSW server before all tests

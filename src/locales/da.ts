@@ -235,14 +235,15 @@ export const da = {
 
     // Pull to refresh
     pullToRefresh: {
-      refreshing: 'Opdaterer...',
-      release: 'Slip for at opdatere',
-      pull: 'Træk for at opdatere',
+      refreshing: 'Opdaterer priser...',
+      release: 'Slip for at opdatere priser',
+      pull: 'Træk for at opdatere priser',
     },
 
     // Price timeline
     priceTimeline: {
-      dataProvidedBy: 'Data leveret af Strømligning.',
+      dataProvidedBy: 'Data leveret af',
+      lastUpdated: 'Opdateret {{time}}',
       lessThan: '< {{price}}',
       range: '{{min}} - {{max}}',
       moreThan: '> {{price}}',

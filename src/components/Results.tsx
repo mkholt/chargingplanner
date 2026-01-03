@@ -25,6 +25,7 @@ type Props = {
   priceData: PricesApiResponse | undefined;
   priceError: Error | null;
   onOpenSettings?: () => void;
+  dataUpdatedAt?: number;
 };
 
 /** Build subtitle from contexts */
@@ -45,6 +46,7 @@ export const Results: React.FC<Props> = ({
   priceData,
   priceError,
   onOpenSettings,
+  dataUpdatedAt,
 }) => {
   const { t } = useTranslation();
   const subtitle = useSubtitle();
@@ -140,6 +142,7 @@ export const Results: React.FC<Props> = ({
         chargingEnd={result?.endTime}
         chargingSpeed={chargingSpeed}
         intervalMinutes={intervalMinutes}
+        dataUpdatedAt={dataUpdatedAt}
       />
     </Card>
   );

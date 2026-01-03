@@ -235,14 +235,15 @@ export const en = {
 
     // Pull to refresh
     pullToRefresh: {
-      refreshing: 'Refreshing...',
-      release: 'Release to refresh',
-      pull: 'Pull to refresh',
+      refreshing: 'Updating prices...',
+      release: 'Release to update prices',
+      pull: 'Pull to update prices',
     },
 
     // Price timeline
     priceTimeline: {
-      dataProvidedBy: 'Data provided by Strømligning.',
+      dataProvidedBy: 'Data provided by',
+      lastUpdated: 'Updated {{time}}',
       lessThan: '< {{price}}',
       range: '{{min}} - {{max}}',
       moreThan: '> {{price}}',
