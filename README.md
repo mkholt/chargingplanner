@@ -2,6 +2,10 @@
 
 A React application that helps users find the cheapest time window to charge their electric vehicle based on hourly electricity prices from Danish energy suppliers.
 
+![Desktop view](docs/screenshot-desktop.png)
+
+![Mobile view](docs/screenshot-mobile.png)
+
 ## Features
 
 - Calculate optimal charging windows based on real-time electricity prices
