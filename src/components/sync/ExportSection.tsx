@@ -3,6 +3,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Button,
   Checkbox,
+  Dialog,
+  DialogBody,
+  DialogSurface,
   Tab,
   TabList,
   Text,
@@ -19,7 +22,9 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 
+import { Stack } from '@/components/ui';
 import type { Car, PriceSettings } from '@/contexts';
+import { useIsMobile } from '@/hooks';
 import { encodeSyncData, generateShareableUrl, generateSyncCode } from '@/utils';
 
 type Props = {
@@ -53,12 +58,15 @@ function hasAnySettings(settings?: PriceSettings | null): boolean {
 
 export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<ExportTab>('qr');
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'link' | 'code' | null>(null);
   const [includeSettings, setIncludeSettings] = useState(true);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
 
   const hasSettings = hasAnySettings(priceSettings);
   const settingsToInclude = includeSettings && hasSettings ? priceSettings : null;
+  const qrCodeSize = isMobile ? 200 : 256;
 
   // Generate export data (async due to compression)
   const [exportData, setExportData] = useState<{
@@ -86,11 +94,11 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     return () => { cancelled = true; };
   }, [cars, settingsToInclude]);
 
-  const handleCopy = async (text: string) => {
+  const handleCopy = async (text: string, type: 'link' | 'code') => {
     const success = await copyToClipboard(text);
     if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
     }
   };
 
@@ -120,16 +128,140 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     );
   }
 
+  // Calculate fullscreen QR size to fill viewport with comfortable margins
+  const dialogQrSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+
+  // Shared QR code component (clickable to open fullscreen)
+  const qrCodeDisplay = (
+    <Stack align="center" gap={tokens.spacingHorizontalM}>
+      <div
+        onClick={() => setQrDialogOpen(true)}
+        onKeyDown={(e) => e.key === 'Enter' && setQrDialogOpen(true)}
+        role="button"
+        tabIndex={0}
+        aria-label={t('sync.enlargeQr')}
+        style={{
+          background: '#ffffff',
+          padding: tokens.spacingHorizontalL,
+          borderRadius: tokens.borderRadiusLarge,
+          display: 'inline-block',
+          cursor: 'pointer',
+        }}
+      >
+        <QRCodeSVG value={exportData.qrData} size={qrCodeSize} />
+      </div>
+      <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'center' }}>
+        {t('sync.scanToImport', { summary: summaryText })}
+      </Text>
+    </Stack>
+  );
+
+  // Fullscreen QR code dialog
+  const qrDialog = (
+    <Dialog open={qrDialogOpen} onOpenChange={(_, data) => !data.open && setQrDialogOpen(false)}>
+      <DialogSurface
+        onClick={() => setQrDialogOpen(false)}
+        style={{
+          background: '#ffffff',
+          padding: tokens.spacingHorizontalL,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <DialogBody style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <QRCodeSVG value={exportData.qrData} size={dialogQrSize} />
+          <Text size={200} style={{ marginTop: tokens.spacingHorizontalM, color: tokens.colorNeutralForeground3 }}>
+            {t('sync.tapToClose')}
+          </Text>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+
+  // Shared link section component
+  const linkDisplay = exportData.shareUrl ? (
+    <Stack gap={tokens.spacingHorizontalS}>
+      <Text weight="semibold" size={200}>{t('sync.link')}</Text>
+      <Textarea
+        value={exportData.shareUrl}
+        readOnly
+        resize="none"
+        style={{ fontFamily: 'monospace', fontSize: 12 }}
+        rows={2}
+      />
+      <Button
+        appearance="secondary"
+        icon={copied === 'link' ? <Checkmark20Regular /> : <Copy20Regular />}
+        onClick={() => handleCopy(exportData.shareUrl!, 'link')}
+      >
+        {copied === 'link' ? t('sync.copied') : t('sync.copyLink')}
+      </Button>
+    </Stack>
+  ) : (
+    <Stack gap={tokens.spacingHorizontalS}>
+      <Text weight="semibold" size={200}>{t('sync.link')}</Text>
+      <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
+        {t('sync.dataTooLarge')}
+      </Text>
+    </Stack>
+  );
+
+  // Shared code section component
+  const codeDisplay = (
+    <Stack gap={tokens.spacingHorizontalS}>
+      <Text weight="semibold" size={200}>{t('sync.code')}</Text>
+      <Textarea
+        value={exportData.syncCode}
+        readOnly
+        resize="none"
+        style={{ fontFamily: 'monospace', fontSize: 12 }}
+        rows={2}
+      />
+      <Button
+        appearance="secondary"
+        icon={copied === 'code' ? <Checkmark20Regular /> : <Copy20Regular />}
+        onClick={() => handleCopy(exportData.syncCode, 'code')}
+      >
+        {copied === 'code' ? t('sync.copied') : t('sync.copyCode')}
+      </Button>
+    </Stack>
+  );
+
+  // Settings checkbox component
+  const settingsCheckbox = hasSettings && (
+    <Checkbox
+      checked={includeSettings}
+      onChange={(_, data) => setIncludeSettings(!!data.checked)}
+      label={t('sync.includeElectricity')}
+    />
+  );
+
+  // Desktop layout: QR on left, Link + Code stacked on right
+  if (!isMobile) {
+    return (
+      <>
+        {qrDialog}
+        <Stack gap={tokens.spacingHorizontalL}>
+          {settingsCheckbox}
+          <Stack horizontal gap={tokens.spacingHorizontalXL} align="start">
+            {qrCodeDisplay}
+            <Stack gap={tokens.spacingHorizontalL} style={{ flex: 1 }}>
+              {linkDisplay}
+              {codeDisplay}
+            </Stack>
+          </Stack>
+        </Stack>
+      </>
+    );
+  }
+
+  // Mobile layout: Tabbed interface
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
-      {/* Include settings checkbox */}
-      {hasSettings && (
-        <Checkbox
-          checked={includeSettings}
-          onChange={(_, data) => setIncludeSettings(!!data.checked)}
-          label={t('sync.includeElectricity')}
-        />
-      )}
+    <>
+      {qrDialog}
+      <Stack gap={tokens.spacingHorizontalM}>
+        {settingsCheckbox}
 
       <TabList
         selectedValue={activeTab}
@@ -147,26 +279,10 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         <Tab value="code" icon={<Copy20Regular />}>{t('sync.code')}</Tab>
       </TabList>
 
-      {activeTab === 'qr' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-          <div
-            style={{
-              background: '#ffffff',
-              padding: tokens.spacingHorizontalL,
-              borderRadius: tokens.borderRadiusLarge,
-              display: 'inline-block',
-            }}
-          >
-            <QRCodeSVG value={exportData.qrData} size={180} />
-          </div>
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            {t('sync.scanToImport', { summary: summaryText })}
-          </Text>
-        </div>
-      )}
+      {activeTab === 'qr' && qrCodeDisplay}
 
       {activeTab === 'link' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
+        <Stack gap={tokens.spacingHorizontalS}>
           {exportData.shareUrl ? (
             <>
               <Textarea
@@ -178,10 +294,10 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
               />
               <Button
                 appearance="primary"
-                icon={copied ? <Checkmark20Regular /> : <Copy20Regular />}
-                onClick={() => handleCopy(exportData.shareUrl!)}
+                icon={copied === 'link' ? <Checkmark20Regular /> : <Copy20Regular />}
+                onClick={() => handleCopy(exportData.shareUrl!, 'link')}
               >
-                {copied ? t('sync.copied') : t('sync.copyLink')}
+                {copied === 'link' ? t('sync.copied') : t('sync.copyLink')}
               </Button>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                 {t('sync.shareLink', { summary: summaryText })}
@@ -194,11 +310,11 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
               </Text>
             </div>
           )}
-        </div>
+        </Stack>
       )}
 
       {activeTab === 'code' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalS }}>
+        <Stack gap={tokens.spacingHorizontalS}>
           <Textarea
             value={exportData.syncCode}
             readOnly
@@ -208,16 +324,17 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
           />
           <Button
             appearance="primary"
-            icon={copied ? <Checkmark20Regular /> : <Copy20Regular />}
-            onClick={() => handleCopy(exportData.syncCode)}
+            icon={copied === 'code' ? <Checkmark20Regular /> : <Copy20Regular />}
+            onClick={() => handleCopy(exportData.syncCode, 'code')}
           >
-            {copied ? t('sync.copied') : t('sync.copyCode')}
+            {copied === 'code' ? t('sync.copied') : t('sync.copyCode')}
           </Button>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             {t('sync.pasteCode', { summary: summaryText })}
           </Text>
-        </div>
+        </Stack>
       )}
-    </div>
+      </Stack>
+    </>
   );
 };

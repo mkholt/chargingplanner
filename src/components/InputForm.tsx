@@ -186,127 +186,125 @@ export const InputForm: React.FC<Props> = ({
   const isContentVisible = !showCollapsible || !isCollapsed;
 
   return (
-    <div>
+    <div
+      style={{
+        background: tokens.colorNeutralBackground2,
+        borderRadius: tokens.borderRadiusLarge,
+        padding: tokens.spacingHorizontalL,
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
+      }}
+    >
       <div
         style={{
-          background: tokens.colorNeutralBackground2,
-          borderRadius: tokens.borderRadiusLarge,
-          padding: tokens.spacingHorizontalL,
-          border: `1px solid ${tokens.colorNeutralStroke1}`,
+          display: "flex",
+          alignItems: "center",
+          gap: tokens.spacingHorizontalS,
+          marginBottom: isContentVisible ? tokens.spacingHorizontalL : 0,
+          cursor: showCollapsible ? 'pointer' : 'default',
         }}
+        onClick={showCollapsible ? () => setIsCollapsed(!isCollapsed) : undefined}
+        role={showCollapsible ? "button" : undefined}
+        tabIndex={showCollapsible ? 0 : undefined}
+        onKeyDown={showCollapsible ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsCollapsed(!isCollapsed);
+          }
+        } : undefined}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: tokens.spacingHorizontalS,
-            marginBottom: isContentVisible ? tokens.spacingHorizontalL : 0,
-            cursor: showCollapsible ? 'pointer' : 'default',
-          }}
-          onClick={showCollapsible ? () => setIsCollapsed(!isCollapsed) : undefined}
-          role={showCollapsible ? "button" : undefined}
-          tabIndex={showCollapsible ? 0 : undefined}
-          onKeyDown={showCollapsible ? (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
+        <BatteryCharge24Regular />
+        <Text weight="semibold" size={400} style={{ flex: 1 }}>{t('input.chargingSettings')}</Text>
+        {showCollapsible && (
+          <Button
+            appearance="subtle"
+            icon={isCollapsed ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
+            aria-label={isCollapsed ? t('common.expandSettings') : t('common.collapseSettings')}
+            data-testid="expand-settings-button"
+            onClick={(e) => {
+              e.stopPropagation();
               setIsCollapsed(!isCollapsed);
-            }
-          } : undefined}
-        >
-          <BatteryCharge24Regular />
-          <Text weight="semibold" size={400} style={{ flex: 1 }}>{t('input.chargingSettings')}</Text>
-          {showCollapsible && (
-            <Button
-              appearance="subtle"
-              icon={isCollapsed ? <ChevronDown20Regular /> : <ChevronUp20Regular />}
-              aria-label={isCollapsed ? t('common.expandSettings') : t('common.collapseSettings')}
-              data-testid="expand-settings-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCollapsed(!isCollapsed);
-              }}
-            />
-          )}
-        </div>
-        {isContentVisible && (
-          <>
-            <CarSelector />
-            <form
-              style={{ display: "flex", flexDirection: "column", gap: tokens.spacingHorizontalL }}
-              onSubmit={e => {
-                e.preventDefault();
-              }}
-            >
-              <Field label={t('input.startPercent')}>
-                <BatteryPercentageSlider
-                  value={startPercent}
-                  onChange={updateStartPercent}
-                  data-testid="start-percent-input"
-                />
-              </Field>
-              <Field label={t('input.endPercent')}>
-                <BatteryPercentageSlider
-                  value={endPercent}
-                  onChange={updateEndPercent}
-                  snapPoint={80}
-                  data-testid="end-percent-input"
-                />
-              </Field>
-              <TimeWindowSelector
-                earliest={earliest}
-                latest={latest}
-                onEarliestChange={updateEarliest}
-                onLatestChange={updateLatest}
-              />
-              {/* Collapsible advanced section for battery size and charging power */}
-              <div>
-                <Button
-                  appearance="transparent"
-                  size="small"
-                  icon={isAdvancedOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
-                  onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-                  data-testid="vehicle-settings-button"
-                  style={{
-                    padding: `${tokens.spacingHorizontalXS} 0`,
-                    color: tokens.colorNeutralForeground2,
-                  }}
-                >
-                  {isAdvancedOpen ? t('input.hideVehicleSettings') : t('input.showVehicleSettings')} ({batterySize} kWh · {chargingSpeed} kW)
-                </Button>
-                {isAdvancedOpen && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL, marginTop: tokens.spacingHorizontalM }}>
-                    <Field label={t('input.batterySize')}>
-                      <Input
-                        type="number"
-                        min={10}
-                        max={150}
-                        value={String(batterySize)}
-                        onChange={(_ev, data) => updateBatterySize(Number(data.value))}
-                        data-testid="battery-size-input"
-                        style={{ width: "100%" }}
-                      />
-                    </Field>
-                    <Field label={t('input.chargingPower')}>
-                      <Dropdown
-                        value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
-                        onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
-                        data-testid="charging-power-dropdown"
-                        style={{ width: "100%" }}
-                      >
-                        {CHARGING_POWER_OPTIONS.map(power => (
-                          <Option key={power.value} value={String(power.value)}>
-                            {power.label}
-                          </Option>
-                        ))}
-                      </Dropdown>
-                    </Field>
-                  </div>
-                )}
-              </div>
-            </form>
-          </>
+            }}
+          />
         )}
       </div>
+      {isContentVisible && (
+        <>
+          <CarSelector />
+          <form
+            style={{ display: "flex", flexDirection: "column", gap: tokens.spacingHorizontalL }}
+            onSubmit={e => {
+              e.preventDefault();
+            }}
+          >
+            <Field label={t('input.startPercent')}>
+              <BatteryPercentageSlider
+                value={startPercent}
+                onChange={updateStartPercent}
+                data-testid="start-percent-input"
+              />
+            </Field>
+            <Field label={t('input.endPercent')}>
+              <BatteryPercentageSlider
+                value={endPercent}
+                onChange={updateEndPercent}
+                snapPoint={80}
+                data-testid="end-percent-input"
+              />
+            </Field>
+            <TimeWindowSelector
+              earliest={earliest}
+              latest={latest}
+              onEarliestChange={updateEarliest}
+              onLatestChange={updateLatest}
+            />
+            {/* Collapsible advanced section for battery size and charging power */}
+            <div>
+              <Button
+                appearance="transparent"
+                size="small"
+                icon={isAdvancedOpen ? <ChevronUp16Regular /> : <ChevronDown16Regular />}
+                onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                data-testid="vehicle-settings-button"
+                style={{
+                  padding: `${tokens.spacingHorizontalXS} 0`,
+                  color: tokens.colorNeutralForeground2,
+                }}
+              >
+                {isAdvancedOpen ? t('input.hideVehicleSettings') : t('input.showVehicleSettings')} ({batterySize} kWh · {chargingSpeed} kW)
+              </Button>
+              {isAdvancedOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL, marginTop: tokens.spacingHorizontalM }}>
+                  <Field label={t('input.batterySize')}>
+                    <Input
+                      type="number"
+                      min={10}
+                      max={150}
+                      value={String(batterySize)}
+                      onChange={(_ev, data) => updateBatterySize(Number(data.value))}
+                      data-testid="battery-size-input"
+                      style={{ width: "100%" }}
+                    />
+                  </Field>
+                  <Field label={t('input.chargingPower')}>
+                    <Dropdown
+                      value={CHARGING_POWER_OPTIONS.find(p => p.value === chargingSpeed)?.label}
+                      onOptionSelect={(_ev, data) => updateChargingSpeed(Number(data.optionValue))}
+                      data-testid="charging-power-dropdown"
+                      style={{ width: "100%" }}
+                    >
+                      {CHARGING_POWER_OPTIONS.map(power => (
+                        <Option key={power.value} value={String(power.value)}>
+                          {power.label}
+                        </Option>
+                      ))}
+                    </Dropdown>
+                  </Field>
+                </div>
+              )}
+            </div>
+          </form>
+        </>
+      )}
     </div>
   );
 };

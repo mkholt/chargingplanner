@@ -275,6 +275,8 @@ export const en = {
       link: 'Link',
       code: 'Code',
       scanToImport: 'Scan to import {{summary}}',
+      enlargeQr: 'Tap to enlarge QR code',
+      tapToClose: 'Tap anywhere to close',
       dataTooLarge: 'Data too large for URL. Use QR Code or Code instead.',
       copyLink: 'Copy Link',
       copied: 'Copied!',

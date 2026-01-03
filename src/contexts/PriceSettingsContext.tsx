@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 
 import {
   findCompanyById,
@@ -114,6 +114,17 @@ export const PriceSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     return null;
   }, [settings.supplier, availableSuppliers]);
+
+  // Persist auto-selected supplier to settings (when there's exactly one available)
+  // This ensures the supplier is included in sync/export data
+  useEffect(() => {
+    if (!settings.supplier && availableSuppliers.length === 1) {
+      setSettings(prev => ({
+        ...prev,
+        supplier: availableSuppliers[0],
+      }));
+    }
+  }, [settings.supplier, availableSuppliers, setSettings]);
 
   // Resolve price area: supplier takes precedence, then manual selection, then default
   const priceArea: PriceArea = supplier?.priceArea ?? settings.priceArea ?? 'DK1';

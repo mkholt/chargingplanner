@@ -59,6 +59,8 @@ export const SettingsPane: React.FC = () => {
         padding: tokens.spacingHorizontalL,
         background: tokens.colorNeutralBackground2,
         border: `1px solid ${tokens.colorNeutralStroke1}`,
+        overflow: 'hidden',
+        minWidth: 0,
       }}
     >
       {/* Header with title and Done button */}

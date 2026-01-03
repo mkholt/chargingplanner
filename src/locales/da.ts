@@ -275,6 +275,8 @@ export const da = {
       link: 'Link',
       code: 'Kode',
       scanToImport: 'Scan for at importere {{summary}}',
+      enlargeQr: 'Tryk for at forstørre QR-koden',
+      tapToClose: 'Tryk hvor som helst for at lukke',
       dataTooLarge: 'Data for stor til URL. Brug QR-kode eller kode i stedet.',
       copyLink: 'Kopier link',
       copied: 'Kopieret!',

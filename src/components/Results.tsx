@@ -116,6 +116,8 @@ export const Results: React.FC<Props> = ({
       padding: 16,
       background: tokens.colorNeutralBackground2,
       border: `1px solid ${tokens.colorNeutralStroke1}`,
+      overflow: 'hidden',
+      minWidth: 0,
     }}>
       <ChargingPlanHeader result={result} />
       {!result && error && error.type !== 'no_input' && (
