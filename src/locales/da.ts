@@ -50,6 +50,7 @@ export const da = {
       fromGrid: '= {{amount}} kWh fra nettet',
       costBreakdown: 'Prisopdeling',
       spotPortion: 'Spotpris: {{amount}} DKK',
+      supplierSurchargePortion: 'Leverandørtillæg: {{amount}} DKK',
       tariffsPortion: 'Tariffer: {{amount}} DKK',
       totalCost: '= {{amount}} DKK',
     },
@@ -253,7 +254,7 @@ export const da = {
     // Selected hour detail
     selectedHour: {
       spotPrice: 'Spotpris',
-      supplier: 'Leverandør',
+      supplierSurcharge: 'Leverandørtillæg',
       transmission: 'Transmission',
       distribution: 'Distribution',
       tax: 'Afgift',

@@ -24,6 +24,9 @@ export const QUERY_TIMING = {
 // Typical AC charging efficiency is 85-90%, we use 90% (10% loss)
 export const CHARGING_EFFICIENCY = 0.9;
 
+/** Round a number to 2 decimal places (cents precision) */
+export const roundToCents = (value: number): number => Math.round(value * 100) / 100;
+
 // Charging power options (shared between InputForm and CarManager)
 export const CHARGING_POWER_OPTIONS = [
   { label: "2.3 kW (Level 1)", value: 2.3 },

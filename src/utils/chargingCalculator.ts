@@ -1,4 +1,4 @@
-import { CHARGING_EFFICIENCY, MS_PER_MINUTE } from './constants';
+import { CHARGING_EFFICIENCY, MS_PER_MINUTE, roundToCents } from './constants';
 import type { PriceSlot } from './priceMapper';
 
 export type ChargingInput = {
@@ -28,8 +28,9 @@ export type ChargingResult = {
   energyNeeded: number;
   /** Cost breakdown - only present when price details available */
   costBreakdown?: {
-    spotCost: number;    // Electricity spot price portion
-    tariffCost: number;  // Tariffs & surcharges portion
+    spotCost: number;       // Electricity spot price portion
+    surchargesCost: number; // Supplier surcharges portion
+    tariffCost: number;     // Tariffs portion (transmission, distribution, tax)
   };
 };
 
@@ -135,15 +136,16 @@ function findCheapestWindow(
   return minCost === Infinity ? null : { bestStart, minCost };
 }
 
-/** Calculate cost breakdown (spot vs tariffs) for the charging window */
+/** Calculate cost breakdown (spot vs surcharges vs tariffs) for the charging window */
 function calculateCostBreakdown(
   windowSlots: PriceSlot[],
   durationIntervals: number,
   effectiveStartOffset: number,
   chargingSpeed: number,
   intervalMinutes: number
-): { spotCost: number; tariffCost: number } | undefined {
+): { spotCost: number; surchargesCost: number; tariffCost: number } | undefined {
   let spotCost = 0;
+  let surchargesCost = 0;
   let tariffCost = 0;
   let hasDetails = false;
   let remaining = durationIntervals;
@@ -157,8 +159,10 @@ function calculateCostBreakdown(
     if (slot.details?.electricity?.total !== undefined) {
       hasDetails = true;
       const spotRate = slot.details.electricity.total;
-      const tariffRate = slot.total - spotRate;
+      const surchargeRate = slot.details.surcharge?.total ?? 0;
+      const tariffRate = slot.total - spotRate - surchargeRate;
       spotCost += spotRate * energyInSlot;
+      surchargesCost += surchargeRate * energyInSlot;
       tariffCost += tariffRate * energyInSlot;
     }
 
@@ -168,8 +172,9 @@ function calculateCostBreakdown(
   if (!hasDetails) return undefined;
 
   return {
-    spotCost: Math.round(spotCost * 100) / 100,
-    tariffCost: Math.round(tariffCost * 100) / 100,
+    spotCost: roundToCents(spotCost),
+    surchargesCost: roundToCents(surchargesCost),
+    tariffCost: roundToCents(tariffCost),
   };
 }
 
@@ -222,8 +227,8 @@ function buildResult(
     endTime,
     windowSlots,
     intervalMinutes,
-    totalCost: Math.round(minCost * 100) / 100,
-    durationHours: Math.round(durationHours * 100) / 100,
+    totalCost: roundToCents(minCost),
+    durationHours: roundToCents(durationHours),
     energyNeeded: kWhNeeded,
     costBreakdown,
   };

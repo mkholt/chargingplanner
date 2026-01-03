@@ -13,7 +13,7 @@ type Props = {
 };
 
 type BreakdownItem = {
-  labelKey: 'selectedHour.spotPrice' | 'selectedHour.supplier' | 'selectedHour.transmission' | 'selectedHour.distribution' | 'selectedHour.tax';
+  labelKey: 'selectedHour.spotPrice' | 'selectedHour.supplierSurcharge' | 'selectedHour.transmission' | 'selectedHour.distribution' | 'selectedHour.tax';
   value: number;
   unit?: string;
 };
@@ -26,7 +26,7 @@ function getBreakdownItems(details: NonNullable<HourData['details']>): Breakdown
   }
 
   if (details.surcharge?.total !== undefined) {
-    items.push({ labelKey: 'selectedHour.supplier', value: details.surcharge.total, unit: 'kr/kWh' });
+    items.push({ labelKey: 'selectedHour.supplierSurcharge', value: details.surcharge.total, unit: 'kr/kWh' });
   }
 
   // Combine transmission tariffs

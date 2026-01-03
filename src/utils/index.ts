@@ -19,6 +19,7 @@ export {
   MS_PER_HOUR,
   MS_PER_MINUTE,
   QUERY_TIMING,
+  roundToCents,
 } from './constants';
 export {
   findSlotIndexByTime,

@@ -12,15 +12,18 @@ function createSlots(prices: number[], intervalMinutes: number = 60): PriceSlot[
   }));
 }
 
-/** Helper to create PriceSlot array with price details (spot + tariffs) */
+/** Helper to create PriceSlot array with price details (spot + surcharge + tariffs) */
 function createSlotsWithDetails(
-  prices: { spot: number; tariff: number }[],
+  prices: { spot: number; surcharge?: number; tariff: number }[],
   intervalMinutes: number = 60
 ): PriceSlot[] {
   const baseTime = new Date(2025, 0, 1, 0, 0, 0);
   return prices.map((price, i) => {
     const spotValue = price.spot / 1.25; // Remove VAT to get base value
     const spotVat = spotValue * 0.25;
+    const surcharge = price.surcharge ?? 0;
+    const surchargeValue = surcharge / 1.25;
+    const surchargeVat = surchargeValue * 0.25;
     const details: PriceDetails = {
       electricity: {
         value: spotValue,
@@ -28,8 +31,7 @@ function createSlotsWithDetails(
         total: price.spot,
         unit: 'kr/kWh',
       },
-      // Minimal required fields for the test
-      surcharge: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
+      surcharge: { value: surchargeValue, vat: surchargeVat, total: surcharge, unit: 'kr/kWh' },
       transmission: {
         systemTariff: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
         netTariff: { value: 0, vat: 0, total: 0, unit: 'kr/kWh' },
@@ -39,7 +41,7 @@ function createSlotsWithDetails(
     };
     return {
       timestamp: new Date(baseTime.getTime() + i * intervalMinutes * 60000),
-      total: price.spot + price.tariff,
+      total: price.spot + surcharge + price.tariff,
       details,
       hasData: true,
     };
@@ -512,8 +514,10 @@ describe('findOptimalChargingWindow', () => {
       const result = findOptimalChargingWindow(input);
       expect(result).not.toBeNull();
       expect(result!.costBreakdown).toBeDefined();
-      // Verify spot + tariff = total (within rounding tolerance)
-      const summedCost = result!.costBreakdown!.spotCost + result!.costBreakdown!.tariffCost;
+      // Verify spot + surcharges + tariff = total (within rounding tolerance)
+      const summedCost = result!.costBreakdown!.spotCost +
+                         result!.costBreakdown!.surchargesCost +
+                         result!.costBreakdown!.tariffCost;
       expect(summedCost).toBeCloseTo(result!.totalCost, 2);
     });
 
@@ -540,6 +544,34 @@ describe('findOptimalChargingWindow', () => {
       expect(result!.costBreakdown).toBeDefined();
       expect(result!.costBreakdown!.spotCost).toBe(30);
       expect(result!.costBreakdown!.tariffCost).toBe(15);
+      expect(result!.totalCost).toBe(45);
+    });
+
+    it('calculates breakdown correctly with supplier surcharges', () => {
+      // Hour 1: spot=1, surcharge=0.2, tariff=0.3, total=1.5
+      // Hour 2: spot=2, surcharge=0.5, tariff=0.5, total=3.0
+      // 10kWh per hour at 10kW
+      // Spot cost: 10×1 + 10×2 = 30
+      // Surcharge cost: 10×0.2 + 10×0.5 = 7
+      // Tariff cost: 10×0.3 + 10×0.5 = 8
+      const slots = createSlotsWithDetails([
+        { spot: 1, surcharge: 0.2, tariff: 0.3 },
+        { spot: 2, surcharge: 0.5, tariff: 0.5 },
+      ]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 36, // 18kWh in battery = 20kWh from grid, 2 hours at 10kW
+        batterySize: 50,
+        chargingSpeed: 10,
+        slots,
+        intervalMinutes: 60,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.costBreakdown).toBeDefined();
+      expect(result!.costBreakdown!.spotCost).toBe(30);
+      expect(result!.costBreakdown!.surchargesCost).toBe(7);
+      expect(result!.costBreakdown!.tariffCost).toBe(8);
       expect(result!.totalCost).toBe(45);
     });
 

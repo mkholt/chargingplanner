@@ -135,6 +135,9 @@ export const ChargingPlanHeader: React.FC<Props> = ({
                 {result.costBreakdown ? (
                   <>
                     <div>{t('results.spotPortion', { amount: result.costBreakdown.spotCost.toFixed(2) })}</div>
+                    {result.costBreakdown.surchargesCost > 0 && (
+                      <div>{t('results.supplierSurchargePortion', { amount: result.costBreakdown.surchargesCost.toFixed(2) })}</div>
+                    )}
                     <div>{t('results.tariffsPortion', { amount: result.costBreakdown.tariffCost.toFixed(2) })}</div>
                   </>
                 ) : (
