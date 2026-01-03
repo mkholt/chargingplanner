@@ -87,19 +87,20 @@ export const SettingsPane: React.FC = () => {
       <TabList
         selectedValue={activeTab}
         onTabSelect={handleTabSelect}
+        size={isMobile ? 'small' : 'medium'}
         style={{ marginBottom: tokens.spacingHorizontalL }}
       >
         <Tab value="cars" icon={<VehicleCar20Regular />} data-testid="tab-cars">
-          {t('settings.tabs.cars')}
+          {(!isMobile || activeTab === 'cars') && t('settings.tabs.cars')}
         </Tab>
         <Tab value="electricity" icon={<Flash20Regular />} data-testid="tab-electricity">
-          {t('settings.tabs.electricity')}
+          {(!isMobile || activeTab === 'electricity') && t('settings.tabs.electricity')}
         </Tab>
         <Tab value="sync" icon={<Share20Regular />} data-testid="tab-sync">
-          {t('settings.tabs.sync')}
+          {(!isMobile || activeTab === 'sync') && t('settings.tabs.sync')}
         </Tab>
         <Tab value="app" icon={<Settings20Regular />} data-testid="tab-app">
-          {t('settings.tabs.app')}
+          {(!isMobile || activeTab === 'app') && t('settings.tabs.app')}
         </Tab>
       </TabList>
 

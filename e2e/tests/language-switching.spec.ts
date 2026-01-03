@@ -99,18 +99,27 @@ test.describe('Language Switching', () => {
     await appPage.goto();
     await appPage.openSettings();
 
-    // Verify English tab labels
+    // Verify English tab labels - on mobile, only active tab shows text
+    // Start on Cars tab (default active tab)
     await expect(settingsPanePage.carsTab).toContainText(translations.en.settings.tabs.cars);
+
+    // Navigate to Electricity tab to verify its label
+    await settingsPanePage.electricityTab.click();
     await expect(settingsPanePage.electricityTab).toContainText(translations.en.settings.tabs.electricity);
+
+    // Navigate to App tab to verify its label
+    await settingsPanePage.appTab.click();
     await expect(settingsPanePage.appTab).toContainText(translations.en.settings.tabs.app);
 
     // Switch to Danish
     await settingsPanePage.selectLanguage('da');
 
-    // Verify Danish tab labels
-    await expect(settingsPanePage.carsTab).toContainText(translations.da.settings.tabs.cars);
-    await expect(settingsPanePage.electricityTab).toContainText(translations.da.settings.tabs.electricity);
+    // Verify Danish tab labels (still on App tab)
     await expect(settingsPanePage.appTab).toContainText(translations.da.settings.tabs.app);
+
+    // Navigate to Cars tab to verify Danish translation
+    await settingsPanePage.carsTab.click();
+    await expect(settingsPanePage.carsTab).toContainText(translations.da.settings.tabs.cars);
   });
 
   test('input form labels update when language changes', async ({

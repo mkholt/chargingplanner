@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { tokens } from '@fluentui/react-components';
 
 import { AddCarCard, CarCard, DeleteCarDialog } from '@/components/cars';
+import { Stack } from '@/components/ui';
 import { type Car, useCars } from '@/contexts';
 
 export const CarsSection: React.FC = () => {
@@ -15,22 +16,19 @@ export const CarsSection: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalL }}>
-      {/* Car cards - one per line */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalM }}>
-        {cars.map((car) => (
-          <CarCard
-            key={car.id}
-            car={car}
-            isSelected={selectedCarId === car.id}
-            onSelect={() => handleSelectCar(car)}
-            onDelete={() => setCarToDelete(car)}
-          />
-        ))}
+    <Stack gap={tokens.spacingHorizontalM}>
+      {cars.map((car) => (
+        <CarCard
+          key={car.id}
+          car={car}
+          isSelected={selectedCarId === car.id}
+          onSelect={() => handleSelectCar(car)}
+          onDelete={() => setCarToDelete(car)}
+        />
+      ))}
 
-        {/* Add car card - always visible at end of grid */}
-        <AddCarCard />
-      </div>
+      {/* Add car card - always visible at end */}
+      <AddCarCard />
 
       {/* Delete confirmation dialog */}
       <DeleteCarDialog
@@ -44,6 +42,6 @@ export const CarsSection: React.FC = () => {
           }
         }}
       />
-    </div>
+    </Stack>
   );
 };

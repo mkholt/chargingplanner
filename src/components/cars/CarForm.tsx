@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
+import { useIsMobile } from '@/hooks';
 import { CHARGING_POWER_OPTIONS } from '@/utils';
 
 import type { CarFormState } from './carFormState';
@@ -39,6 +40,7 @@ export const CarForm: React.FC<Props> = ({
   autoFocus,
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   return (
     <Card
@@ -60,7 +62,7 @@ export const CarForm: React.FC<Props> = ({
           data-testid="car-name-input"
         />
       </Field>
-      <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: tokens.spacingHorizontalM }}>
         <Field label={t('input.batterySize')} style={{ flex: 1 }}>
           <Input
             type="number"
