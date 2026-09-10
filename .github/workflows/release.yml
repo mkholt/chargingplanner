@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Version, build and release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Resolve version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set package version
+        run: npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Lint
+        run: npm run lint
+
+      # --ignore-scripts skips the pre/post scripts (pretest -> lint,
+      # prebuild -> test) so each step runs exactly once.
+      - name: Unit tests
+        run: npm run test --ignore-scripts
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Build
+        run: npm run build --ignore-scripts
+
+      - name: Package dist
+        run: zip -r "chargecalculator-$VERSION.zip" dist
+
+      - name: Create GitHub release
+        run: |
+          prerelease=()
+          case "$VERSION" in
+            *-*) prerelease=(--prerelease) ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" \
+            --title "v$VERSION" \
+            --generate-notes \
+            "${prerelease[@]}" \
+            "chargecalculator-$VERSION.zip"
+
+      - name: Push version bump to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git restore .
+          git fetch origin main
+          git checkout -B main origin/main
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          if git diff --quiet; then
+            echo "main is already at $VERSION, nothing to push"
+            exit 0
+          fi
+          git commit -am "chore(release): v$VERSION"
+          git push origin main
