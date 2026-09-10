@@ -1,4 +1,12 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig, devices } from '@playwright/test';
+
+// Reporter output folders are resolved against the current working directory,
+// while testDir/outputDir are resolved against this config file. Pin both to
+// the repository root so artifacts land in the same place from any cwd.
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export default defineConfig({
   testDir: './tests',
@@ -6,7 +14,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : 4, // Use more workers locally
-  reporter: 'html',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: path.join(repoRoot, 'playwright-report'), open: 'never' }],
+  ],
+  outputDir: path.join(repoRoot, 'test-results'),
   timeout: 30000, // 30 seconds per test (reduced from 60)
   use: {
     baseURL: 'http://localhost:5174',
