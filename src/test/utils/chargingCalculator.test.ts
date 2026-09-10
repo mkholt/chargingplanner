@@ -458,6 +458,74 @@ describe('findOptimalChargingWindow', () => {
     });
   });
 
+  describe('start time optimisation', () => {
+    it('ends the window on a slot boundary when that is cheaper than starting on one', () => {
+      // Only 02:00-03:00 is cheap and charging takes 1.665 hours, so the window
+      // should be placed to finish exactly at 03:00 instead of starting at 02:00
+      const slots = createSlots([9, 9, 1, 9, 9]);
+      const input: ChargingInput = {
+        startPercent: 0,
+        endPercent: 33.3,
+        batterySize: 50,
+        chargingSpeed: 11.1111111,
+        slots,
+        intervalMinutes: 60,
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      expect(result!.endTime).toEqual(new Date(2025, 0, 1, 3, 0, 0));
+      const actualDurationHours = (result!.endTime.getTime() - result!.startTime.getTime()) / (60 * 60 * 1000);
+      expect(actualDurationHours).toBeCloseTo(result!.durationHours, 2);
+    });
+
+    it('still reaches the last slots when earliestStart falls mid-interval', () => {
+      // The cheap slot is the second to last one; a mid-interval earliestStart
+      // must not shrink the searchable range
+      const slots = createSlots([4.1, 8.4, 7.1, 4.7, 4.8, 7.3, 9.7, 7.2, 2.7, 7.6]);
+      const input: ChargingInput = {
+        startPercent: 20,
+        endPercent: 47, // 13.5kWh in battery = 15kWh from grid, ~1.36 hours at 11kW
+        batterySize: 50,
+        chargingSpeed: 11,
+        slots,
+        intervalMinutes: 60,
+        earliestStart: new Date(2025, 0, 1, 0, 45, 0),
+      };
+      const result = findOptimalChargingWindow(input);
+      expect(result).not.toBeNull();
+      // Uses the cheap 08:00 slot, ending exactly when it ends
+      expect(result!.endTime).toEqual(new Date(2025, 0, 1, 9, 0, 0));
+      expect(result!.windowSlots.map(s => s.total)).toEqual([7.2, 2.7]);
+    });
+
+    it('never plans a later start when earliestStart is tightened past the previous plan', () => {
+      const slots = createSlots([9.4, 1.3, 6.2, 6.9, 4.9, 2.5, 6.5, 6.8, 3.6, 2.5]);
+      const baseInput: ChargingInput = {
+        startPercent: 20,
+        endPercent: 54,
+        batterySize: 50,
+        chargingSpeed: 11,
+        slots,
+        intervalMinutes: 60,
+      };
+      const atHour = findOptimalChargingWindow({
+        ...baseInput,
+        earliestStart: new Date(2025, 0, 1, 1, 0, 0),
+      });
+      const quarterPast = findOptimalChargingWindow({
+        ...baseInput,
+        earliestStart: new Date(2025, 0, 1, 1, 15, 0),
+      });
+      expect(atHour).not.toBeNull();
+      expect(quarterPast).not.toBeNull();
+      // The plan found from 01:00 starts well after 01:15, so tightening the
+      // constraint must not push the plan later or make it more expensive
+      expect(atHour!.startTime.getTime()).toBeGreaterThan(new Date(2025, 0, 1, 1, 15, 0).getTime());
+      expect(quarterPast!.startTime.getTime()).toBeLessThanOrEqual(atHour!.startTime.getTime());
+      expect(quarterPast!.totalCost).toBeLessThanOrEqual(atHour!.totalCost);
+    });
+  });
+
   describe('cost breakdown calculation', () => {
     it('returns undefined costBreakdown when slots have no price details', () => {
       // Using createSlots which doesn't include details
