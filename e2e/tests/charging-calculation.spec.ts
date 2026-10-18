@@ -32,6 +32,19 @@ test.describe('Charging Calculation', () => {
     expect(duration).toMatch(/\d+h|\d+m/);
   });
 
+  test('displays average price per kWh matching cost divided by energy', async ({ appPage, resultsPage, page }) => {
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+    await resultsPage.expectResultsVisible();
+
+    const avgPrice = await resultsPage.getAvgPrice();
+    expect(avgPrice).toMatch(/\d+\.\d{2}\s*DKK\/kWh/);
+
+    const cost = await resultsPage.getCostValue();
+    const energy = await resultsPage.getEnergyValue();
+    expect(await resultsPage.getAvgPriceValue()).toBeCloseTo(cost / energy, 1);
+  });
+
   test('recalculates when start battery percentage changes', async ({ appPage, inputFormPage, resultsPage, page }) => {
     await setupCarAndNavigate(page);
     await appPage.waitForAppReady();
@@ -103,5 +116,54 @@ test.describe('Charging Calculation', () => {
     // Verify it's the frozen time (rounded to next 15 minutes)
     const expectedTime = formatTimeValue(roundToNext15Minutes(frozenTime));
     expect(newTime).toBe(expectedTime);
+  });
+});
+
+test.describe('Battery percentage step buttons', () => {
+  test('are hidden on desktop', async ({ appPage, inputFormPage, page }, testInfo) => {
+    test.skip(testInfo.project.name.includes('mobile'), 'Desktop-only test');
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+
+    await expect(inputFormPage.startPercentInput).toBeVisible();
+    await expect(inputFormPage.startPercentIncrement).toHaveCount(0);
+    await expect(inputFormPage.endPercentDecrement).toHaveCount(0);
+  });
+
+  test('adjust start and end percent on mobile', async ({ appPage, inputFormPage, resultsPage, page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), 'Mobile-only test');
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+    await inputFormPage.ensureExpanded();
+    await resultsPage.expectResultsVisible();
+    const initialEnergy = await resultsPage.getEnergyValue();
+
+    await inputFormPage.startPercentIncrement.click();
+    await inputFormPage.startPercentIncrement.click();
+    expect(await inputFormPage.getStartPercent()).toBe(22);
+    await inputFormPage.startPercentDecrement.click();
+    expect(await inputFormPage.getStartPercent()).toBe(21);
+
+    await inputFormPage.endPercentIncrement.click();
+    expect(await inputFormPage.getEndPercent()).toBe(81);
+    await inputFormPage.endPercentDecrement.click();
+    await inputFormPage.endPercentDecrement.click();
+    expect(await inputFormPage.getEndPercent()).toBe(79);
+
+    // 21% -> 79% is less energy than the default 20% -> 80%
+    await inputFormPage.waitForCalculation();
+    await expect.poll(() => resultsPage.getEnergyValue()).toBeLessThan(initialEnergy);
+  });
+
+  test('disable at the limits on mobile', async ({ appPage, inputFormPage, page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('mobile'), 'Mobile-only test');
+    await setupCarAndNavigate(page);
+    await appPage.waitForAppReady();
+    await inputFormPage.ensureExpanded();
+
+    await inputFormPage.setStartPercent(0);
+    await expect(inputFormPage.startPercentDecrement).toBeDisabled();
+    await inputFormPage.setEndPercent(100);
+    await expect(inputFormPage.endPercentIncrement).toBeDisabled();
   });
 });

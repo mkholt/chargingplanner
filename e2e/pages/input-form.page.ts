@@ -5,6 +5,10 @@ export class InputFormPage {
   readonly page: Page;
   readonly startPercentInput: Locator;
   readonly endPercentInput: Locator;
+  readonly startPercentDecrement: Locator;
+  readonly startPercentIncrement: Locator;
+  readonly endPercentDecrement: Locator;
+  readonly endPercentIncrement: Locator;
   readonly batterySizeInput: Locator;
   readonly chargingPowerDropdown: Locator;
   readonly earliestTimePicker: Locator;
@@ -20,6 +24,11 @@ export class InputFormPage {
     // Number inputs with data-testid
     this.startPercentInput = page.getByTestId('start-percent-input');
     this.endPercentInput = page.getByTestId('end-percent-input');
+    // -/+ step buttons (only rendered on mobile)
+    this.startPercentDecrement = page.getByTestId('start-percent-input-decrement');
+    this.startPercentIncrement = page.getByTestId('start-percent-input-increment');
+    this.endPercentDecrement = page.getByTestId('end-percent-input-decrement');
+    this.endPercentIncrement = page.getByTestId('end-percent-input-increment');
     this.batterySizeInput = page.getByTestId('battery-size-input');
     // Charging power dropdown
     this.chargingPowerDropdown = page.getByTestId('charging-power-dropdown');

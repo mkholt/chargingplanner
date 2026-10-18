@@ -1,11 +1,14 @@
 import React from 'react';
 
 import {
+  Button,
   Input,
   makeStyles,
   Slider,
   tokens,
 } from '@fluentui/react-components';
+import { Add20Regular, Subtract20Regular } from '@fluentui/react-icons';
+import { useTranslation } from 'react-i18next';
 
 const useSliderStyles = makeStyles({
   red: {
@@ -48,6 +51,8 @@ type Props = {
   snapPoint?: number;
   snapRange?: number;
   escapeDistance?: number;
+  /** Show -/+ buttons around the input for easier adjustment on touch devices */
+  showStepButtons?: boolean;
   'data-testid'?: string;
 };
 
@@ -59,8 +64,10 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
   snapPoint,
   snapRange = 3,
   escapeDistance = 7,
+  showStepButtons = false,
   'data-testid': testId,
 }) => {
+  const { t } = useTranslation();
   const sliderStyles = useSliderStyles();
 
   const handleSliderChange = (newValue: number) => {
@@ -96,6 +103,15 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+      {showStepButtons && (
+        <Button
+          icon={<Subtract20Regular />}
+          aria-label={t('input.decrease')}
+          disabled={value <= min}
+          onClick={() => handleInputChange(value - 1)}
+          data-testid={testId && `${testId}-decrement`}
+        />
+      )}
       <Input
         type="number"
         min={min}
@@ -105,6 +121,15 @@ export const BatteryPercentageSlider: React.FC<Props> = ({
         data-testid={testId}
         style={{ width: 70 }}
       />
+      {showStepButtons && (
+        <Button
+          icon={<Add20Regular />}
+          aria-label={t('input.increase')}
+          disabled={value >= max}
+          onClick={() => handleInputChange(value + 1)}
+          data-testid={testId && `${testId}-increment`}
+        />
+      )}
       <Slider
         min={min}
         max={max}

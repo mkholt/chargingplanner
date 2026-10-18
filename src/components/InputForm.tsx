@@ -240,6 +240,7 @@ export const InputForm: React.FC<Props> = ({
               <BatteryPercentageSlider
                 value={startPercent}
                 onChange={updateStartPercent}
+                showStepButtons={isMobile}
                 data-testid="start-percent-input"
               />
             </Field>
@@ -248,6 +249,7 @@ export const InputForm: React.FC<Props> = ({
                 value={endPercent}
                 onChange={updateEndPercent}
                 snapPoint={80}
+                showStepButtons={isMobile}
                 data-testid="end-percent-input"
               />
             </Field>
