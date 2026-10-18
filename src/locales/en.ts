@@ -32,6 +32,8 @@ export const en = {
       showVehicleSettings: 'Show vehicle settings',
       hideVehicleSettings: 'Hide vehicle settings',
       vehicleSettingsSummary: '{{batterySize}} kWh · {{chargingSpeed}} kW',
+      increase: 'Increase',
+      decrease: 'Decrease',
     },
 
     // Results
@@ -53,6 +55,7 @@ export const en = {
       supplierSurchargePortion: 'Supplier surcharge: {{amount}} DKK',
       tariffsPortion: 'Tariffs: {{amount}} DKK',
       totalCost: '= {{amount}} DKK',
+      avgPrice: 'Avg. Price',
     },
 
     // Result errors

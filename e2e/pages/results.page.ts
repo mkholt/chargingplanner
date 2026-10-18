@@ -12,6 +12,7 @@ export class ResultsPage {
   readonly resultDuration: Locator;
   readonly resultEnergy: Locator;
   readonly resultCost: Locator;
+  readonly resultAvgPrice: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -25,6 +26,7 @@ export class ResultsPage {
     this.resultDuration = page.getByTestId('result-duration');
     this.resultEnergy = page.getByTestId('result-energy');
     this.resultCost = page.getByTestId('result-cost');
+    this.resultAvgPrice = page.getByTestId('result-avg-price');
   }
 
   async getStartTime(): Promise<string> {
@@ -51,6 +53,11 @@ export class ResultsPage {
     // Cost uses a button with popover - get the button text
     const button = this.resultCost.locator('button');
     return await button.textContent() ?? '';
+  }
+
+  async getAvgPrice(): Promise<string> {
+    const valueDiv = this.resultAvgPrice.locator('div').last();
+    return await valueDiv.textContent() ?? '';
   }
 
   async hasResults(): Promise<boolean> {
@@ -91,6 +98,15 @@ export class ResultsPage {
    */
   async getCostValue(): Promise<number> {
     const text = await this.getCost();
+    const match = text.match(/([\d.]+)/);
+    return match ? parseFloat(match[1]) : NaN;
+  }
+
+  /**
+   * Parse average price value from "X.XX DKK/kWh" format
+   */
+  async getAvgPriceValue(): Promise<number> {
+    const text = await this.getAvgPrice();
     const match = text.match(/([\d.]+)/);
     return match ? parseFloat(match[1]) : NaN;
   }
