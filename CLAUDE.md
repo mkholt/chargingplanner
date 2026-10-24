@@ -17,6 +17,10 @@ npm run lint          # Run ESLint
 npm run preview       # Preview production build
 npm run codegen:api   # Generate API types from stromligning.dk swagger
 npm run generate:icons # Generate PWA icons from SVG (requires sharp)
+npm run proxy:dev     # Run the Škoda proxy (proxy/ workspace) with reload
+npm run proxy:test    # Run proxy tests (also run by npm run test)
+npm run proxy:build   # Bundle the proxy to proxy/dist/index.js
+npm run proxy:secret  # Print a new token secrets file
 ```
 
 ## Architecture
@@ -30,6 +34,8 @@ Path aliases are enabled and must always be used. Always refer to a component or
 Example: `import { useCars } from "@/contexts"`
 
 Folders are barelled, and imports must always be from the folder not the specific component. Components, contexts and utilities should always be added to their barrels.
+
+Inside a folder, import siblings with relative paths (`import { Stack } from './Stack'`), never through the folder's own barrel, which risks circular imports.
 
 Do not be afraid to make breaking changes. Do not keep things for "backwards compatibility". If things are to be marked as deprecated during a refactoring or change, remove them afterwards and update all references.
 

@@ -94,6 +94,42 @@ describe('useDebouncedCallback', () => {
     });
   });
 
+  describe('cancel', () => {
+    it('drops a pending call', () => {
+      const callback = vi.fn();
+      const { result } = renderHook(() => useDebouncedCallback(callback, 300));
+
+      act(() => {
+        result.current('test');
+        result.current.cancel();
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('does not affect later calls', () => {
+      const callback = vi.fn();
+      const { result } = renderHook(() => useDebouncedCallback(callback, 300));
+
+      act(() => {
+        result.current('dropped');
+        result.current.cancel();
+        result.current('kept');
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith('kept');
+    });
+  });
+
   describe('callback reference', () => {
     it('uses the latest callback reference', () => {
       const callback1 = vi.fn();

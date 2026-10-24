@@ -43,6 +43,7 @@ export const AppFooter: React.FC = () => {
             <Link
               as="button"
               style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}
+              data-testid="about-button"
             >
               {t('about.about')}
             </Link>
@@ -121,6 +122,8 @@ export const AppFooter: React.FC = () => {
                     style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingHorizontalS }}
                   >
                     © {new Date().getFullYear()} Morten Holt
+                    {' · '}
+                    <span data-testid="app-version">{t('about.version', { version: __APP_VERSION__ })}</span>
                   </Text>
                 </Stack>
               </DialogContent>

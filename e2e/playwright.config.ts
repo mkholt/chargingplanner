@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+export const E2E_PORT = 5174;
+export const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true, // Enable parallel test execution
@@ -9,7 +12,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 30000, // 30 seconds per test (reduced from 60)
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: E2E_BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 10000, // 10 seconds for actions (reduced from 15)
@@ -35,8 +38,8 @@ export default defineConfig({
     // },
   ],
   webServer: {
-    command: 'npm run dev -- --port 5174',
-    url: 'http://localhost:5174',
+    command: `npm run dev -- --port ${E2E_PORT}`,
+    url: E2E_BASE_URL,
     reuseExistingServer: !process.env.CI,
     env: {
       VITE_USE_MOCK_API: 'true',

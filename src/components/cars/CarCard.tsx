@@ -4,11 +4,12 @@ import { Button, Text, tokens } from '@fluentui/react-components';
 import { Delete20Regular, Edit20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
+import { SkodaLinkSection, SkodaLinkStatusText } from '@/components/skoda';
 import { SelectableCard } from '@/components/ui';
 import { type Car, useCars } from '@/contexts';
 
 import { CarForm } from './CarForm';
-import type { CarFormState } from './carFormState';
+import { type CarFormState, isCarFormValid } from './carFormState';
 
 /** Slugify a car name for use in data-testid */
 function slugify(name: string): string {
@@ -44,7 +45,7 @@ export const CarCard: React.FC<Props> = ({
   };
 
   const handleSave = () => {
-    if (!formState || !formState.name.trim() || formState.batterySize <= 0 || formState.maxPower <= 0) return;
+    if (!formState || !isCarFormValid(formState)) return;
     updateCar(car.id, {
       name: formState.name.trim(),
       batterySize: formState.batterySize,
@@ -61,7 +62,9 @@ export const CarCard: React.FC<Props> = ({
         onSave={handleSave}
         onCancel={() => setFormState(null)}
         saveLabel={t('common.save')}
-      />
+      >
+        <SkodaLinkSection car={car} />
+      </CarForm>
     );
   }
 
@@ -75,9 +78,12 @@ export const CarCard: React.FC<Props> = ({
       gap={tokens.spacingHorizontalM}
       style={{ alignItems: 'center', flex: 'none' }}
     >
-      <Text weight="semibold" style={{ color: tokens.colorNeutralForeground1, flex: 1 }} data-testid="car-name">
-        {car.name}
-      </Text>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+        <Text weight="semibold" style={{ color: tokens.colorNeutralForeground1 }} data-testid="car-name">
+          {car.name}
+        </Text>
+        <SkodaLinkStatusText car={car} />
+      </div>
       <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
         {car.batterySize} kWh · {car.maxPower} kW
       </Text>

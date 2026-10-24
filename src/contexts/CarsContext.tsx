@@ -1,15 +1,29 @@
 import React, { createContext, useCallback, useContext, useMemo } from 'react';
 
 import { useLocalStorage } from '@/hooks';
-import { LS_KEYS, mergeCars as mergeCarData, type MergeResult } from '@/utils';
+import { LS_KEYS } from '@/utils';
 
 // ============ Types ============
+
+/**
+ * Link between a car profile and a Škoda vehicle (through the Škoda proxy).
+ * `token` is absent while it is kept in the password-protected vault, or after the vault was reset.
+ */
+export type SkodaLink = {
+  vin: string;
+  /** ISO 8601 expiry of the proxy token (the same as the Škoda key behind it) */
+  expiresAt: string;
+  /** The proxy that issued the token. The token is only ever sent to this proxy. */
+  proxyUrl: string;
+  token?: string;
+};
 
 export type Car = {
   id: string;
   name: string;
   batterySize: number;
   maxPower: number;
+  skoda?: SkodaLink;
 };
 
 /** Consolidated state for cars and selection */
@@ -26,8 +40,9 @@ type CarsContextType = {
   setSelectedCarId: (id: string | null) => void;
   addCar: (car: Omit<Car, 'id'>) => Car;
   updateCar: (id: string, updates: Partial<Omit<Car, 'id'>>) => void;
+  /** Update every car in one state change (used to move Škoda tokens in and out of the vault) */
+  updateAllCars: (update: (car: Car) => Car) => void;
   deleteCar: (id: string) => void;
-  mergeCars: (imported: Omit<Car, 'id'>[]) => MergeResult;
 };
 
 // ============ Context ============
@@ -67,23 +82,16 @@ export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   }, [setState]);
 
+  const updateAllCars = useCallback((update: (car: Car) => Car) => {
+    setState(prev => ({ ...prev, cars: prev.cars.map(update) }));
+  }, [setState]);
+
   const deleteCar = useCallback((id: string) => {
     setState(prev => ({
       cars: prev.cars.filter(c => c.id !== id),
       // Atomically clear selection if deleted car was selected
       selectedId: prev.selectedId === id ? null : prev.selectedId,
     }));
-  }, [setState]);
-
-  const mergeCars = useCallback((imported: Omit<Car, 'id'>[]): MergeResult => {
-    let result: MergeResult = { added: [], skipped: [], total: 0 };
-
-    setState(prev => {
-      result = mergeCarData(prev.cars, imported, generateId);
-      return { ...prev, cars: [...prev.cars, ...result.added] };
-    });
-
-    return result;
   }, [setState]);
 
   // Derived: selected car lookup (memoized to avoid repeated finds)
@@ -101,8 +109,8 @@ export const CarsProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSelectedCarId,
         addCar,
         updateCar,
+        updateAllCars,
         deleteCar,
-        mergeCars,
       }}
     >
       {children}

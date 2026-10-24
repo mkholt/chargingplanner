@@ -226,6 +226,7 @@ const ImportPreviewDialogContent: React.FC<{
           appearance="primary"
           onClick={handleConfirm}
           disabled={!hasSelections}
+          data-testid="import-preview-confirm-button"
         >
           {selectedCount > 0 ? t('importPreview.importCount', { count: selectedCount }) : t('sync.importButton')}
         </Button>

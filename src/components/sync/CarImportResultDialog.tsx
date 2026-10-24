@@ -59,7 +59,7 @@ export const CarImportResultDialog: React.FC<Props> = ({
             )}
           </DialogContent>
           <DialogActions>
-            <Button appearance="primary" onClick={onClose}>
+            <Button appearance="primary" onClick={onClose} data-testid="import-result-done-button">
               {t('common.done')}
             </Button>
           </DialogActions>

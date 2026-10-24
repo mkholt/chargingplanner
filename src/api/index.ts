@@ -1,5 +1,13 @@
-export { API_BASE, USE_MOCK_API } from './config';
+export { API_BASE, SKODA_PROXY_PATH, SKODA_PROXY_URL, USE_MOCK_API } from './config';
 export { apiClient } from './client';
 export { fetchCompanies, type FetchCompaniesParams } from './companyApi';
 export { fetchPrices, type FetchPricesParams } from './priceApi';
 export { findSupplier, type FindSupplierParams } from './supplierApi';
+export {
+  checkSkodaProxyHealth,
+  fetchSkodaVehicle,
+  issueSkodaToken,
+  SkodaProxyError,
+  type SkodaToken,
+  type SkodaVehicle,
+} from './skodaApi';

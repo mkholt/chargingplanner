@@ -8,8 +8,9 @@ export {
   mergeCars,
   parseAnyFormat,
   parseShareableUrl,
+  SyncDataTooLargeError,
 } from './carSyncCodec';
-export type { MergeResult, SyncData } from './carSyncCodec';
+export type { MergeResult, SkodaAccessExport, SyncCar, SyncData } from './carSyncCodec';
 export {
   CHARGING_EFFICIENCY,
   CHARGING_POWER_OPTIONS,
@@ -20,10 +21,12 @@ export {
   MS_PER_MINUTE,
   QUERY_TIMING,
   roundToCents,
+  VIN_PATTERN,
 } from './constants';
 export {
   findSlotIndexByTime,
   formatDuration,
+  formatMediumDate,
   formatShortDate,
   formatTime,
   formatTimeValue,
@@ -42,3 +45,20 @@ export { buildTimeline } from './timelineBuilder';
 export type { TimelineData } from './timelineBuilder';
 export { CALCULATION_ERROR_CODES, type CalculationErrorCode } from './errors';
 export { getErrorMessage } from './errorMessages';
+export {
+  assertPasswordLength,
+  EXPORT_PBES2_ITERATIONS,
+  generateExportCode,
+  normalizeExportCode,
+  openAccess,
+  openWithPassword,
+  PasswordTooShortError,
+  sealAccess,
+  sealWithPassword,
+  VAULT_MIN_PASSWORD_LENGTH,
+  VAULT_PBES2_ITERATIONS,
+  VaultLockedError,
+  WrongExportCodeError,
+  WrongPasswordError,
+} from './skodaVaultCrypto';
+export { getSkodaLinkStatus, SKODA_EXPIRY_WARNING_DAYS, type SkodaLinkStatus } from './skodaLinkStatus';

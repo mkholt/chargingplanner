@@ -526,6 +526,41 @@ describe('findOptimalChargingWindow', () => {
     });
   });
 
+  describe('gaps in the price data', () => {
+    // 00:00-02:00 and 03:00-05:00 have prices, 02:00-03:00 is missing
+    const slots = createSlots([5, 4, 0, 3, 6]).filter((_, i) => i !== 2);
+    const baseInput: ChargingInput = {
+      startPercent: 0,
+      endPercent: 9, // 4.5kWh in battery = 5kWh from grid, ~0.45 hours at 11kW
+      batterySize: 50,
+      chargingSpeed: 11,
+      slots,
+      intervalMinutes: 60,
+    };
+
+    it('never charges during a gap', () => {
+      const result = findOptimalChargingWindow(baseInput);
+      expect(result).not.toBeNull();
+      expect(result!.startTime).toEqual(new Date(2025, 0, 1, 3, 0, 0));
+      expect(result!.windowSlots.map(s => s.total)).toEqual([3]);
+      expect(result!.totalCost).toBeGreaterThan(0);
+    });
+
+    it('can end the window where the prices stop before a gap', () => {
+      // Only 02:00-03:00 is cheap and 03:00-04:00 is missing, so the window must finish exactly at 03:00
+      const gapSlots = createSlots([5, 9, 1, 0, 7, 7]).filter((_, i) => i !== 3);
+      const result = findOptimalChargingWindow({ ...baseInput, slots: gapSlots, endPercent: 30 }); // ~1.5 hours
+      expect(result).not.toBeNull();
+      expect(result!.endTime).toEqual(new Date(2025, 0, 1, 3, 0, 0));
+      expect(result!.windowSlots.map(s => s.total)).toEqual([9, 1]);
+    });
+
+    it('returns null when no window fits between the gaps', () => {
+      const result = findOptimalChargingWindow({ ...baseInput, endPercent: 50 }); // ~2.5 hours
+      expect(result).toBeNull();
+    });
+  });
+
   describe('cost breakdown calculation', () => {
     it('returns undefined costBreakdown when slots have no price details', () => {
       // Using createSlots which doesn't include details

@@ -3,6 +3,7 @@ import { AppPage } from '../pages/app.page';
 import { SettingsPanePage } from '../pages/settings-pane.page';
 import { InputFormPage } from '../pages/input-form.page';
 import { ResultsPage } from '../pages/results.page';
+import { SkodaPage } from '../pages/skoda.page';
 import { freezeTime, FIXED_TEST_TIME } from './time';
 import { LS_KEYS } from '../../src/utils/constants';
 import { en } from '../../src/locales/en';
@@ -14,6 +15,11 @@ export type Car = {
   name: string;
   batterySize: number;
   maxPower: number;
+  skoda?: {
+    vin: string;
+    expiresAt: string;
+    token?: string;
+  };
 };
 
 // Location can be a postal code (number), GPS coordinates, or null
@@ -35,6 +41,7 @@ type TestFixtures = {
   settingsPanePage: SettingsPanePage;
   inputFormPage: InputFormPage;
   resultsPage: ResultsPage;
+  skodaPage: SkodaPage;
   frozenTime: Date;
 };
 
@@ -64,6 +71,10 @@ export const test = base.extend<TestFixtures>({
   resultsPage: async ({ page }, use) => {
     const resultsPage = new ResultsPage(page);
     await use(resultsPage);
+  },
+  skodaPage: async ({ page }, use) => {
+    const skodaPage = new SkodaPage(page);
+    await use(skodaPage);
   },
 });
 

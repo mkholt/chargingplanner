@@ -22,10 +22,11 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 
+import { SkodaExportOptions } from '@/components/skoda';
 import { Stack } from '@/components/ui';
-import type { Car, PriceSettings } from '@/contexts';
-import { useIsMobile } from '@/hooks';
-import { encodeSyncData, generateShareableUrl, generateSyncCode } from '@/utils';
+import { type Car, type PriceSettings } from '@/contexts';
+import { useIsMobile, useSkodaAccessExport } from '@/hooks';
+import { encodeSyncData, generateShareableUrl, generateSyncCode, SyncDataTooLargeError } from '@/utils';
 
 type Props = {
   cars: Car[];
@@ -33,6 +34,9 @@ type Props = {
 };
 
 type ExportTab = 'qr' | 'link' | 'code';
+
+/** Bytes a QR code holds at the default error correction level (L, version 40) */
+const QR_MAX_BYTES = 2953;
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -66,6 +70,11 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
 
   const hasSettings = hasAnySettings(priceSettings);
   const settingsToInclude = includeSettings && hasSettings ? priceSettings : null;
+
+  // Škoda access is only exported when the user opts in, sealed with a one-time export code
+  const skodaAccess = useSkodaAccessExport(cars);
+  const skodaAccessData = skodaAccess.access;
+
   const qrCodeSize = isMobile ? 200 : 256;
 
   // Generate export data (async due to compression)
@@ -73,26 +82,37 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     qrData: string;
     shareUrl: string | null;
     syncCode: string;
+    /** More data than an import accepts: there are no outputs */
+    tooLarge: boolean;
+    /** The Škoda access the outputs were generated with */
+    skodaAccess: typeof skodaAccessData;
   } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function generate() {
-      const [qrData, shareUrl, syncCode] = await Promise.all([
-        encodeSyncData(cars, settingsToInclude),
-        generateShareableUrl(cars, settingsToInclude),
-        generateSyncCode(cars, settingsToInclude),
-      ]);
+      try {
+        const [qrData, shareUrl, syncCode] = await Promise.all([
+          encodeSyncData(cars, settingsToInclude, skodaAccessData),
+          generateShareableUrl(cars, settingsToInclude, skodaAccessData),
+          generateSyncCode(cars, settingsToInclude, skodaAccessData),
+        ]);
 
-      if (!cancelled) {
-        setExportData({ qrData, shareUrl, syncCode });
+        if (!cancelled) {
+          setExportData({ qrData, shareUrl, syncCode, tooLarge: false, skodaAccess: skodaAccessData });
+        }
+      } catch (error) {
+        if (!(error instanceof SyncDataTooLargeError)) throw error;
+        if (!cancelled) {
+          setExportData({ qrData: '', shareUrl: null, syncCode: '', tooLarge: true, skodaAccess: skodaAccessData });
+        }
       }
     }
 
     generate();
     return () => { cancelled = true; };
-  }, [cars, settingsToInclude]);
+  }, [cars, settingsToInclude, skodaAccessData]);
 
   const handleCopy = async (text: string, type: 'link' | 'code') => {
     const success = await copyToClipboard(text);
@@ -120,11 +140,42 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     );
   }
 
-  if (!exportData) {
+  // Settings checkbox component
+  const settingsCheckbox = hasSettings && (
+    <Checkbox
+      checked={includeSettings}
+      onChange={(_, data) => setIncludeSettings(!!data.checked)}
+      label={t('sync.includeElectricity')}
+    />
+  );
+
+  const skodaAccessOptions = <SkodaExportOptions state={skodaAccess} />;
+
+  // Nothing is shown while opted-in Škoda access is not sealed into the outputs yet, so that an export
+  // without it can't be shared by mistake
+  if (!exportData || !skodaAccess.ready || exportData.skodaAccess !== skodaAccessData) {
     return (
-      <div style={{ textAlign: 'center', padding: tokens.spacingHorizontalL, color: tokens.colorNeutralForeground3 }}>
-        <Text size={200}>{t('sync.generating')}</Text>
-      </div>
+      <Stack gap={tokens.spacingHorizontalM}>
+        {settingsCheckbox}
+        {skodaAccessOptions}
+        {!skodaAccess.included && (
+          <div style={{ textAlign: 'center', padding: tokens.spacingHorizontalL, color: tokens.colorNeutralForeground3 }}>
+            <Text size={200}>{t('sync.generating')}</Text>
+          </div>
+        )}
+      </Stack>
+    );
+  }
+
+  if (exportData.tooLarge) {
+    return (
+      <Stack gap={tokens.spacingHorizontalM}>
+        {settingsCheckbox}
+        {skodaAccessOptions}
+        <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }} data-testid="sync-export-too-large">
+          {t('sync.exportTooLarge')}
+        </Text>
+      </Stack>
     );
   }
 
@@ -132,7 +183,13 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
   const dialogQrSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
 
   // Shared QR code component (clickable to open fullscreen)
-  const qrCodeDisplay = (
+  const qrCodeDisplay = exportData.qrData.length > QR_MAX_BYTES ? (
+    <div style={{ padding: tokens.spacingHorizontalL, textAlign: 'center', maxWidth: qrCodeSize }}>
+      <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }} data-testid="sync-qr-too-large">
+        {t('sync.qrTooLarge')}
+      </Text>
+    </div>
+  ) : (
     <Stack align="center" gap={tokens.spacingHorizontalM}>
       <div
         onClick={() => setQrDialogOpen(true)}
@@ -217,6 +274,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         resize="none"
         style={{ fontFamily: 'monospace', fontSize: 12 }}
         rows={2}
+        data-testid="sync-code-output"
       />
       <Button
         appearance="secondary"
@@ -228,15 +286,6 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     </Stack>
   );
 
-  // Settings checkbox component
-  const settingsCheckbox = hasSettings && (
-    <Checkbox
-      checked={includeSettings}
-      onChange={(_, data) => setIncludeSettings(!!data.checked)}
-      label={t('sync.includeElectricity')}
-    />
-  );
-
   // Desktop layout: QR on left, Link + Code stacked on right
   if (!isMobile) {
     return (
@@ -244,6 +293,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         {qrDialog}
         <Stack gap={tokens.spacingHorizontalL}>
           {settingsCheckbox}
+          {skodaAccessOptions}
           <Stack horizontal gap={tokens.spacingHorizontalXL} align="start">
             {qrCodeDisplay}
             <Stack gap={tokens.spacingHorizontalL} style={{ flex: 1 }}>
@@ -262,6 +312,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       {qrDialog}
       <Stack gap={tokens.spacingHorizontalM}>
         {settingsCheckbox}
+        {skodaAccessOptions}
 
       <TabList
         selectedValue={activeTab}
@@ -276,7 +327,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         >
           {t('sync.link')}
         </Tab>
-        <Tab value="code" icon={<Copy20Regular />}>{t('sync.code')}</Tab>
+        <Tab value="code" icon={<Copy20Regular />} data-testid="export-code-tab">{t('sync.code')}</Tab>
       </TabList>
 
       {activeTab === 'qr' && qrCodeDisplay}
@@ -321,6 +372,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
             resize="none"
             style={{ fontFamily: 'monospace', fontSize: 12 }}
             rows={3}
+            data-testid="sync-code-output"
           />
           <Button
             appearance="primary"

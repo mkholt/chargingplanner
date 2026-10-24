@@ -28,6 +28,10 @@ type Props = {
   onCancel: () => void;
   saveLabel: string;
   autoFocus?: boolean;
+  /** Disables saving, e.g. while a save is running */
+  saving?: boolean;
+  /** Extra content between the fields and the buttons */
+  children?: React.ReactNode;
 };
 
 /** Shared form layout for editing and adding cars */
@@ -38,6 +42,8 @@ export const CarForm: React.FC<Props> = ({
   onCancel,
   saveLabel,
   autoFocus,
+  saving = false,
+  children,
 }) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -99,6 +105,7 @@ export const CarForm: React.FC<Props> = ({
           </Combobox>
         </Field>
       </div>
+      {children}
       <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, justifyContent: 'flex-end', marginTop: tokens.spacingHorizontalXS }}>
         <Button
           appearance="subtle"
@@ -112,6 +119,7 @@ export const CarForm: React.FC<Props> = ({
           appearance="primary"
           icon={<Checkmark20Regular />}
           onClick={onSave}
+          disabled={saving}
           aria-label={saveLabel}
           data-testid="save-car-button"
         >

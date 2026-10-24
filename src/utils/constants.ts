@@ -18,6 +18,11 @@ export const QUERY_TIMING = {
     staleTime: MS_PER_DAY,
     gcTime: MS_PER_DAY * 7,
   },
+  /** Live vehicle data from the Škoda proxy: fresh for 1 minute, never persisted */
+  skoda: {
+    staleTime: MS_PER_MINUTE,
+    gcTime: 5 * MS_PER_MINUTE,
+  },
 } as const;
 
 // Charging efficiency (accounts for charging losses in cable, charger, and battery)
@@ -44,4 +49,9 @@ export const LS_KEYS = {
   DEFAULT_EARLIEST: 'ev-default-earliest',
   DEFAULT_LATEST: 'ev-default-latest',
   QUERY_CACHE: 'ev-price-query-cache',
+  SKODA_PROXY: 'ev-skoda-proxy',
+  SKODA_VAULT: 'ev-skoda-vault',
 } as const;
+
+/** ISO 3779 VIN: 17 characters, letters I, O and Q are never used (same rule as the Škoda proxy) */
+export const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/;

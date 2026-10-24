@@ -6,6 +6,7 @@ import {
   parseAnyFormat,
   detectInputFormat,
   mergeCars,
+  SyncDataTooLargeError,
 } from '@/utils/carSyncCodec';
 import type { Car, PriceSettings } from '@/contexts';
 
@@ -343,5 +344,110 @@ describe('mergeCars', () => {
     const result = mergeCars(existing, imported, generateId);
 
     expect(result.skipped).toHaveLength(1);
+  });
+});
+
+/** Encode any JSON the way sync data is encoded, to test data that the app itself wouldn't produce */
+async function encodeRaw(value: unknown): Promise<string> {
+  const input = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(JSON.stringify(value)));
+      controller.close();
+    },
+  });
+  const bytes = new Uint8Array(await new Response(input.pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+  return btoa(Array.from(bytes, b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+describe('limits on imported sync data', () => {
+  const car = { name: 'Car', batterySize: 50, maxPower: 7 };
+
+  it('rejects encoded data that is too long', async () => {
+    await expect(decodeSyncData('A'.repeat(20_001))).rejects.toThrow(/too large/);
+  });
+
+  it('rejects data that decompresses to too much', async () => {
+    // Compresses to a few hundred bytes, decompresses to more than 64 KB
+    const encoded = await encodeRaw({ cars: [{ ...car, name: 'a'.repeat(100_000) }] });
+    expect(encoded.length).toBeLessThan(20_000);
+
+    await expect(decodeSyncData(encoded)).rejects.toThrow(/too large/);
+  });
+
+  it('rejects more than 50 cars', async () => {
+    await expect(decodeSyncData(await encodeRaw({ cars: Array(51).fill(car) }))).rejects.toThrow(/more than 50/);
+    await expect(decodeSyncData(await encodeRaw({ cars: Array(50).fill(car) }))).resolves.toBeDefined();
+  });
+});
+
+describe('limits on exported sync data', () => {
+  const toCars = (names: string[]): Car[] => names.map((name, i) => ({ id: `${i}`, name, batterySize: 50, maxPower: 7 }));
+  // Random characters, which hardly compress
+  const randomName = (length: number) => Array.from(crypto.getRandomValues(new Uint8Array(length)), b => String.fromCharCode(48 + (b % 64))).join('');
+
+  it('refuses more cars than an import accepts', async () => {
+    await expect(encodeSyncData(toCars(Array(51).fill('Car')))).rejects.toThrow(SyncDataTooLargeError);
+    await expect(decodeSyncData(await encodeSyncData(toCars(Array(50).fill('Car'))))).resolves.toBeDefined();
+  });
+
+  it('refuses data that decompresses to more than an import accepts', async () => {
+    await expect(encodeSyncData(toCars(['a'.repeat(70_000)]))).rejects.toThrow(SyncDataTooLargeError);
+  });
+
+  it('refuses data that encodes to more than an import accepts', async () => {
+    await expect(encodeSyncData(toCars([randomName(40_000)]))).rejects.toThrow(SyncDataTooLargeError);
+  });
+});
+
+describe('Škoda links in sync data', () => {
+  const VIN = 'TMBJJ7NE8L0123456';
+  const expiresAt = '2027-01-22T12:00:00.000Z';
+  const proxyUrl = 'https://skoda-proxy.example';
+  const linkedCar: Car = {
+    id: 'car-1',
+    name: 'Enyaq',
+    batterySize: 77,
+    maxPower: 11,
+    skoda: { vin: VIN, expiresAt, proxyUrl, token: 'secret-token' },
+  };
+
+  it('exports the VIN, expiry and proxy but not the token by default', async () => {
+    const encoded = await encodeSyncData([linkedCar]);
+    const decoded = await decodeSyncData(encoded);
+
+    expect(decoded.cars[0].skoda).toEqual({ vin: VIN, expiresAt, proxyUrl });
+  });
+
+  it('exports sealed access when it is passed in', async () => {
+    const decoded = await decodeSyncData(await encodeSyncData([linkedCar], null, { 'car-1': 'jwe' }));
+
+    expect(decoded.cars[0].skoda).toEqual({ vin: VIN, expiresAt, proxyUrl, sealedToken: 'jwe' });
+  });
+
+  it('drops a plain token from imported data', async () => {
+    const encoded = await encodeRaw({
+      cars: [{ name: 'Enyaq', batterySize: 77, maxPower: 11, skoda: { vin: VIN, expiresAt, proxyUrl, token: 'plain' } }],
+    });
+
+    expect((await decodeSyncData(encoded)).cars[0].skoda).toEqual({ vin: VIN, expiresAt, proxyUrl });
+  });
+
+  it('leaves cars without a Škoda link unchanged', async () => {
+    const decoded = await decodeSyncData(
+      await encodeSyncData([{ id: '2', name: 'Other', batterySize: 50, maxPower: 7 }])
+    );
+
+    expect(decoded.cars[0]).toEqual({ name: 'Other', batterySize: 50, maxPower: 7 });
+  });
+
+  it.each([
+    ['an invalid VIN', { vin: 'TMBJJ7NE8L012345O', expiresAt, proxyUrl }],
+    ['an invalid expiry', { vin: VIN, expiresAt: 'tomorrow', proxyUrl }],
+    ['no proxy URL', { vin: VIN, expiresAt }],
+    ['an empty sealed token', { vin: VIN, expiresAt, proxyUrl, sealedToken: '' }],
+  ])('rejects a link with %s', async (_label, skoda) => {
+    const encoded = await encodeRaw({ cars: [{ name: 'Enyaq', batterySize: 77, maxPower: 11, skoda }] });
+
+    await expect(decodeSyncData(encoded)).rejects.toThrow(/Škoda/);
   });
 });

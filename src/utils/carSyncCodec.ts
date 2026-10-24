@@ -1,9 +1,28 @@
 import { type Car, type PriceSettings } from '@/contexts';
 import type { Product } from '@/data';
 
+import { VIN_PATTERN } from './constants';
+
 // =============================================================================
 // Types
 // =============================================================================
+
+/**
+ * Škoda link of a synced car. The VIN, expiry and issuing proxy are always included.
+ * Access is only included when the user opts in, as `sealedToken`: a PBES2 JWE of `{ vin, token }`
+ * encrypted with a one-time export code that the exporting device shows (see `sealAccess`).
+ */
+type SyncSkodaLink = {
+  vin: string;
+  expiresAt: string;
+  proxyUrl: string;
+  sealedToken?: string;
+};
+
+export type SyncCar = Omit<Car, 'id' | 'skoda'> & { skoda?: SyncSkodaLink };
+
+/** Opted-in Škoda access for export: the sealed token per car id */
+export type SkodaAccessExport = Record<string, string>;
 
 /**
  * Sync data format.
@@ -11,12 +30,26 @@ import type { Product } from '@/data';
  * Location is intentionally excluded for privacy.
  */
 export type SyncData = {
-  cars: Omit<Car, 'id'>[];
+  cars: SyncCar[];
   /** Settings with location always null (not synced for privacy) */
   settings?: Omit<PriceSettings, 'location'> & { location: null };
 };
 
 export type SyncInputFormat = 'url' | 'code' | 'raw' | 'unknown';
+
+// Limits for data from outside, so a crafted link or code can't make the app decompress or render huge amounts
+/** Characters of encoded sync data (a full share URL is limited to MAX_URL_LENGTH anyway) */
+const MAX_ENCODED_LENGTH = 20_000;
+const MAX_DECOMPRESSED_BYTES = 64 * 1024;
+const MAX_SYNC_CARS = 50;
+
+/** The data is more than an import accepts, so an export of it couldn't be imported */
+export class SyncDataTooLargeError extends Error {
+  constructor() {
+    super('Sync data is too large to import');
+    this.name = 'SyncDataTooLargeError';
+  }
+}
 
 // =============================================================================
 // Compression (using browser Compression Streams API)
@@ -54,7 +87,7 @@ async function compress(data: string): Promise<Uint8Array> {
   return result;
 }
 
-async function decompress(data: Uint8Array): Promise<string> {
+async function decompress(data: Uint8Array, maxBytes: number): Promise<string> {
   const inputStream = new ReadableStream({
     start(controller) {
       controller.enqueue(data);
@@ -67,9 +100,15 @@ async function decompress(data: Uint8Array): Promise<string> {
   const decoder = new TextDecoder();
 
   let result = '';
+  let totalBytes = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    totalBytes += value.length;
+    if (totalBytes > maxBytes) {
+      await reader.cancel();
+      throw new Error('Sync data is too large');
+    }
     result += decoder.decode(value, { stream: true });
   }
   result += decoder.decode();
@@ -104,12 +143,41 @@ function fromUrlSafeBase64(str: string): Uint8Array {
 // Validation
 // =============================================================================
 
-function validateCar(car: unknown, index: number): Omit<Car, 'id'> {
+function validateSkodaLink(skoda: unknown, index: number): SyncSkodaLink | undefined {
+  if (skoda === undefined || skoda === null) {
+    return undefined;
+  }
+  if (typeof skoda !== 'object') {
+    throw new Error(`Invalid Škoda link at index ${index}: expected object`);
+  }
+
+  const { vin, expiresAt, proxyUrl, sealedToken } = skoda as Record<string, unknown>;
+
+  if (typeof vin !== 'string' || !VIN_PATTERN.test(vin)) {
+    throw new Error(`Invalid Škoda VIN at index ${index}`);
+  }
+  if (typeof expiresAt !== 'string' || Number.isNaN(Date.parse(expiresAt))) {
+    throw new Error(`Invalid Škoda expiry at index ${index}`);
+  }
+  if (typeof proxyUrl !== 'string' || !proxyUrl) {
+    throw new Error(`Invalid Škoda proxy URL at index ${index}`);
+  }
+  if (sealedToken !== undefined && (typeof sealedToken !== 'string' || !sealedToken)) {
+    throw new Error(`Invalid sealed Škoda token at index ${index}`);
+  }
+
+  // Anything else, such as a plain token, is left out
+  const link: SyncSkodaLink = { vin, expiresAt, proxyUrl };
+  if (sealedToken !== undefined) link.sealedToken = sealedToken;
+  return link;
+}
+
+function validateCar(car: unknown, index: number): SyncCar {
   if (typeof car !== 'object' || car === null) {
     throw new Error(`Invalid car at index ${index}: expected object`);
   }
 
-  const { name, batterySize, maxPower } = car as Record<string, unknown>;
+  const { name, batterySize, maxPower, skoda } = car as Record<string, unknown>;
 
   if (typeof name !== 'string' || !name.trim()) {
     throw new Error(`Invalid car name at index ${index}`);
@@ -121,11 +189,14 @@ function validateCar(car: unknown, index: number): Omit<Car, 'id'> {
     throw new Error(`Invalid max power at index ${index}`);
   }
 
-  return {
+  const result: SyncCar = {
     name: name.trim(),
     batterySize,
     maxPower,
   };
+  const link = validateSkodaLink(skoda, index);
+  if (link) result.skoda = link;
+  return result;
 }
 
 function validateSupplier(supplier: unknown): PriceSettings['supplier'] {
@@ -271,6 +342,9 @@ function validateSyncData(data: unknown): SyncData {
   if (!Array.isArray(cars)) {
     throw new Error('Invalid sync data: cars must be an array');
   }
+  if (cars.length > MAX_SYNC_CARS) {
+    throw new Error(`Invalid sync data: more than ${MAX_SYNC_CARS} cars`);
+  }
 
   return {
     cars: cars.map((car, i) => validateCar(car, i)),
@@ -282,9 +356,23 @@ function validateSyncData(data: unknown): SyncData {
 // Encoding
 // =============================================================================
 
-export async function encodeSyncData(cars: Car[], settings?: PriceSettings | null): Promise<string> {
+function toSyncCar({ id, name, batterySize, maxPower, skoda }: Car, skodaAccess: SkodaAccessExport): SyncCar {
+  const car: SyncCar = { name, batterySize, maxPower };
+  // Tokens are never taken from the car profile: access is only exported sealed, when passed in explicitly
+  if (skoda) {
+    car.skoda = { vin: skoda.vin, expiresAt: skoda.expiresAt, proxyUrl: skoda.proxyUrl };
+    if (skodaAccess[id]) car.skoda.sealedToken = skodaAccess[id];
+  }
+  return car;
+}
+
+export async function encodeSyncData(
+  cars: Car[],
+  settings?: PriceSettings | null,
+  skodaAccess: SkodaAccessExport = {},
+): Promise<string> {
   const data: SyncData = {
-    cars: cars.map(({ name, batterySize, maxPower }) => ({ name, batterySize, maxPower })),
+    cars: cars.map(car => toSyncCar(car, skodaAccess)),
   };
 
   // Only include settings if there are meaningful values
@@ -300,9 +388,14 @@ export async function encodeSyncData(cars: Car[], settings?: PriceSettings | nul
     };
   }
 
+  // Within the limits of decodeSyncData, so the export can always be imported
   const json = JSON.stringify(data);
-  const compressed = await compress(json);
-  return toUrlSafeBase64(compressed);
+  if (data.cars.length > MAX_SYNC_CARS || new TextEncoder().encode(json).length > MAX_DECOMPRESSED_BYTES) {
+    throw new SyncDataTooLargeError();
+  }
+  const encoded = toUrlSafeBase64(await compress(json));
+  if (encoded.length > MAX_ENCODED_LENGTH) throw new SyncDataTooLargeError();
+  return encoded;
 }
 
 // =============================================================================
@@ -311,8 +404,9 @@ export async function encodeSyncData(cars: Car[], settings?: PriceSettings | nul
 
 export async function decodeSyncData(encoded: string): Promise<SyncData> {
   try {
+    if (encoded.length > MAX_ENCODED_LENGTH) throw new Error('Sync data is too large');
     const compressed = fromUrlSafeBase64(encoded);
-    const json = await decompress(compressed);
+    const json = await decompress(compressed, MAX_DECOMPRESSED_BYTES);
     const data = JSON.parse(json);
     return validateSyncData(data);
   } catch (error) {
@@ -329,8 +423,12 @@ export async function decodeSyncData(encoded: string): Promise<SyncData> {
 
 const MAX_URL_LENGTH = 2000;
 
-export async function generateShareableUrl(cars: Car[], settings?: PriceSettings | null): Promise<string | null> {
-  const encoded = await encodeSyncData(cars, settings);
+export async function generateShareableUrl(
+  cars: Car[],
+  settings?: PriceSettings | null,
+  skodaAccess?: SkodaAccessExport,
+): Promise<string | null> {
+  const encoded = await encodeSyncData(cars, settings, skodaAccess);
   const baseUrl = window.location.origin + window.location.pathname;
   const url = `${baseUrl}#sync=${encoded}`;
 
@@ -363,8 +461,12 @@ export async function parseShareableUrl(url: string): Promise<SyncData | null> {
 
 const SYNC_CODE_PREFIX = 'EV:';
 
-export async function generateSyncCode(cars: Car[], settings?: PriceSettings | null): Promise<string> {
-  const encoded = await encodeSyncData(cars, settings);
+export async function generateSyncCode(
+  cars: Car[],
+  settings?: PriceSettings | null,
+  skodaAccess?: SkodaAccessExport,
+): Promise<string> {
+  const encoded = await encodeSyncData(cars, settings, skodaAccess);
   return SYNC_CODE_PREFIX + encoded;
 }
 
@@ -429,23 +531,23 @@ export async function parseAnyFormat(input: string): Promise<SyncData | null> {
 // Merge Logic (unchanged - still synchronous)
 // =============================================================================
 
-export type MergeResult = {
-  added: Car[];
-  skipped: Omit<Car, 'id'>[];
+export type MergeResult<T extends { name: string } = Omit<Car, 'id'>> = {
+  added: (T & { id: string })[];
+  skipped: T[];
   total: number;
 };
 
-export function mergeCars(
+export function mergeCars<T extends { name: string }>(
   existing: Car[],
-  imported: Omit<Car, 'id'>[],
+  imported: T[],
   generateId: () => string
-): MergeResult {
+): MergeResult<T> {
   const existingNames = new Set(
     existing.map(c => c.name.toLowerCase().trim())
   );
 
-  const added: Car[] = [];
-  const skipped: Omit<Car, 'id'>[] = [];
+  const added: (T & { id: string })[] = [];
+  const skipped: T[] = [];
 
   for (const car of imported) {
     const normalizedName = car.name.toLowerCase().trim();

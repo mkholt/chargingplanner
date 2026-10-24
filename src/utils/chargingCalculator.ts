@@ -129,20 +129,25 @@ function segmentsCost(segments: WindowSegment[], chargingSpeed: number): number 
  * Cost is piecewise linear in the start time, so an optimum always sits on a
  * breakpoint: the earliest allowed start, the latest possible start, a slot
  * boundary the window starts on, or a slot boundary the window ends on.
+ * Slot ends count as boundaries too, as the next slot may not start there (a gap in the price data).
  */
 function candidateStartTimes(
   slots: PriceSlot[],
+  intervalMinutes: number,
   windowStartMs: number,
   latestStartMs: number,
   durationMs: number
 ): number[] {
+  const msPerInterval = intervalMinutes * MS_PER_MINUTE;
   const candidates = new Set<number>([windowStartMs, latestStartMs]);
 
   for (const slot of slots) {
-    const boundaryMs = slot.timestamp.getTime();
-    for (const candidate of [boundaryMs, boundaryMs - durationMs]) {
-      if (candidate > windowStartMs && candidate < latestStartMs) {
-        candidates.add(candidate);
+    const slotStartMs = slot.timestamp.getTime();
+    for (const boundaryMs of [slotStartMs, slotStartMs + msPerInterval]) {
+      for (const candidate of [boundaryMs, boundaryMs - durationMs]) {
+        if (candidate > windowStartMs && candidate < latestStartMs) {
+          candidates.add(candidate);
+        }
       }
     }
   }
@@ -212,8 +217,11 @@ export function findOptimalChargingWindow(input: ChargingInput): ChargingResult 
   let bestSegments: WindowSegment[] = [];
   let minCost = Infinity;
 
-  for (const startMs of candidateStartTimes(slots, windowStartMs, latestStartMs, durationMs)) {
+  for (const startMs of candidateStartTimes(slots, intervalMinutes, windowStartMs, latestStartMs, durationMs)) {
     const segments = collectSegments(slots, intervalMinutes, startMs, durationMs);
+    // A window running through a gap in the price data has no known price for that part
+    const coveredMs = segments.reduce((sum, { hours }) => sum + hours * MS_PER_HOUR, 0);
+    if (coveredMs < durationMs - 1) continue;
     const cost = segmentsCost(segments, chargingSpeed);
     if (cost < minCost) {
       minCost = cost;
