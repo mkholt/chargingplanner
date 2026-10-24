@@ -14,8 +14,10 @@ import {
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { QRCodeScanner, SyncImportFlow } from '@/components/sync';
 import { parseAnyFormat, type SyncData } from '@/utils';
+
+import { QRCodeScanner } from './QRCodeScanner';
+import { SyncImportFlow } from './SyncImportFlow';
 
 type ImportTab = 'scan' | 'paste';
 

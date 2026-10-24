@@ -82,6 +82,8 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     qrData: string;
     shareUrl: string | null;
     syncCode: string;
+    /** The Škoda access the outputs were generated with */
+    skodaAccess: typeof skodaAccessData;
   } | null>(null);
 
   useEffect(() => {
@@ -95,7 +97,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       ]);
 
       if (!cancelled) {
-        setExportData({ qrData, shareUrl, syncCode });
+        setExportData({ qrData, shareUrl, syncCode, skodaAccess: skodaAccessData });
       }
     }
 
@@ -129,11 +131,30 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     );
   }
 
-  if (!exportData) {
+  // Settings checkbox component
+  const settingsCheckbox = hasSettings && (
+    <Checkbox
+      checked={includeSettings}
+      onChange={(_, data) => setIncludeSettings(!!data.checked)}
+      label={t('sync.includeElectricity')}
+    />
+  );
+
+  const skodaAccessOptions = <SkodaExportOptions state={skodaAccess} />;
+
+  // Nothing is shown while opted-in Škoda access is not sealed into the outputs yet, so that an export
+  // without it can't be shared by mistake
+  if (!exportData || !skodaAccess.ready || exportData.skodaAccess !== skodaAccessData) {
     return (
-      <div style={{ textAlign: 'center', padding: tokens.spacingHorizontalL, color: tokens.colorNeutralForeground3 }}>
-        <Text size={200}>{t('sync.generating')}</Text>
-      </div>
+      <Stack gap={tokens.spacingHorizontalM}>
+        {settingsCheckbox}
+        {skodaAccessOptions}
+        {!skodaAccess.included && (
+          <div style={{ textAlign: 'center', padding: tokens.spacingHorizontalL, color: tokens.colorNeutralForeground3 }}>
+            <Text size={200}>{t('sync.generating')}</Text>
+          </div>
+        )}
+      </Stack>
     );
   }
 
@@ -243,17 +264,6 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       </Button>
     </Stack>
   );
-
-  // Settings checkbox component
-  const settingsCheckbox = hasSettings && (
-    <Checkbox
-      checked={includeSettings}
-      onChange={(_, data) => setIncludeSettings(!!data.checked)}
-      label={t('sync.includeElectricity')}
-    />
-  );
-
-  const skodaAccessOptions = <SkodaExportOptions state={skodaAccess} />;
 
   // Desktop layout: QR on left, Link + Code stacked on right
   if (!isMobile) {

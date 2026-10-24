@@ -11,8 +11,10 @@ import {
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { ExportSection, ImportSection } from '@/components/sync';
 import { useCars, usePriceSettings } from '@/contexts';
+
+import { ExportSection } from './ExportSection';
+import { ImportSection } from './ImportSection';
 
 type SyncTab = 'export' | 'import';
 

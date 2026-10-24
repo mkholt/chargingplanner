@@ -46,6 +46,7 @@ export { CALCULATION_ERROR_CODES, type CalculationErrorCode } from './errors';
 export { getErrorMessage } from './errorMessages';
 export {
   assertPasswordLength,
+  EXPORT_PBES2_ITERATIONS,
   generateExportCode,
   normalizeExportCode,
   openAccess,
@@ -55,7 +56,8 @@ export {
   sealWithPassword,
   VAULT_MIN_PASSWORD_LENGTH,
   VAULT_PBES2_ITERATIONS,
+  VaultLockedError,
+  WrongExportCodeError,
   WrongPasswordError,
 } from './skodaVaultCrypto';
-export type { PasswordField } from './skodaVaultCrypto';
 export { getSkodaLinkStatus, SKODA_EXPIRY_WARNING_DAYS, type SkodaLinkStatus } from './skodaLinkStatus';

@@ -6,21 +6,36 @@ import { CompactEncrypt, compactDecrypt } from 'jose';
 const ALG = 'PBES2-HS512+A256KW';
 const ENC = 'A256GCM';
 
-/** PBKDF2-HMAC-SHA512 iterations (OWASP 2023+ recommendation) */
+/** PBKDF2-HMAC-SHA512 iterations for user-chosen passwords (OWASP 2023+ recommendation) */
 export const VAULT_PBES2_ITERATIONS = 210_000;
+/**
+ * Iterations for export codes. A random 120-bit code can't be guessed, so slow key derivation adds nothing.
+ * This is jose's default limit, which also keeps crafted sync data from forcing expensive decryption.
+ */
+export const EXPORT_PBES2_ITERATIONS = 10_000;
 export const VAULT_MIN_PASSWORD_LENGTH = 10;
-
-/** Which password a WrongPasswordError is about, when more than one was entered */
-export type PasswordField = 'exportCode' | 'localPassword';
 
 /** Thrown when a JWE can't be decrypted: wrong password, tampered data or not a vault at all */
 export class WrongPasswordError extends Error {
-  readonly field?: PasswordField;
-
-  constructor(field?: PasswordField) {
+  constructor() {
     super('Wrong password');
     this.name = 'WrongPasswordError';
-    this.field = field;
+  }
+}
+
+/** Thrown when sealed Škoda access can't be opened with an export code, or belongs to another car */
+export class WrongExportCodeError extends Error {
+  constructor() {
+    super('Wrong export code');
+    this.name = 'WrongExportCodeError';
+  }
+}
+
+/** Thrown when the vault must be unlocked first */
+export class VaultLockedError extends Error {
+  constructor() {
+    super('The vault is locked');
+    this.name = 'VaultLockedError';
   }
 }
 
@@ -40,21 +55,31 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 /** Encrypt a JSON value with a password. A fresh random salt is generated for every call. */
-export async function sealWithPassword(value: unknown, password: string): Promise<string> {
+export async function sealWithPassword(
+  value: unknown,
+  password: string,
+  iterations = VAULT_PBES2_ITERATIONS,
+): Promise<string> {
   return new CompactEncrypt(encoder.encode(JSON.stringify(value)))
     .setProtectedHeader({ alg: ALG, enc: ENC })
-    .setKeyManagementParameters({ p2c: VAULT_PBES2_ITERATIONS })
+    .setKeyManagementParameters({ p2c: iterations })
     .encrypt(encoder.encode(password));
 }
 
-/** Decrypt a value sealed by `sealWithPassword`. Throws WrongPasswordError on any failure. */
-export async function openWithPassword<T>(jwe: string, password: string): Promise<T> {
+/**
+ * Decrypt a value sealed by `sealWithPassword`. Throws WrongPasswordError on any failure,
+ * including a JWE that asks for more than `maxIterations`.
+ */
+export async function openWithPassword<T>(
+  jwe: string,
+  password: string,
+  maxIterations = VAULT_PBES2_ITERATIONS,
+): Promise<T> {
   try {
     const { plaintext } = await compactDecrypt(jwe, encoder.encode(password), {
       keyManagementAlgorithms: [ALG],
       contentEncryptionAlgorithms: [ENC],
-      // jose rejects more than 10,000 iterations by default as a DoS guard
-      maxPBES2Count: VAULT_PBES2_ITERATIONS,
+      maxPBES2Count: maxIterations,
     });
     return JSON.parse(decoder.decode(plaintext)) as T;
   } catch {
@@ -109,19 +134,19 @@ type SealedAccess = { vin: string; token: string };
 
 /** Encrypt a car's Škoda token with an export code */
 export function sealAccess(access: SealedAccess, exportCode: string): Promise<string> {
-  return sealWithPassword(access, normalizeExportCode(exportCode));
+  return sealWithPassword(access, normalizeExportCode(exportCode), EXPORT_PBES2_ITERATIONS);
 }
 
 /**
  * Decrypt a car's Škoda token with an export code. The sealed access must belong to `vin`.
- * Throws WrongPasswordError('exportCode').
+ * Throws WrongExportCodeError.
  */
 export async function openAccess(sealed: string, exportCode: string, vin: string): Promise<string> {
   try {
-    const opened = await openWithPassword<SealedAccess>(sealed, normalizeExportCode(exportCode));
-    if (opened.vin !== vin || typeof opened.token !== 'string' || !opened.token) throw new WrongPasswordError();
-    return opened.token;
+    const opened = await openWithPassword<SealedAccess>(sealed, normalizeExportCode(exportCode), EXPORT_PBES2_ITERATIONS);
+    if (opened.vin === vin && typeof opened.token === 'string' && opened.token) return opened.token;
   } catch {
-    throw new WrongPasswordError('exportCode');
+    // Reported below, the same way as access for another car
   }
+  throw new WrongExportCodeError();
 }

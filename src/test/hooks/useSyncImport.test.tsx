@@ -12,7 +12,14 @@ import {
 import { useSyncImport } from '@/hooks';
 import { MOCK_SKODA } from '@/test/mocks';
 import { createTestQueryClient, stubLocalStorage } from '@/test/utils/testUtils';
-import { generateExportCode, LS_KEYS, sealAccess, type SyncData, WrongPasswordError } from '@/utils';
+import {
+  generateExportCode,
+  LS_KEYS,
+  sealAccess,
+  type SyncData,
+  VaultLockedError,
+  WrongExportCodeError,
+} from '@/utils';
 
 const PASSWORD = 'correct horse battery';
 const EXPORT_CODE = generateExportCode();
@@ -85,23 +92,22 @@ describe('useSyncImport with Škoda access', () => {
 
     const car = result.current.cars[0];
     expect(car.skoda).toEqual({ vin: MOCK_SKODA.VIN, expiresAt: '2027-01-22T12:00:00.000Z', proxyUrl: MOCK_SKODA.PROXY_URL });
-    expect(result.current.syncImport.pendingAccess).toEqual({ count: 1, needsLocalPassword: false });
+    expect(result.current.syncImport.pendingAccessCount).toBe(1);
 
-    await act(() => result.current.syncImport.completeAccess(EXPORT_CODE, ''));
+    await act(() => result.current.syncImport.completeAccess(EXPORT_CODE));
 
     expect(result.current.vault.getToken(result.current.cars[0])).toBe(TOKEN);
-    expect(result.current.syncImport.pendingAccess.count).toBe(0);
+    expect(result.current.syncImport.pendingAccessCount).toBe(0);
   });
 
   it('keeps the access pending when the export code is wrong', async () => {
     const { result } = renderImport();
     await importCar(result);
 
-    const error = await actError(() => result.current.syncImport.completeAccess(generateExportCode(), ''));
+    const error = await actError(() => result.current.syncImport.completeAccess(generateExportCode()));
 
-    expect(error).toBeInstanceOf(WrongPasswordError);
-    expect((error as WrongPasswordError).field).toBe('exportCode');
-    expect(result.current.syncImport.pendingAccess.count).toBe(1);
+    expect(error).toBeInstanceOf(WrongExportCodeError);
+    expect(result.current.syncImport.pendingAccessCount).toBe(1);
     expect(result.current.vault.getToken(result.current.cars[0])).toBeNull();
   });
 
@@ -109,12 +115,15 @@ describe('useSyncImport with Škoda access', () => {
     const { result } = renderImport();
     await act(() => result.current.vault.enable(PASSWORD));
     await importCar(result);
-    expect(result.current.syncImport.pendingAccess.needsLocalPassword).toBe(true);
 
-    const error = await actError(() => result.current.syncImport.completeAccess(EXPORT_CODE, 'wrong password!'));
-    expect((error as WrongPasswordError).field).toBe('localPassword');
+    // While locked, the access stays pending
+    act(() => result.current.vault.lock());
+    const error = await actError(() => result.current.syncImport.completeAccess(EXPORT_CODE));
+    expect(error).toBeInstanceOf(VaultLockedError);
+    expect(result.current.syncImport.pendingAccessCount).toBe(1);
 
-    await act(() => result.current.syncImport.completeAccess(EXPORT_CODE, PASSWORD));
+    await act(() => result.current.vault.unlock(PASSWORD));
+    await act(() => result.current.syncImport.completeAccess(EXPORT_CODE));
 
     expect(result.current.cars[0].skoda?.token).toBeUndefined();
     expect(result.current.vault.getToken(result.current.cars[0])).toBe(TOKEN);

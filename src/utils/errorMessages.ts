@@ -1,8 +1,9 @@
 import type { TFunction } from 'i18next';
 
-import { CALCULATION_ERROR_CODES, formatDuration, formatTime } from '@/utils';
-
 import type { CalculationError } from '@/hooks/useChargingResults';
+
+import { formatDuration, formatTime } from './dateUtils';
+import { CALCULATION_ERROR_CODES } from './errors';
 
 /** Get translated error message for a calculation error */
 export function getErrorMessage(

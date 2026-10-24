@@ -197,12 +197,12 @@ docs/
 - *Link to Škoda*:
   - The user enters this car's VIN and Škoda API key.
   - The app calls `POST /v1/tokens` and stores the returned token and expiry on the car.
-  - The key field is cleared immediately and the key is never persisted.
+  - The key field is cleared once the token is issued (it stays after an error, so the user can retry), and the key is never persisted.
 - Status display:
   - Linked, with expiry.
   - Expires within 14 days, shown as a warning.
   - Expired or revoked, with a re-link prompt.
-- *Add Škoda car* (Settings → Cars): the user enters a VIN and API key. The app issues a token, reads the car's name with it, and opens the car form with the name filled in. Battery size and charging power aren't available from the Škoda API, so the user fills those in. The token is only stored when the car is saved; if the user cancels, the issued token is simply never used.
+- *Add Škoda car* (Settings → Cars): the user enters a VIN and API key. The app issues a token, reads the car's name with it, and opens the car form with the name filled in. Battery size and charging power aren't available from the Škoda API, so the user fills those in. The token is only stored when the car is saved; if the user cancels, the issued token is simply never used. If the car's name can't be read, the token is kept and the name is left empty. If the token can't be stored, the car isn't added.
 - *Unlink* removes `skoda` from the car. The status text should tell users to also delete the key in the MyŠkoda app to fully revoke access.
 
 **Data**
@@ -210,9 +210,10 @@ docs/
 - New hook `useSkodaVehicleQuery(car)`:
   - Uses TanStack Query with a `staleTime` of 60 s.
   - Is disabled when the proxy is off or the car isn't linked.
-- When the selected car is linked, the input form pre-fills start % from the current state of charge and target % from the charge limit, once per selected car. Later refreshes don't overwrite what the user typed. If the car is already at its charge limit, the form says so.
+- When the selected car is linked, the input form pre-fills start % from the current state of charge and target % from the charge limit, once per selected car. Later refreshes don't overwrite what the user typed. If the car is already at its charge limit, the form says so while the vehicle data is shown.
 
 **Sync and PWA**
+- **Sync links** (`#sync=…`) are read on load and when the hash changes in an open tab. The hash is removed from the address bar and history right away, also when it can't be imported.
 - **Sync/QR export:** the VIN, expiry and proxy URL are included. The token is excluded by default, and a plain token is never exported or imported. See *Sync with Škoda access* in §7.1 for the opt-in.
 - **Imported sync data is size-limited** before it is parsed: at most 20,000 characters encoded, 64 KB decompressed and 50 cars. If the data doesn't fit in a QR code, the app says so and offers the link or code instead.
 - **PWA:** no Workbox runtime cache for proxy URLs.
@@ -241,6 +242,9 @@ By default, tokens are stored in plain form on the car profiles in `localStorage
 - The vault is a single compact-JWE string. Its plaintext is `{ [carId]: { vin, token } }`.
 - The car profiles keep only the non-secret `vin` and `expiresAt`, so the link status and expiry warnings still show while the vault is locked.
 - Decrypted tokens exist **only in memory** in `SkodaVaultContext`. They are never written back to storage.
+- While the vault is unlocked, the password is kept in memory as well, so that linking, unlinking, adding a car and importing access don't ask for it again. It is cleared together with the tokens on every lock, manual or automatic. This is a deliberate trade-off: an attacker who can read the page's memory while it is unlocked can already read the tokens, which is what the password protects.
+- All changes to the vault run one after another, each starting from the latest stored vault. Where a new token goes (vault or car profile) is decided when it is stored, not when the request that issued it started. A plain token that appears on a car while protection is on, e.g. stored by another tab, is moved into the vault on the next unlock.
+- If the password was changed in another tab, the next change in this tab fails to decrypt the vault. The vault then locks, and the user unlocks it with the new password.
 
 **Behaviour**
 
@@ -249,16 +253,19 @@ By default, tokens are stored in plain form on the car profiles in `localStorage
 | Turn on | The user chooses a password: at least 10 characters, entered twice. The plain tokens are moved into the vault and deleted from the car profiles. |
 | Unlock | Asked for lazily, the first time Škoda data is needed (a linked car is selected), with a *Skip* option. Until the vault is unlocked, the planner works as if the car weren't linked. |
 | Auto-lock | Clears the in-memory tokens after 15 minutes of inactivity, after the tab has been hidden for 15 minutes, and on manual *Lock*. The timeout is configurable: 5, 15, 60 minutes, or *until tab is closed*. |
-| Link, re-link or unlink a car | Re-prompts for the password and re-encrypts the vault. The password is never kept in memory. |
+| Link, re-link, unlink or add a car | Needs the vault to be unlocked: the form asks for the password first if it is locked. The API key is only sent after that. Locking while the form is open discards it, including a token issued for a car that isn't added yet. |
 | Change password | Asks for the current and the new password, then decrypts and re-encrypts the vault. |
+| Import Škoda access | Needs the vault to be unlocked, like linking. |
 | Turn off | Requires the password. The tokens move back to plain storage on the car profiles. |
 | Forgot password | *Reset vault* deletes it, and the user re-links their cars with their Škoda keys. Nothing can be recovered on the server, and nothing is compromised. |
 | Sync/QR export with *Include Škoda access* | See *Sync with Škoda access* below. If the vault is locked, the export asks to unlock it first. |
 
 **Sync with Škoda access**
-- Ticking *Include Škoda access* generates a random **export code** of 24 characters (120 bits from `crypto.getRandomValues`, written in Crockford base32 as 6 groups of 4). The app shows it next to the sync link, QR code and text code.
-- Each car's `{ vin, token }` is sealed as its own PBES2 JWE with the export code as the password, using the same `jose` settings as the vault. The sync data only carries the sealed token, so the link or QR code alone gives no access.
-- The importing device asks for the export code, plus its own vault password if protection is on there. The code is typed in, so case, spaces and dashes don't matter, and I, L and O are read as 1, 1 and 0.
+- Ticking *Include Škoda access* generates a random **export code** of 24 characters (120 bits from `crypto.getRandomValues`, written in Crockford base32 as 6 groups of 4). It is hidden behind a *Show export code* button, so that it isn't on screen together with the QR code, e.g. in a screenshot. A new code is hidden again.
+- Each car's `{ vin, token }` is sealed as its own PBES2 JWE with the export code as the password, with the same `jose` algorithms as the vault. The sync data only carries the sealed token, so the link or QR code alone gives no access.
+- Export codes use `p2c` = 10,000. A random 120-bit code can't be guessed, so slow key derivation adds nothing for it. This is also `jose`'s default limit, so the importing device opens it with `maxPBES2Count: 10_000` and a crafted export with a huge iteration count is rejected instead of keeping the browser busy.
+- While the access is being sealed, or if sealing fails or the vault must be unlocked first, the sync link, QR code and text code are hidden. An export without the access the user asked for can't be shared by mistake.
+- The importing device asks for the export code. If protection is on there, its vault must be unlocked first. The code is typed in, so case, spaces and dashes don't matter, and I, L and O are read as 1, 1 and 0.
 - A sealed token only opens for the VIN it was sealed with. A wrong code, or a token moved to another car, is rejected as a wrong export code.
 - The user can skip this step. The cars are then imported without access, and show as needing a new link.
 - Send the code a different way than the link, or read it out, so that someone who sees one doesn't also get the other.
@@ -308,7 +315,11 @@ The step-by-step guide and config samples are in [skoda-proxy-deployment.md](sko
   - Auto-lock clears the in-memory tokens. Use fake timers.
   - Change password, and turning protection off, both work.
   - Vault changes that run at the same time don't overwrite each other, and locking during an unlock keeps the vault locked.
-- Export codes: format, normalisation, round-trip, and rejection of a wrong code or another VIN.
+  - While unlocked, changes don't need the password again; after a lock they fail until the vault is unlocked.
+  - Linking while locked sends no request. A car added from a lookup isn't kept if its token can't be stored.
+  - A plain token on a car is moved into the unlocked vault.
+- Export codes: format, normalisation, round-trip, rejection of a wrong code or another VIN, and `p2c` = 10,000 with higher counts refused.
+- Export state: nothing included until opted in, a new code each time, waiting for unlock, and a sealing failure.
 - Sync data: size limits, plain tokens dropped, and import with an export code into a protected and an unprotected device.
 
 **E2E**
@@ -316,6 +327,7 @@ The step-by-step guide and config samples are in [skoda-proxy-deployment.md](sko
 - With the proxy disabled, check that no proxy requests are made.
 - Check that the sync export excludes the token unless the user opts in, and that importing with the export code restores access.
 - Add a car from its VIN and API key, and check that its name is filled in from Škoda.
+- With the vault locked, adding a car asks to unlock first and then not again.
 - The About dialog shows the installed version.
 - Turn on password protection, reload, unlock, and check the data loads. A wrong password shows an error. *Lock* hides the Škoda data again.
 

@@ -1,6 +1,7 @@
 import { decodeProtectedHeader } from 'jose';
 
 import {
+  EXPORT_PBES2_ITERATIONS,
   generateExportCode,
   normalizeExportCode,
   openAccess,
@@ -8,6 +9,7 @@ import {
   sealAccess,
   sealWithPassword,
   VAULT_PBES2_ITERATIONS,
+  WrongExportCodeError,
   WrongPasswordError,
 } from '@/utils';
 
@@ -83,7 +85,17 @@ describe('export codes', () => {
 
     const error = await openAccess(sealed, typedCode ?? code, vin).catch(e => e);
 
-    expect(error).toBeInstanceOf(WrongPasswordError);
-    expect(error.field).toBe('exportCode');
+    expect(error).toBeInstanceOf(WrongExportCodeError);
+  });
+
+  // The code is random with 120 bits, so it needs no slow key derivation. Fewer iterations also keep it
+  // within the limit jose accepts by default, so a crafted export can't make the receiver spin.
+  it('seals with the export iteration count and refuses higher counts', async () => {
+    const code = generateExportCode();
+    const sealed = await sealAccess({ vin: VIN, token: 'secret-token' }, code);
+    expect(decodeProtectedHeader(sealed).p2c).toBe(EXPORT_PBES2_ITERATIONS);
+
+    const costly = await sealWithPassword({ vin: VIN, token: 'secret-token' }, code, EXPORT_PBES2_ITERATIONS * 2);
+    await expect(openAccess(costly, code, VIN)).rejects.toBeInstanceOf(WrongExportCodeError);
   });
 });

@@ -5,4 +5,5 @@ export { isSkodaKeyComplete, type SkodaKeyValues } from './skodaKeyValues';
 export { SkodaLinkSection } from './SkodaLinkSection';
 export { SkodaLinkStatusText } from './SkodaLinkStatusText';
 export { SkodaUnlockForm } from './SkodaUnlockForm';
+export { SkodaVaultGate } from './SkodaVaultGate';
 export { SkodaVehicleStatus } from './SkodaVehicleStatus';

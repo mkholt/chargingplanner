@@ -1,8 +1,11 @@
 import React from 'react';
 
-import { CarImportResultDialog, ImportPreviewDialog, SkodaAccessImportDialog } from '@/components/sync';
 import { useSyncImport } from '@/hooks';
 import type { SyncData } from '@/utils';
+
+import { CarImportResultDialog } from './CarImportResultDialog';
+import { ImportPreviewDialog } from './ImportPreviewDialog';
+import { SkodaAccessImportDialog } from './SkodaAccessImportDialog';
 
 type Props = {
   /** Parsed sync data to import; null while there is nothing to import */
@@ -18,7 +21,7 @@ export const SyncImportFlow: React.FC<Props> = ({ data, onDone }) => {
     confirmImport,
     importResult,
     closeResult,
-    pendingAccess,
+    pendingAccessCount,
     completeAccess,
     skipAccess,
   } = useSyncImport();
@@ -40,14 +43,13 @@ export const SyncImportFlow: React.FC<Props> = ({ data, onDone }) => {
       />
 
       <SkodaAccessImportDialog
-        open={pendingAccess.count > 0}
-        needsLocalPassword={pendingAccess.needsLocalPassword}
+        open={pendingAccessCount > 0}
         onSubmit={completeAccess}
         onSkip={skipAccess}
       />
 
       <CarImportResultDialog
-        open={importResult !== null && pendingAccess.count === 0}
+        open={importResult !== null && pendingAccessCount === 0}
         onClose={closeResult}
         result={importResult}
       />

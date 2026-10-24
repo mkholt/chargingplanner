@@ -23,7 +23,7 @@ export type {
 // Škoda proxy and token vault
 export { SkodaProxyProvider, useSkodaProxy } from './SkodaProxyContext';
 export { SkodaVaultProvider, useSkodaVault } from './SkodaVaultContext';
-export type { AutoLockMinutes } from './SkodaVaultContext';
+export type { AutoLockMinutes, StoredLink } from './SkodaVaultContext';
 
 // Settings UI
 export { SettingsUIProvider, useSettingsUI } from './SettingsUIContext';

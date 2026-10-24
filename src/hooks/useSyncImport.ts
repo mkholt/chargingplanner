@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { type SkodaLink, useCars, usePriceSettings, useSkodaVault } from '@/contexts';
-import { mergeCars, type MergeResult, openAccess, type SyncCar, type SyncData, WrongPasswordError } from '@/utils';
+import { type SkodaLink, type StoredLink, useCars, usePriceSettings, useSkodaVault } from '@/contexts';
+import { mergeCars, type MergeResult, openAccess, type SyncCar, type SyncData } from '@/utils';
 
 /** Sealed Škoda access of an imported car, waiting for the export code */
 type PendingAccess = {
@@ -13,13 +13,13 @@ type PendingAccess = {
 /**
  * Import cars and settings from sync data.
  * Škoda access is sealed with the export code shown on the exporting device. It is kept pending until
- * `completeAccess` gets the code (and this device's vault password, if protected). Skipping it leaves
- * the cars linked without access.
+ * `completeAccess` gets the code; with password protection on, this device's vault must be unlocked first.
+ * Skipping it leaves the cars linked without access.
  */
 export function useSyncImport() {
-  const { cars, addCar, updateCar } = useCars();
+  const { cars, addCar } = useCars();
   const { applySettings } = usePriceSettings();
-  const { isProtected, updateVault } = useSkodaVault();
+  const { storeLinks } = useSkodaVault();
   const [importResult, setImportResult] = useState<MergeResult<SyncCar> | null>(null);
   const [pendingAccess, setPendingAccess] = useState<PendingAccess[]>([]);
 
@@ -48,37 +48,23 @@ export function useSyncImport() {
     setImportResult(result);
   }, [addCar, applySettings, cars]);
 
-  /** Throws WrongPasswordError with `field` set to the password that is wrong */
-  const completeAccess = useCallback(async (exportCode: string, localPassword: string) => {
-    const opened = await Promise.all(pendingAccess.map(async entry => ({
-      ...entry,
-      token: await openAccess(entry.sealedToken, exportCode, entry.link.vin),
-    })));
-
-    if (isProtected) {
-      try {
-        await updateVault(localPassword, tokens => ({
-          ...tokens,
-          ...Object.fromEntries(opened.map(({ carId, link, token }) => [carId, { vin: link.vin, token }])),
-        }));
-      } catch (e) {
-        throw e instanceof WrongPasswordError ? new WrongPasswordError('localPassword') : e;
-      }
-    } else {
-      opened.forEach(({ carId, link, token }) => updateCar(carId, { skoda: { ...link, token } }));
+  /** Throws WrongExportCodeError, or VaultLockedError if this device's vault is locked */
+  const completeAccess = useCallback(async (exportCode: string) => {
+    const opened: StoredLink[] = [];
+    // One at a time, so that a wrong code fails after the first car instead of decrypting all of them
+    for (const { carId, link, sealedToken } of pendingAccess) {
+      opened.push({ carId, link, token: await openAccess(sealedToken, exportCode, link.vin) });
     }
+    await storeLinks(opened);
     setPendingAccess([]);
-  }, [isProtected, pendingAccess, updateCar, updateVault]);
+  }, [pendingAccess, storeLinks]);
 
   return {
     existingCarNames,
     confirmImport,
     importResult,
     closeResult: useCallback(() => setImportResult(null), []),
-    pendingAccess: {
-      count: pendingAccess.length,
-      needsLocalPassword: isProtected,
-    },
+    pendingAccessCount: pendingAccess.length,
     completeAccess,
     skipAccess: useCallback(() => setPendingAccess([]), []),
   };

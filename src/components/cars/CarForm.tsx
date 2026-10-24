@@ -28,6 +28,8 @@ type Props = {
   onCancel: () => void;
   saveLabel: string;
   autoFocus?: boolean;
+  /** Disables saving, e.g. while a save is running */
+  saving?: boolean;
   /** Extra content between the fields and the buttons */
   children?: React.ReactNode;
 };
@@ -40,6 +42,7 @@ export const CarForm: React.FC<Props> = ({
   onCancel,
   saveLabel,
   autoFocus,
+  saving = false,
   children,
 }) => {
   const { t } = useTranslation();
@@ -116,6 +119,7 @@ export const CarForm: React.FC<Props> = ({
           appearance="primary"
           icon={<Checkmark20Regular />}
           onClick={onSave}
+          disabled={saving}
           aria-label={saveLabel}
           data-testid="save-car-button"
         >

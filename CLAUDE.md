@@ -35,6 +35,8 @@ Example: `import { useCars } from "@/contexts"`
 
 Folders are barelled, and imports must always be from the folder not the specific component. Components, contexts and utilities should always be added to their barrels.
 
+Inside a folder, import siblings with relative paths (`import { Stack } from './Stack'`), never through the folder's own barrel, which risks circular imports.
+
 Do not be afraid to make breaking changes. Do not keep things for "backwards compatibility". If things are to be marked as deprecated during a refactoring or change, remove them afterwards and update all references.
 
 ## State Management Patterns

@@ -216,4 +216,34 @@ test.describe('Škoda password protection', () => {
     await expect(skodaPage.unlockForm).toBeVisible();
     await expect(skodaPage.vehicleSummary).not.toBeVisible();
   });
+
+  test('asks to unlock before adding a car, then not again', async ({ appPage, settingsPanePage, skodaPage, page }) => {
+    await clearAllStorage(page);
+    await seedSkodaProxy(page);
+    await page.goto('/');
+    await appPage.waitForAppReady();
+    await appPage.openSettings();
+    await settingsPanePage.switchToAppTab();
+    await skodaPage.turnOnVault(VAULT_PASSWORD);
+    await skodaPage.lockVault();
+    await settingsPanePage.switchToCarsTab();
+
+    const addCard = page.getByTestId('add-skoda-car-card');
+    await addCard.scrollIntoViewIfNeeded();
+    await addCard.click();
+    await expect(skodaPage.unlockForm).toBeVisible();
+    await expect(skodaPage.addCarForm).not.toBeVisible();
+    await skodaPage.unlock(VAULT_PASSWORD);
+
+    // Unlocked: the car is added without asking for the password again
+    await skodaPage.addCarForm.getByTestId('skoda-vin-input').fill(MOCK_SKODA.VIN);
+    await skodaPage.addCarForm.getByTestId('skoda-api-key-input').fill(MOCK_SKODA.API_KEY);
+    await page.getByTestId('add-skoda-car-lookup-button').click();
+    await page.getByTestId('car-battery-input').fill('77');
+    await skodaPage.saveCar();
+
+    await expect(skodaPage.carLinkStatus(MOCK_SKODA.VEHICLE_NAME)).toHaveAttribute('data-status', 'linked');
+    const stored = await page.evaluate(() => Object.values(localStorage).join('\n'));
+    expect(stored).not.toContain(`mock-token.${MOCK_SKODA.VIN}`);
+  });
 });

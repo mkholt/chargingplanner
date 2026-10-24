@@ -241,7 +241,8 @@ export const InputForm: React.FC<Props> = ({
         <>
           <CarSelector />
           <SkodaVehicleStatus car={selectedCar} />
-          {prefill?.atChargeLimit && (
+          {/* Only while the data is shown: after locking the vault, the note would have nothing to refer to */}
+          {vehicle && prefill?.atChargeLimit && (
             <Text
               size={200}
               block

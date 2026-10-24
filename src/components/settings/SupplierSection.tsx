@@ -11,10 +11,11 @@ import {
 import { MyLocation16Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { SelectionCard } from '@/components/settings';
 import { Stack } from '@/components/ui';
 import { isCoordinates, isPostalCode, usePriceSettings } from '@/contexts';
 import { isValidPostalCode } from '@/data';
+
+import { SelectionCard } from './SelectionCard';
 
 export const SupplierSection: React.FC = () => {
   const { t } = useTranslation();

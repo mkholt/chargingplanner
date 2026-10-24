@@ -10,9 +10,10 @@ import {
 import { LeafOne20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { SelectionCard } from '@/components/settings';
 import { usePriceSettings } from '@/contexts';
 import { useCompaniesQuery } from '@/hooks';
+
+import { SelectionCard } from './SelectionCard';
 
 export const CompanySection: React.FC = () => {
   const { t } = useTranslation();

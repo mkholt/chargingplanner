@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 
 import {
   type Car,
@@ -13,7 +14,7 @@ import { getChargePrefill, useSkodaLink, useSkodaVehicleQuery } from '@/hooks';
 import { MOCK_SKODA } from '@/test/mocks';
 import { server } from '@/test/mocks/server';
 import { createTestQueryClient, stubLocalStorage } from '@/test/utils/testUtils';
-import { LS_KEYS, MS_PER_MINUTE, WrongPasswordError } from '@/utils';
+import { LS_KEYS, MS_PER_MINUTE, openWithPassword, VaultLockedError, WrongPasswordError } from '@/utils';
 
 const PASSWORD = 'correct horse battery';
 const CAR: Car = { id: 'car-1', name: 'Enyaq', batterySize: 77, maxPower: 11 };
@@ -75,8 +76,16 @@ describe('Škoda linking and the password vault', () => {
   /** Every value in localStorage, to check that no token is stored in plain form */
   const storedText = () => Object.values(store).join('\n');
 
-  async function linkCar(result: ReturnType<typeof renderSkoda>['result'], password = '') {
-    await act(() => result.current.skodaLink.link(result.current.car, MOCK_SKODA.VIN, MOCK_SKODA.API_KEY, password));
+  async function linkCar(result: ReturnType<typeof renderSkoda>['result']) {
+    await act(() => result.current.skodaLink.link(result.current.car, MOCK_SKODA.VIN, MOCK_SKODA.API_KEY));
+  }
+
+  async function lookUp(result: ReturnType<typeof renderSkoda>['result']) {
+    let lookup: Awaited<ReturnType<typeof result.current.skodaLink.lookUp>> | undefined;
+    await act(async () => {
+      lookup = await result.current.skodaLink.lookUp(MOCK_SKODA.VIN, MOCK_SKODA.API_KEY);
+    });
+    return lookup!;
   }
 
   describe('without password protection', () => {
@@ -118,20 +127,27 @@ describe('Škoda linking and the password vault', () => {
     it('adds a car linked with the token from a lookup', async () => {
       const { result } = renderSkoda();
 
-      let lookup: Awaited<ReturnType<typeof result.current.skodaLink.lookUp>> | undefined;
-      await act(async () => {
-        lookup = await result.current.skodaLink.lookUp(MOCK_SKODA.VIN, MOCK_SKODA.API_KEY);
-      });
-      expect(lookup?.vehicle.name).toBe(MOCK_SKODA.VEHICLE_NAME);
+      const lookup = await lookUp(result);
+      expect(lookup.vehicle?.name).toBe(MOCK_SKODA.VEHICLE_NAME);
 
       let added: Car | undefined;
       await act(async () => {
-        added = await result.current.skodaLink.addLinkedCar({ name: 'New Enyaq', batterySize: 77, maxPower: 11 }, lookup!);
+        added = await result.current.skodaLink.addLinkedCar({ name: 'New Enyaq', batterySize: 77, maxPower: 11 }, lookup);
       });
 
       const car = result.current.carsContext.cars.find(c => c.id === added?.id);
       expect(car?.skoda).toMatchObject({ vin: MOCK_SKODA.VIN, proxyUrl: MOCK_SKODA.PROXY_URL });
-      expect(result.current.vault.getToken(car ?? null)).toBe(lookup?.issued.token);
+      expect(result.current.vault.getToken(car ?? null)).toBe(lookup.issued.token);
+    });
+
+    it('keeps the token from a lookup when the vehicle cannot be read', async () => {
+      server.use(http.get('*/v1/vehicles/:vin', () => new HttpResponse(null, { status: 502 })));
+      const { result } = renderSkoda();
+
+      const lookup = await lookUp(result);
+
+      expect(lookup.vehicle).toBeNull();
+      expect(lookup.issued.token).toBeTruthy();
     });
 
     it('removes the link when unlinking', async () => {
@@ -189,31 +205,71 @@ describe('Škoda linking and the password vault', () => {
       expect(result.current.vault.getToken(result.current.car)).toBe(token);
     });
 
-    it('checks the vault password before exchanging the API key', async () => {
+    it('refuses to link while locked, without exchanging the API key', async () => {
       const { result } = await renderProtected();
+      act(() => result.current.vault.lock());
       const requests = countProxyRequests();
 
       const error = await actError(() =>
-        result.current.skodaLink.link(result.current.car, MOCK_SKODA.VIN, MOCK_SKODA.API_KEY, 'wrong password!')
+        result.current.skodaLink.link(result.current.car, MOCK_SKODA.VIN, MOCK_SKODA.API_KEY)
       );
       requests.stop();
 
-      expect(error).toBeInstanceOf(WrongPasswordError);
-
+      expect(error).toBeInstanceOf(VaultLockedError);
       expect(requests.counter.count).toBe(0);
     });
 
-    it('stores a new link in the vault only', async () => {
+    it('stores a new link in the vault only, without asking for the password while unlocked', async () => {
       const { result } = await renderProtected();
-      await act(() => result.current.skodaLink.unlink(result.current.car, PASSWORD));
+      await act(() => result.current.skodaLink.unlink(result.current.car));
       expect(result.current.vault.getToken(result.current.car)).toBeNull();
 
-      await linkCar(result, PASSWORD);
+      await linkCar(result);
 
       const token = result.current.vault.getToken(result.current.car);
       expect(token).toBeTruthy();
       expect(result.current.car.skoda?.token).toBeUndefined();
       expect(storedText()).not.toContain(token);
+    });
+
+    it('forgets the password when locked', async () => {
+      const { result } = await renderProtected();
+      act(() => result.current.vault.lock());
+      // Changes need the password, which is only kept while unlocked
+      const error = await actError(() => result.current.vault.removeToken(CAR.id));
+
+      expect(error).toBeInstanceOf(VaultLockedError);
+      expect(result.current.vault.isUnlocked).toBe(false);
+
+      await act(() => result.current.vault.unlock(PASSWORD));
+      await act(() => result.current.vault.removeToken(CAR.id));
+      expect(result.current.vault.getToken(result.current.car)).toBeNull();
+    });
+
+    it('does not keep a car added from a lookup when its token cannot be stored', async () => {
+      const { result } = await renderProtected();
+      const lookup = await lookUp(result);
+      act(() => result.current.vault.lock());
+
+      const error = await actError(() =>
+        result.current.skodaLink.addLinkedCar({ name: 'New Enyaq', batterySize: 77, maxPower: 11 }, lookup)
+      );
+
+      expect(error).toBeInstanceOf(VaultLockedError);
+      expect(result.current.carsContext.cars.map(car => car.id)).toEqual([CAR.id]);
+      expect(storedText()).not.toContain(lookup.issued.token);
+    });
+
+    it('moves a plain token stored on a car into the vault', async () => {
+      const { result } = await renderProtected();
+
+      act(() => result.current.carsContext.updateCar(CAR.id, {
+        skoda: { ...result.current.car.skoda!, token: 'stray-token' },
+      }));
+
+      await waitFor(() => expect(result.current.car.skoda?.token).toBeUndefined());
+      expect(result.current.vault.getToken(result.current.car)).toBe('stray-token');
+      expect(storedText()).not.toContain('stray-token');
     });
 
     it('changes the password', async () => {
@@ -269,15 +325,16 @@ describe('Škoda linking and the password vault', () => {
       async function renderWithUpdates() {
         const rendered = await renderProtected();
         const { result } = rendered;
-        const set = (id: string, token: string) => result.current.vault.updateVault(PASSWORD, tokens => ({
-          ...tokens,
-          [id]: { vin: MOCK_SKODA.VIN, token },
-        }));
-        const read = async () => {
-          let current: Record<string, { token: string }> = {};
-          await act(() => result.current.vault.updateVault(PASSWORD, tokens => (current = tokens)));
-          return current;
-        };
+        const set = (carId: string, token: string) => result.current.vault.storeLinks([{
+          carId,
+          link: { vin: MOCK_SKODA.VIN, expiresAt: '2099-01-01T00:00:00.000Z', proxyUrl: MOCK_SKODA.PROXY_URL },
+          token,
+        }]);
+        /** The vault as stored */
+        const read = () => openWithPassword<Record<string, { token: string }>>(
+          JSON.parse(store[LS_KEYS.SKODA_VAULT]).jwe,
+          PASSWORD,
+        );
         return { ...rendered, set, read };
       }
 
@@ -302,6 +359,7 @@ describe('Škoda linking and the password vault', () => {
 
         // Kept by the update that added it, dropped by the next one
         expect(Object.keys(await read())).toContain('deleted-car');
+        await act(() => set(CAR.id, 'token-1'));
         expect(Object.keys(await read())).toEqual([CAR.id]);
       });
     });

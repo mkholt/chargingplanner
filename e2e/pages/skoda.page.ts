@@ -135,9 +135,12 @@ export class SkodaPage {
     return output.inputValue();
   }
 
-  /** Include the Škoda access in the export, and read the export code that unlocks it */
+  /** Include the Škoda access in the export, and show and read the export code that unlocks it */
   async includeAccess(): Promise<string> {
     await this.includeAccessCheckbox.check();
+    // The code is hidden until asked for
+    await expect(this.exportCode).not.toBeVisible();
+    await this.page.getByTestId('skoda-export-show-code-button').click();
     await expect(this.exportCode).not.toBeEmpty();
     return (await this.exportCode.textContent()) ?? '';
   }

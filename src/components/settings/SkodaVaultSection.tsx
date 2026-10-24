@@ -5,7 +5,7 @@ import { LockClosed20Regular, LockOpen20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { getSkodaErrorMessage, SkodaUnlockForm } from '@/components/skoda';
-import { PasswordInput, Stack } from '@/components/ui';
+import { FormActions, PasswordInput, Stack } from '@/components/ui';
 import { type AutoLockMinutes, useSkodaVault } from '@/contexts';
 import { useAsyncAction } from '@/hooks';
 import { VAULT_MIN_PASSWORD_LENGTH } from '@/utils';
@@ -13,27 +13,6 @@ import { VAULT_MIN_PASSWORD_LENGTH } from '@/utils';
 type Panel = 'enable' | 'unlock' | 'change' | 'disable' | 'reset' | null;
 
 const AUTO_LOCK_OPTIONS: AutoLockMinutes[] = [5, 15, 60, null];
-
-type FormActionsProps = {
-  submitLabel: string;
-  disabled: boolean;
-  testId: string;
-  onCancel: () => void;
-};
-
-const FormActions: React.FC<FormActionsProps> = ({ submitLabel, disabled, testId, onCancel }) => {
-  const { t } = useTranslation();
-  return (
-    <Stack horizontal gap={tokens.spacingHorizontalS} justify="flex-end">
-      <Button appearance="subtle" onClick={onCancel}>
-        {t('common.cancel')}
-      </Button>
-      <Button type="submit" appearance="primary" disabled={disabled} data-testid={testId}>
-        {submitLabel}
-      </Button>
-    </Stack>
-  );
-};
 
 type PasswordFormProps = {
   /** Ask for the current password as well */

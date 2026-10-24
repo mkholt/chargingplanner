@@ -4,7 +4,7 @@ import { Button, Divider, Text, tokens } from '@fluentui/react-components';
 import { Link20Regular, LinkDismiss20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { Stack } from '@/components/ui';
+import { ErrorText, FormActions, Stack } from '@/components/ui';
 import { type Car, useSkodaProxy } from '@/contexts';
 import { useAsyncAction, useSkodaLink } from '@/hooks';
 
@@ -12,6 +12,7 @@ import { getSkodaErrorMessage } from './skodaErrors';
 import { SkodaKeyFields } from './SkodaKeyFields';
 import { isSkodaKeyComplete, type SkodaKeyValues } from './skodaKeyValues';
 import { SkodaLinkStatusText } from './SkodaLinkStatusText';
+import { SkodaVaultGate } from './SkodaVaultGate';
 
 type Mode = 'view' | 'link' | 'unlink';
 
@@ -19,16 +20,17 @@ type Mode = 'view' | 'link' | 'unlink';
 export const SkodaLinkSection: React.FC<{ car: Car }> = ({ car }) => {
   const { t } = useTranslation();
   const { baseUrl } = useSkodaProxy();
-  const { link, unlink, requiresPassword } = useSkodaLink();
+  const { link, unlink } = useSkodaLink();
   const [mode, setMode] = useState<Mode>('view');
-  const [values, setValues] = useState<SkodaKeyValues>({ vin: car.skoda?.vin ?? '', apiKey: '', password: '' });
+  const [values, setValues] = useState<SkodaKeyValues>({ vin: car.skoda?.vin ?? '', apiKey: '' });
   const { run, pending, error, reset } = useAsyncAction();
 
   if (!baseUrl) return null;
 
   const changeMode = (next: Mode) => {
     setMode(next);
-    setValues(prev => ({ ...prev, apiKey: '', password: '' }));
+    // The key is only needed for one request, so it doesn't stay in the form
+    setValues(prev => ({ ...prev, apiKey: '' }));
     reset();
   };
 
@@ -36,29 +38,8 @@ export const SkodaLinkSection: React.FC<{ car: Car }> = ({ car }) => {
     if (await run(action)) changeMode('view');
   };
 
-  const handleLink = () => {
-    const { vin, apiKey, password } = values;
-    // The key is only needed for this one request, so it doesn't stay in the form
-    setValues(prev => ({ ...prev, apiKey: '' }));
-    void submit(() => link(car, vin, apiKey.trim(), password));
-  };
-
-  const errorText = error !== null && (
-    <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }} data-testid="skoda-link-error">
-      {getSkodaErrorMessage(error, t)}
-    </Text>
-  );
-
-  const formActions = (submitLabel: string, disabled: boolean, testId: string) => (
-    <Stack horizontal gap={tokens.spacingHorizontalS} justify="flex-end">
-      <Button appearance="subtle" onClick={() => changeMode('view')}>
-        {t('common.cancel')}
-      </Button>
-      <Button type="submit" appearance="primary" disabled={disabled || pending} data-testid={testId}>
-        {submitLabel}
-      </Button>
-    </Stack>
-  );
+  const errorText = <ErrorText message={error ? getSkodaErrorMessage(error, t) : null} testId="skoda-link-error" />;
+  const cancel = () => changeMode('view');
 
   return (
     <Stack gap={tokens.spacingHorizontalS} data-testid="skoda-link-section">
@@ -89,30 +70,39 @@ export const SkodaLinkSection: React.FC<{ car: Car }> = ({ car }) => {
       )}
 
       {mode === 'link' && (
-        <form onSubmit={e => { e.preventDefault(); handleLink(); }}>
-          <Stack gap={tokens.spacingHorizontalS}>
-            <SkodaKeyFields values={values} onChange={setValues} requiresPassword={requiresPassword} />
-            {errorText}
-            {formActions(
-              car.skoda ? t('skoda.link.relink') : t('skoda.link.link'),
-              !isSkodaKeyComplete(values, requiresPassword),
-              'skoda-link-submit-button',
-            )}
-          </Stack>
-        </form>
+        <SkodaVaultGate prompt={t('skoda.vault.unlockToLinkPrompt')} onCancel={cancel}>
+          <form onSubmit={e => { e.preventDefault(); void submit(() => link(car, values.vin, values.apiKey.trim())); }}>
+            <Stack gap={tokens.spacingHorizontalS}>
+              <SkodaKeyFields values={values} onChange={setValues} />
+              {errorText}
+              <FormActions
+                submitLabel={car.skoda ? t('skoda.link.relink') : t('skoda.link.link')}
+                disabled={pending || !isSkodaKeyComplete(values)}
+                testId="skoda-link-submit-button"
+                onCancel={cancel}
+              />
+            </Stack>
+          </form>
+        </SkodaVaultGate>
       )}
 
       {mode === 'unlink' && (
-        <form onSubmit={e => { e.preventDefault(); void submit(() => unlink(car, values.password)); }}>
-          <Stack gap={tokens.spacingHorizontalS}>
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              {t('skoda.link.unlinkHint')}
-            </Text>
-            <SkodaKeyFields values={values} onChange={setValues} requiresPassword={requiresPassword} passwordOnly />
-            {errorText}
-            {formActions(t('skoda.link.unlink'), requiresPassword && !values.password, 'skoda-unlink-confirm-button')}
-          </Stack>
-        </form>
+        <SkodaVaultGate prompt={t('skoda.vault.unlockToLinkPrompt')} onCancel={cancel}>
+          <form onSubmit={e => { e.preventDefault(); void submit(() => unlink(car)); }}>
+            <Stack gap={tokens.spacingHorizontalS}>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                {t('skoda.link.unlinkHint')}
+              </Text>
+              {errorText}
+              <FormActions
+                submitLabel={t('skoda.link.unlink')}
+                disabled={pending}
+                testId="skoda-unlink-confirm-button"
+                onCancel={cancel}
+              />
+            </Stack>
+          </form>
+        </SkodaVaultGate>
       )}
     </Stack>
   );
