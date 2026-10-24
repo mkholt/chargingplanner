@@ -61,7 +61,7 @@ ALLOWED_ORIGINS=https://ev.example.com
 # Reverse proxy on the same host → trust loopback for X-Forwarded-For
 TRUSTED_PROXIES=loopback
 # Optional: seconds to cache vehicle responses (0 disables), and pino log level
-#CACHE_TTL_SECONDS=60
+#CACHE_TTL_SECONDS=60   (maximum 300)
 #LOG_LEVEL=info
 ```
 
@@ -107,6 +107,9 @@ LockPersonality=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 CapabilityBoundingSet=
+PrivateUsers=yes
+UMask=0077
+MemoryMax=256M
 # Node's V8 JIT needs writable+executable memory, so MemoryDenyWriteExecute stays off.
 
 [Install]
@@ -292,22 +295,32 @@ services:
       PORT: 8080
       TOKEN_ISSUER: skoda-proxy
       ALLOWED_ORIGINS: https://ev.example.com
-      TRUSTED_PROXIES: loopback, uniquelocal   # host reverse proxy reaches the container via the Docker bridge
+      # The host reverse proxy reaches the container through the network gateway, and only that address is trusted
+      TRUSTED_PROXIES: 172.30.0.1
       TOKEN_SECRETS_FILE: /run/secrets/token-secrets
     secrets: [token-secrets]
+    networks: [skoda-proxy]
+
+networks:
+  skoda-proxy:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
 
 secrets:
   token-secrets:
-    file: /etc/skoda-proxy/token-secrets
+    file: /etc/skoda-proxy/docker-token-secrets
 ```
+
+Pick a subnet that is unused on your host and keep `TRUSTED_PROXIES` equal to its gateway. Trusting a whole range such as `uniquelocal` would let any other container on the host spoof `X-Forwarded-For`.
 
 Build the image from the repository root with `docker build -f proxy/Dockerfile -t skoda-proxy .` (the compose file above does this for you). The image is distroless and runs as uid `65532`.
 
-Compose bind-mounts file secrets with the host file's ownership and mode, so the `root:root 0600` file from §3.1 is unreadable inside the container. Give the container user read access:
+Compose bind-mounts file secrets with the host file's ownership and mode, so the `root:root 0600` file from §3.1 is unreadable inside the container. Keep a separate copy for Docker that only the container user can read. The systemd file stays `root`-only:
 
 ```bash
-sudo chown 65532:65532 /etc/skoda-proxy/token-secrets
-sudo chmod 400 /etc/skoda-proxy/token-secrets
+sudo install -o 65532 -g 65532 -m 400 /etc/skoda-proxy/token-secrets /etc/skoda-proxy/docker-token-secrets
 ```
 
 ## 8. Verify the deployment
@@ -342,16 +355,17 @@ Then, in the app:
 
 ### Rotating the token secret
 
-1. Add a new key and make it current. Keep the old key so existing tokens keep working:
+1. Run `npm run proxy:secret`. It prints a new key with an id such as `k20261024-3fa9c1` (the date plus a random suffix, so two rotations never collide).
+2. Merge the new key into the file and make it current. Keep the old key so existing tokens keep working:
    ```json
-   {"current":"k2","keys":{"k1":"<old>","k2":"<new base64 32 bytes>"}}
+   {"current":"k20261024-3fa9c1","keys":{"k1":"<old>","k20261024-3fa9c1":"<new base64 32 bytes>"}}
    ```
-2. `sudo systemctl restart skoda-proxy`. New tokens are issued with `k2`.
-3. Once the old tokens' Škoda keys have expired, remove `k1`. Removing `k1` immediately instead revokes every token issued with it, and users must re-link.
+3. `sudo systemctl restart skoda-proxy`. New tokens are issued with the new key.
+4. Once the old tokens' Škoda keys have expired, remove `k1`. Removing `k1` immediately instead revokes every token issued with it, and users must re-link.
 
 ### Revoking access for one car
 
-Delete the API key in the **MyŠkoda app**. The token stops working on its next request, because Škoda returns `401`.
+Delete the API key in the **MyŠkoda app**. Škoda then answers `401`, and the token stops working on its next request that reaches Škoda. Responses already cached for that key are still served until they expire, so revocation takes effect within `CACHE_TTL_SECONDS` (60 s by default, never more than 300 s).
 
 ### Updating
 

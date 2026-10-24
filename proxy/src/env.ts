@@ -10,9 +10,11 @@ export type AppEnv = {
     incoming?: IncomingMessage;
   };
   Variables: {
-    clientIp: string;
+    /** Client IP (IPv6 grouped by /64), used as the per-client rate-limit key. */
+    clientKey: string;
     vehicleToken: VehicleTokenClaims;
-    upstreamTraceId: string | undefined;
+    /** Validated VIN of the request, logged masked. */
+    vin: string | undefined;
     rateLimit: RateLimitInfo;
   };
 };

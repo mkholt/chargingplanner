@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import proxyaddr from 'proxy-addr';
 import { z } from 'zod';
 
 export type TokenSecrets = {
@@ -39,8 +40,16 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   ALLOWED_ORIGINS: commaList.pipe(z.array(OriginSchema).min(1)),
   TOKEN_ISSUER: z.string().min(1).default('skoda-proxy'),
-  TRUSTED_PROXIES: commaList.default([]),
-  CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+  TRUSTED_PROXIES: commaList.default([]).refine((proxies) => {
+    try {
+      proxyaddr.compile(proxies);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Must be addresses, CIDR ranges, or loopback / linklocal / uniquelocal'),
+  // Bounds how long a revoked Škoda key can still read cached data
+  CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(300).default(60),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   TOKEN_SECRETS_FILE: z.string().min(1).optional(),
   CREDENTIALS_DIRECTORY: z.string().min(1).optional(),

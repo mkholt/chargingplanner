@@ -13,6 +13,8 @@ export default defineConfig(
   tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
+    // The proxy is Node code: no browser globals or React rules
+    ignores: ['proxy/**'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

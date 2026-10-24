@@ -34,6 +34,9 @@ export const createTokenService = ({
   issuer: string;
   secrets: TokenSecrets;
 }): TokenService => {
+  const currentKey = secrets.keys.get(secrets.currentKid);
+  if (!currentKey) throw new Error(`Current token secret "${secrets.currentKid}" is missing`);
+
   const getKey: JWTDecryptGetKey = ({ kid }) => {
     const key = kid ? secrets.keys.get(kid) : undefined;
     if (!key) throw new errors.JWEDecryptionFailed('Unknown key id');
@@ -48,7 +51,7 @@ export const createTokenService = ({
         .setAudience(TOKEN_AUDIENCE)
         .setIssuedAt()
         .setExpirationTime(expiresAt)
-        .encrypt(secrets.keys.get(secrets.currentKid)!),
+        .encrypt(currentKey),
 
     verify: async (token) => {
       if (token.length > MAX_TOKEN_LENGTH) return null;

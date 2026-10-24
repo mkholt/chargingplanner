@@ -96,6 +96,12 @@ describe('token service', () => {
     await expect(service.verify(token)).resolves.toBeNull();
   });
 
+  it('refuses to start without the current secret', () => {
+    expect(() =>
+      createTokenService({ issuer: 'skoda-proxy', secrets: { currentKid: 'k2', keys: secrets.keys } })
+    ).toThrow(/k2/);
+  });
+
   it.each([['garbage'], ['a.b.c.d.e'], ['x'.repeat(5000)]])('rejects malformed input %#', async (token) => {
     await expect(service.verify(token)).resolves.toBeNull();
   });

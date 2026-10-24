@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
+import type { components } from '@/types/skoda';
 import { SKODA_API_BASE } from '@proxy/upstream';
 
 export const VIN = 'TMBJR7NX5PY000001';
@@ -10,33 +11,40 @@ export const KEY_EXPIRES_AT = '2027-03-01T00:00:00.000Z';
 
 export type RecordedRequest = { url: URL; apiKey: string | null };
 
-export const vehicleBody = (vin: string) => ({
-  vehicle: {
-    vin,
-    name: 'Enyaq',
-    charging: { isVehicleInSavedLocation: false, status: { state: 'READY_FOR_CHARGING' } },
-  },
-  errors: [],
-});
+export const vehicleBody = (vin: string) =>
+  ({
+    vehicle: {
+      vin,
+      name: 'Enyaq',
+      charging: {
+        isVehicleInSavedLocation: false,
+        status: { state: 'READY_FOR_CHARGING', battery: { stateOfChargeInPercent: 64 } },
+      },
+    },
+    errors: [],
+  }) satisfies components['schemas']['VehicleResponse'];
+
+const problemResponse = (status: number, type: string) =>
+  HttpResponse.json(
+    { type: `${SKODA_API_BASE}/problems/${type}`, title: 'Error', status, detail: 'upstream detail' },
+    { status, headers: { 'Content-Type': 'application/problem+json' } }
+  );
 
 const requests: RecordedRequest[] = [];
+const vehiclePath = `${SKODA_API_BASE}/api/v1/vehicles/:vin`;
 
-const vehicleHandler = http.get(`${SKODA_API_BASE}/api/v1/vehicles/:vin`, ({ request, params }) => {
+// Mirrors the Škoda API: unknown keys get 401, a valid key for another vehicle gets 403
+const vehicleHandler = http.get(vehiclePath, ({ request, params }) => {
   const apiKey = request.headers.get('X-API-Key');
   requests.push({ url: new URL(request.url), apiKey });
-  if (apiKey !== API_KEY || params.vin !== VIN) {
-    return HttpResponse.json(
-      { title: 'Unauthorized', status: 401 },
-      { status: 401, headers: { 'Content-Type': 'application/problem+json' } }
-    );
-  }
+  if (apiKey !== API_KEY) return problemResponse(401, 'api-key-expired');
+  if (params.vin !== VIN) return problemResponse(403, 'api-key-not-authorized');
   return HttpResponse.json(vehicleBody(VIN), {
     headers: {
       'X-API-Key-Expires-At': KEY_EXPIRES_AT,
       'RateLimit-Limit': '100',
       'RateLimit-Remaining': '99',
       'RateLimit-Reset': '30',
-      traceid: 'trace-123',
       'Set-Cookie': 'upstream=secret',
       'X-Internal-Header': 'internal',
     },
@@ -49,11 +57,13 @@ export const skodaApi = {
   server,
   requests,
   /** Replaces the vehicle endpoint for the current test. */
-  respondWith: (resolver: () => Response | Promise<Response>) =>
-    server.use(http.get(`${SKODA_API_BASE}/api/v1/vehicles/:vin`, ({ request }) => {
-      requests.push({ url: new URL(request.url), apiKey: request.headers.get('X-API-Key') });
-      return resolver();
-    })),
+  respondWith: (resolver: (request: Request) => Response | Promise<Response>) =>
+    server.use(
+      http.get(vehiclePath, ({ request }) => {
+        requests.push({ url: new URL(request.url), apiKey: request.headers.get('X-API-Key') });
+        return resolver(request);
+      })
+    ),
   reset: () => {
     server.resetHandlers();
     requests.length = 0;

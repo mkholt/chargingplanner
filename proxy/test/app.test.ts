@@ -1,10 +1,11 @@
-import { HttpResponse } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 
 import { APP_ORIGIN, createTestApp } from './helpers';
 import { API_KEY, KEY_EXPIRES_AT, OTHER_VIN, skodaApi, VIN, vehicleBody } from './mocks/skodaApi';
 
 const PROBLEM_JSON = 'application/problem+json';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const issueValidToken = async (proxy: ReturnType<typeof createTestApp>) => {
   const res = await proxy.issueToken({ apiKey: API_KEY, vin: VIN });
@@ -22,6 +23,7 @@ describe('GET /healthz', () => {
     expect(await res.json()).toEqual({ status: 'ok' });
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Cache-Control')).toBe('no-store');
+    expect(res.headers.get('Strict-Transport-Security')).toBe('max-age=31536000');
   });
 });
 
@@ -106,7 +108,18 @@ describe('POST /v1/tokens', () => {
     const res = await createTestApp().issueToken({ apiKey: API_KEY, vin: VIN });
 
     const { expiresAt } = (await res.json()) as { expiresAt: string };
-    expect(Date.parse(expiresAt) - Date.now()).toBeLessThanOrEqual(365 * 24 * 60 * 60 * 1000);
+    expect((Date.parse(expiresAt) - Date.now()) / DAY_MS).toBeCloseTo(365, 0);
+  });
+
+  it('refuses a Škoda key that has already expired', async () => {
+    skodaApi.respondWith(() =>
+      HttpResponse.json(vehicleBody(VIN), { headers: { 'X-API-Key-Expires-At': '2020-01-01T00:00:00Z' } })
+    );
+
+    const res = await createTestApp().issueToken({ apiKey: API_KEY, vin: VIN });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ type: 'urn:skoda-proxy:problem:invalid-api-key' });
   });
 
   it('falls back to 30 days when Škoda does not report the key expiry', async () => {
@@ -115,7 +128,7 @@ describe('POST /v1/tokens', () => {
     const res = await createTestApp().issueToken({ apiKey: API_KEY, vin: VIN });
 
     const { expiresAt } = (await res.json()) as { expiresAt: string };
-    const days = (Date.parse(expiresAt) - Date.now()) / (24 * 60 * 60 * 1000);
+    const days = (Date.parse(expiresAt) - Date.now()) / DAY_MS;
     expect(days).toBeCloseTo(30, 0);
   });
 
@@ -129,10 +142,20 @@ describe('POST /v1/tokens', () => {
     expect(await res.json()).toMatchObject({ type: 'urn:skoda-proxy:problem:invalid-api-key' });
   });
 
+  it('refuses a key when Škoda does not know the vehicle', async () => {
+    skodaApi.respondWith(() => HttpResponse.json({ status: 404 }, { status: 404 }));
+
+    const res = await createTestApp().issueToken({ apiKey: API_KEY, vin: VIN });
+
+    expect(res.status).toBe(422);
+  });
+
   it.each([
     ['a missing VIN', { apiKey: API_KEY }],
     ['an invalid VIN', { apiKey: API_KEY, vin: 'TMBJR7NX5PY00000I' }],
     ['an empty key', { apiKey: '', vin: VIN }],
+    ['a key with non-ASCII characters', { apiKey: 'nøgle-1234', vin: VIN }],
+    ['a key with whitespace', { apiKey: 'key 1234', vin: VIN }],
   ])('rejects %s without calling Škoda', async (_, body) => {
     const res = await createTestApp().issueToken(body);
 
@@ -192,13 +215,50 @@ describe('POST /v1/tokens', () => {
     expect(otherClient.status).toBe(201);
   });
 
-  it('passes Škoda rate limiting through', async () => {
-    skodaApi.respondWith(() => new HttpResponse(null, { status: 429, headers: { 'Retry-After': '17' } }));
+  it('groups IPv6 clients by /64 when rate limiting', async () => {
+    const proxy = createTestApp();
+    for (let i = 1; i <= 5; i++) {
+      expect((await proxy.issueToken({ apiKey: 'wrong-key', vin: VIN }, `2001:db8::${i}`)).status).toBe(422);
+    }
+
+    const sameNetwork = await proxy.issueToken({ apiKey: API_KEY, vin: VIN }, '2001:db8::99');
+    const otherNetwork = await proxy.issueToken({ apiKey: API_KEY, vin: VIN }, '2001:db8:0:1::1');
+
+    expect(sameNetwork.status).toBe(429);
+    expect(otherNetwork.status).toBe(201);
+  });
+
+  it('caps issuance across all clients', async () => {
+    const proxy = createTestApp();
+    for (let i = 1; i <= 30; i++) {
+      expect((await proxy.issueToken({ apiKey: API_KEY, vin: VIN }, `198.51.100.${i}`)).status).toBe(201);
+    }
+
+    const res = await proxy.issueToken({ apiKey: API_KEY, vin: VIN }, '198.51.100.200');
+
+    expect(res.status).toBe(429);
+    expect(skodaApi.requests).toHaveLength(30);
+  });
+
+  it('does not count invalid requests towards the global cap', async () => {
+    const proxy = createTestApp();
+    for (let i = 1; i <= 30; i++) {
+      expect((await proxy.issueToken({ apiKey: API_KEY, vin: 'invalid' }, `198.51.100.${i}`)).status).toBe(400);
+    }
+
+    expect((await proxy.issueToken({ apiKey: API_KEY, vin: VIN }, '198.51.100.200')).status).toBe(201);
+  });
+
+  it.each([
+    ['its Retry-After', { 'Retry-After': '17' }, '17'],
+    ['a default Retry-After', {}, '60'],
+  ])('passes Škoda rate limiting through with %s', async (_, headers, retryAfter) => {
+    skodaApi.respondWith(() => new HttpResponse(null, { status: 429, headers }));
 
     const res = await createTestApp().issueToken({ apiKey: API_KEY, vin: VIN });
 
     expect(res.status).toBe(429);
-    expect(res.headers.get('Retry-After')).toBe('17');
+    expect(res.headers.get('Retry-After')).toBe(retryAfter);
   });
 
   it('reports Škoda being unreachable as 502', async () => {
@@ -224,7 +284,6 @@ describe('GET /v1/vehicles/:vin', () => {
     expect(res.headers.get('X-API-Key-Expires-At')).toBe(KEY_EXPIRES_AT);
     expect(res.headers.get('Set-Cookie')).toBeNull();
     expect(res.headers.get('X-Internal-Header')).toBeNull();
-    expect(res.headers.get('traceid')).toBeNull();
     expect(res.headers.get('Cache-Control')).toBe('no-store');
     expect(skodaApi.requests[0].apiKey).toBe(API_KEY);
     expect(skodaApi.requests[0].url.searchParams.get('include')).toBe('info,charging');
@@ -282,7 +341,7 @@ describe('GET /v1/vehicles/:vin', () => {
     expect(res.status).toBe(401);
   });
 
-  it('serves repeated reads from the cache', async () => {
+  it('serves repeated reads from the cache without stale rate limit headers', async () => {
     const proxy = createTestApp();
     const token = await issueValidToken(proxy);
 
@@ -290,8 +349,37 @@ describe('GET /v1/vehicles/:vin', () => {
     const second = await proxy.getVehicle(VIN, token);
 
     expect(second.status).toBe(200);
-    expect(second.headers.get('RateLimit-Remaining')).toBe('99');
+    expect(await second.json()).toEqual(vehicleBody(VIN));
+    expect(second.headers.get('RateLimit-Remaining')).toBeNull();
+    expect(second.headers.get('X-API-Key-Expires-At')).toBe(KEY_EXPIRES_AT);
     expect(skodaApi.requests).toHaveLength(1);
+  });
+
+  it('shares the cache entry regardless of include order', async () => {
+    const proxy = createTestApp();
+    const token = await issueValidToken(proxy);
+
+    await proxy.getVehicle(VIN, token, '?include=info,charging');
+    await proxy.getVehicle(VIN, token, '?include=charging,info');
+
+    expect(skodaApi.requests).toHaveLength(1);
+  });
+
+  it('keeps cache entries separate per Škoda key', async () => {
+    skodaApi.respondWith(() =>
+      HttpResponse.json(vehicleBody(VIN), { headers: { 'X-API-Key-Expires-At': KEY_EXPIRES_AT } })
+    );
+    const proxy = createTestApp();
+    const issue = async (apiKey: string) =>
+      ((await (await proxy.issueToken({ apiKey, vin: VIN })).json()) as { token: string }).token;
+    const first = await issue(API_KEY);
+    const second = await issue('another-skoda-key');
+    skodaApi.requests.length = 0;
+
+    await proxy.getVehicle(VIN, first);
+    await proxy.getVehicle(VIN, second);
+
+    expect(skodaApi.requests.map((request) => request.apiKey)).toEqual([API_KEY, 'another-skoda-key']);
   });
 
   it('does not cache when CACHE_TTL_SECONDS is 0', async () => {
@@ -325,9 +413,34 @@ describe('GET /v1/vehicles/:vin', () => {
     expect(text).not.toContain('upstream detail');
   });
 
+  it.each([
+    ['its Retry-After', { 'Retry-After': '12' }, '12'],
+    ['a default Retry-After', {}, '60'],
+  ])('passes Škoda rate limiting through with %s', async (_, headers, retryAfter) => {
+    const proxy = createTestApp();
+    const token = await issueValidToken(proxy);
+    skodaApi.respondWith(
+      () => new HttpResponse(null, { status: 429, headers: { ...headers, 'RateLimit-Remaining': '0' } })
+    );
+
+    const res = await proxy.getVehicle(VIN, token);
+
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ type: 'urn:skoda-proxy:problem:rate-limited' });
+    expect(res.headers.get('Retry-After')).toBe(retryAfter);
+    expect(res.headers.get('RateLimit-Remaining')).toBe('0');
+  });
+
   it('does not follow upstream redirects', async () => {
     const proxy = createTestApp();
     const token = await issueValidToken(proxy);
+    const attackerHits: string[] = [];
+    skodaApi.server.use(
+      http.all('https://attacker.example.com/*', ({ request }) => {
+        attackerHits.push(request.url);
+        return HttpResponse.json(vehicleBody(VIN));
+      })
+    );
     skodaApi.respondWith(
       () => new HttpResponse(null, { status: 302, headers: { Location: 'https://attacker.example.com/' } })
     );
@@ -335,6 +448,7 @@ describe('GET /v1/vehicles/:vin', () => {
     const res = await proxy.getVehicle(VIN, token);
 
     expect(res.status).toBe(502);
+    expect(attackerHits).toHaveLength(0);
   });
 
   it('rate limits per token', async () => {
@@ -382,14 +496,19 @@ describe('logging', () => {
     const { token } = (await issued.json()) as { token: string };
     await proxy.getVehicle(VIN, token);
     await proxy.getVehicle(OTHER_VIN, token);
+    await proxy.getVehicle(VIN.toLowerCase(), token);
+    await proxy.request(`/v1/vehicles/${VIN}%2F..`, { headers: { Authorization: `Bearer ${token}` } });
+    await proxy.request(`/v1/vehicles/${VIN}%00`, { headers: { Authorization: `Bearer ${token}` } });
+    await proxy.request(`/v1/${VIN}`);
     await proxy.issueToken({ apiKey: API_KEY, vin: 'invalid' });
 
     const logs = proxy.logs();
-    expect(logs).toContain('"path":"/v1/vehicles/:vin"');
+    expect(logs).toContain('"route":"/v1/vehicles/:vin"');
     expect(logs).toContain('"vin":"…0001"');
     expect(logs).not.toContain(API_KEY);
     expect(logs).not.toContain(token);
-    expect(logs).not.toContain(VIN);
-    expect(logs).not.toContain(OTHER_VIN);
+    for (const vin of [VIN, OTHER_VIN]) {
+      expect(logs.toUpperCase()).not.toContain(vin);
+    }
   });
 });

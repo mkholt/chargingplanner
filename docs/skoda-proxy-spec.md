@@ -74,8 +74,10 @@ The tokens are **encrypted**, not just signed. The browser can store and send a 
 | `GET /v1/vehicles/{vin}` | `Authorization: Bearer <JWE>` ([RFC 6750](https://www.rfc-editor.org/rfc/rfc6750)) | Calls upstream `GET /api/v1/vehicles/{vin}?include=info,charging`. |
 
 **`POST /v1/tokens`:**
+- `apiKey` must be 1–512 printable ASCII characters (anything else cannot be sent as an HTTP header), otherwise the proxy returns `400` without calling Škoda.
 - The proxy calls upstream `GET /api/v1/vehicles/{vin}?include=info` with the supplied key.
-- If that call fails, it returns `422` and no token.
+- If Škoda answers `401`, `403` or `404`, or reports the key as already expired, the proxy returns `422` and no token.
+- Rate limited to 5/min per client and, counting only valid requests, 30/min across all clients, so the proxy cannot be used to test keys in bulk.
 - Otherwise it returns `{ token, vin, expiresAt }`.
 - The Škoda key is never stored or logged.
 
@@ -83,6 +85,8 @@ The tokens are **encrypted**, not just signed. The browser can store and send a 
 - The path VIN must equal the token's `vin` claim, otherwise the proxy returns `403`.
 - A client may narrow `include` to a subset of `info,charging` but never widen it.
 - The proxy returns the JSON body plus the `RateLimit-*`, `Retry-After` and `X-API-Key-Expires-At` headers. Every other upstream header is stripped.
+- Responses served from the cache carry only `X-API-Key-Expires-At`, because the rate-limit headers describe an upstream call that was not made.
+- Rate limited to 60/min per client before the token is checked, and 30/min per token.
 
 Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)), the same format Škoda uses.
 
@@ -92,7 +96,9 @@ Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457]
 |---|---|
 | Invalid or expired token | `401` |
 | Upstream `401` (key revoked) | `401` with `type: key-revoked`. The UI prompts the user to re-link. |
-| Upstream `429` | Passed through |
+| Upstream `403` | `403` with `type: vehicle-access-denied` |
+| Upstream `404` | `404` with `type: vehicle-not-found` |
+| Upstream `429` | `429` with Škoda's `RateLimit-*` and `Retry-After` (`60` if Škoda sends none) |
 | Upstream `5xx` or timeout | `502` |
 
 ## 4. Security building blocks (libraries, not custom code)
@@ -104,13 +110,13 @@ Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457]
 | Request validation (VIN `^[A-HJ-NPR-Z0-9]{17}$`, body shape, `include` values) | `zod` + `@hono/zod-validator` |
 | Bearer header parsing | Hono `bearerAuth` middleware with `verifyToken`, which calls `jwtDecrypt` |
 | CORS (explicit `ALLOWED_ORIGINS`, never `*`) | `hono/cors` |
-| Security headers (HSTS, `nosniff`, no-referrer, …) | `hono/secure-headers` |
+| Security headers (HSTS without `includeSubDomains`, since the proxy may share a domain with other sites; `nosniff`, no-referrer, …) | `hono/secure-headers` |
 | Body size limit (2 KB) | `hono/body-limit` |
 | Upstream timeout (10 s), no redirects | `AbortSignal.timeout`, `redirect: 'error'` on fetch, inside the `openapi-fetch` client |
-| Rate limiting: per IP on `POST /v1/tokens` (5/min), per token on reads (30/min) | `hono-rate-limiter` |
-| Real client IP behind Apache, nginx or Caddy (`X-Forwarded-For`), trusting only the configured `TRUSTED_PROXIES` | `proxy-addr` (the library Express uses) |
-| Structured logging with secret redaction (`authorization`, `apiKey`, `x-api-key`, VIN masked) | `pino` with `redact` |
-| Response cache (60 s per VIN, only filled after authorization) | `lru-cache` with `ttl` |
+| Rate limiting: `POST /v1/tokens` 5/min per client and 30/min globally; reads 60/min per client and 30/min per token | `hono-rate-limiter` |
+| Real client IP behind Apache, nginx or Caddy (`X-Forwarded-For`), trusting only the configured `TRUSTED_PROXIES`. IPv6 clients are grouped by `/64`, since one host usually controls a whole `/64`. | `proxy-addr` (the library Express uses), `ipaddr.js` |
+| Structured logging: the route template (never the raw path), the masked validated VIN, status and duration. Never headers or bodies; `authorization`, `apiKey` and `x-api-key` are redacted as a safety net. | `pino` with `redact` |
+| Response cache (per Škoda key, VIN and `include`; only filled after authorization) | `lru-cache` with `ttl` |
 | TLS | Reverse proxy with automatic certificates: Caddy, or nginx + certbot |
 | Secret delivery | systemd `LoadCredential=` (or a `0600` env file for Docker) |
 | Process sandboxing | systemd hardening directives (§8) |
@@ -130,7 +136,7 @@ Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457]
 | `TOKEN_ISSUER` | `skoda-proxy` | |
 | `TRUSTED_PROXIES` | `loopback` | `proxy-addr` syntax. Leave unset if no reverse proxy is used. |
 | `TOKEN_SECRETS_FILE` | `$CREDENTIALS_DIRECTORY/token-secrets` | JSON `{ "current": "<kid>", "keys": { "<kid>": "<base64 32 bytes>" } }` |
-| `CACHE_TTL_SECONDS` | `60` | Vehicle responses are cached per Škoda key, VIN and `include`. `0` disables the cache; maximum `3600`. |
+| `CACHE_TTL_SECONDS` | `60` | Vehicle responses are cached per Škoda key, VIN and `include`. `0` disables the cache; maximum `300`, which bounds how long a revoked key can still read cached data. |
 | `LOG_LEVEL` | `info` | pino level: `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent`. |
 
 - Config is parsed with `zod` at startup, and the proxy refuses to start on invalid config.
@@ -142,11 +148,17 @@ Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457]
 proxy/
   package.json          # hono, @hono/node-server, jose, zod, @hono/zod-validator,
                         # hono-rate-limiter, proxy-addr, pino, lru-cache, openapi-fetch
-  tsconfig.json         # extends root; alias to ../src/types/skoda.d.ts
+  tsconfig.json         # standalone Node config; alias to ../src/types/skoda.d.ts
   src/
     index.ts            # @hono/node-server bootstrap
-    app.ts              # middleware chain + routes (exported for tests)
+    app.ts              # middleware chain, /healthz, routes (exported for tests)
     config.ts           # zod-validated env/credentials
+    clientIp.ts         # proxy-addr client IP, IPv6 /64 grouping
+    env.ts              # Hono context typing
+    logger.ts           # pino with redaction
+    middleware.ts       # rate limiting and validation answering with problems
+    problem.ts          # RFC 9457 responses
+    schemas.ts          # VIN and include schemas
     tokens.ts           # thin wrapper over jose EncryptJWT/jwtDecrypt
     upstream.ts         # openapi-fetch client typed with generated Škoda paths
     routes/tokens.ts
@@ -269,9 +281,11 @@ The step-by-step guide and config samples are in [skoda-proxy-deployment.md](sko
 - Tampered, expired, wrong-`aud` and unknown-`kid` tokens are rejected. These tests check our `jose` configuration, not `jose` itself.
 - A VIN outside the token gives `403`, and Škoda is never called.
 - `include` cannot be widened.
-- Issuance fails if the key isn't valid for the VIN upstream.
-- CORS, rate limits, header stripping, and error mapping.
-- Captured `pino` output never contains the key or the token.
+- Issuance fails if the key isn't valid for the VIN upstream, or has already expired.
+- CORS, rate limits (including IPv6 `/64` grouping and the global issuance cap), header stripping, and error mapping.
+- The cache is separate per Škoda key, and cache hits do not replay rate-limit headers.
+- Upstream redirects are never followed.
+- Captured `pino` output never contains the key, the token or a full VIN, even for malformed paths.
 
 **Frontend**
 - MSW handlers for `/v1/tokens` and `/v1/vehicles/{vin}`.

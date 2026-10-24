@@ -71,6 +71,15 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...baseEnv(path), ALLOWED_ORIGINS: origins })).toThrow(ConfigError);
   });
 
+  it.each([
+    ['TRUSTED_PROXIES with an invalid address', { TRUSTED_PROXIES: 'loopback, not-an-ip' }],
+    ['CACHE_TTL_SECONDS above 300', { CACHE_TTL_SECONDS: '301' }],
+  ])('rejects %s', (_, env) => {
+    const { path } = writeSecrets({ current: 'k1', keys: { k1: KEY } });
+
+    expect(() => loadConfig({ ...baseEnv(path), ...env })).toThrow(ConfigError);
+  });
+
   it('requires a secrets file', () => {
     expect(() => loadConfig({ ALLOWED_ORIGINS: 'https://ev.example.com' })).toThrow(/TOKEN_SECRETS_FILE/);
   });

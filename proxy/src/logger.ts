@@ -3,7 +3,7 @@ import { pino, type DestinationStream, type Logger } from 'pino';
 /**
  * Secrets are never passed to the logger on purpose; redaction is a second line of defence.
  */
-export const REDACTED_PATHS = [
+const REDACTED_PATHS = [
   'apiKey',
   'key',
   'token',
