@@ -45,7 +45,7 @@ describe('Škoda linking and the password vault', () => {
   beforeEach(() => {
     store = {
       [LS_KEYS.CARS]: JSON.stringify({ cars: [CAR], selectedId: CAR.id }),
-      [LS_KEYS.SKODA_PROXY]: JSON.stringify({ enabled: true, url: MOCK_SKODA.PROXY_URL }),
+      [LS_KEYS.SKODA_PROXY]: JSON.stringify({ enabled: true }),
     };
     stubLocalStorage(store);
   });
@@ -67,8 +67,8 @@ describe('Škoda linking and the password vault', () => {
       </QueryClientProvider>
     );
     return renderHook(() => {
-      const { cars } = useCars();
-      return { car: cars[0], vault: useSkodaVault(), skodaLink: useSkodaLink() };
+      const carsContext = useCars();
+      return { car: carsContext.cars[0], carsContext, vault: useSkodaVault(), skodaLink: useSkodaLink() };
     }, { wrapper });
   }
 
@@ -104,6 +104,36 @@ describe('Škoda linking and the password vault', () => {
       expect(result.current.car.skoda).toBeUndefined();
     });
 
+    it('ignores a token issued by another proxy', async () => {
+      const { result } = renderSkoda();
+      await linkCar(result);
+
+      act(() => result.current.carsContext.updateCar(CAR.id, {
+        skoda: { ...result.current.car.skoda!, proxyUrl: 'https://other-proxy.example' },
+      }));
+
+      expect(result.current.vault.getToken(result.current.car)).toBeNull();
+    });
+
+    it('adds a car linked with the token from a lookup', async () => {
+      const { result } = renderSkoda();
+
+      let lookup: Awaited<ReturnType<typeof result.current.skodaLink.lookUp>> | undefined;
+      await act(async () => {
+        lookup = await result.current.skodaLink.lookUp(MOCK_SKODA.VIN, MOCK_SKODA.API_KEY);
+      });
+      expect(lookup?.vehicle.name).toBe(MOCK_SKODA.VEHICLE_NAME);
+
+      let added: Car | undefined;
+      await act(async () => {
+        added = await result.current.skodaLink.addLinkedCar({ name: 'New Enyaq', batterySize: 77, maxPower: 11 }, lookup!);
+      });
+
+      const car = result.current.carsContext.cars.find(c => c.id === added?.id);
+      expect(car?.skoda).toMatchObject({ vin: MOCK_SKODA.VIN, proxyUrl: MOCK_SKODA.PROXY_URL });
+      expect(result.current.vault.getToken(car ?? null)).toBe(lookup?.issued.token);
+    });
+
     it('removes the link when unlinking', async () => {
       const { result } = renderSkoda();
       await linkCar(result);
@@ -128,7 +158,11 @@ describe('Škoda linking and the password vault', () => {
 
       expect(result.current.vault.isProtected).toBe(true);
       expect(result.current.vault.isUnlocked).toBe(true);
-      expect(result.current.car.skoda).toEqual({ vin: MOCK_SKODA.VIN, expiresAt: expect.any(String) });
+      expect(result.current.car.skoda).toEqual({
+        vin: MOCK_SKODA.VIN,
+        expiresAt: expect.any(String),
+        proxyUrl: MOCK_SKODA.PROXY_URL,
+      });
       expect(result.current.vault.getToken(result.current.car)).toBe(token);
       expect(storedText()).not.toContain(token);
     });
@@ -206,7 +240,7 @@ describe('Škoda linking and the password vault', () => {
     it('drops the stored access on reset but keeps the link', async () => {
       const { result, token } = await renderProtected();
 
-      act(() => result.current.vault.reset());
+      await act(() => result.current.vault.reset());
 
       expect(result.current.vault.isProtected).toBe(false);
       expect(result.current.car.skoda?.vin).toBe(MOCK_SKODA.VIN);
@@ -231,6 +265,60 @@ describe('Škoda linking and the password vault', () => {
       expect(result.current.vault.isUnlocked).toBe(false);
     });
 
+    describe('vault updates', () => {
+      async function renderWithUpdates() {
+        const rendered = await renderProtected();
+        const { result } = rendered;
+        const set = (id: string, token: string) => result.current.vault.updateVault(PASSWORD, tokens => ({
+          ...tokens,
+          [id]: { vin: MOCK_SKODA.VIN, token },
+        }));
+        const read = async () => {
+          let current: Record<string, { token: string }> = {};
+          await act(() => result.current.vault.updateVault(PASSWORD, tokens => (current = tokens)));
+          return current;
+        };
+        return { ...rendered, set, read };
+      }
+
+      it('keeps both changes when two updates run at once', async () => {
+        const { result, set, read } = await renderWithUpdates();
+        let secondCar: Car | undefined;
+        act(() => {
+          secondCar = result.current.carsContext.addCar({ name: 'Elroq', batterySize: 63, maxPower: 11 });
+        });
+
+        await act(() => Promise.all([set(CAR.id, 'token-1'), set(secondCar!.id, 'token-2')]));
+
+        const tokens = await read();
+        expect(tokens[CAR.id]?.token).toBe('token-1');
+        expect(tokens[secondCar!.id]?.token).toBe('token-2');
+      });
+
+      it('drops tokens of deleted cars on the next update', async () => {
+        const { set, read } = await renderWithUpdates();
+
+        await act(() => set('deleted-car', 'token'));
+
+        // Kept by the update that added it, dropped by the next one
+        expect(Object.keys(await read())).toContain('deleted-car');
+        expect(Object.keys(await read())).toEqual([CAR.id]);
+      });
+    });
+
+    it('stays locked when locked while unlocking', async () => {
+      const { result } = await renderProtected();
+      act(() => result.current.vault.lock());
+
+      await act(async () => {
+        const unlocking = result.current.vault.unlock(PASSWORD);
+        result.current.vault.lock();
+        await unlocking;
+      });
+
+      expect(result.current.vault.isUnlocked).toBe(false);
+    });
+
     it('stays unlocked until the tab is closed when auto-lock is off', async () => {
       const { result } = await renderProtected();
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
@@ -247,7 +335,12 @@ describe('useSkodaVehicleQuery', () => {
   let store: Record<string, string>;
   const linkedCar: Car = {
     ...CAR,
-    skoda: { vin: MOCK_SKODA.VIN, expiresAt: '2099-01-01T00:00:00.000Z', token: `mock-token.${MOCK_SKODA.VIN}` },
+    skoda: {
+      vin: MOCK_SKODA.VIN,
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      proxyUrl: MOCK_SKODA.PROXY_URL,
+      token: `mock-token.${MOCK_SKODA.VIN}`,
+    },
   };
 
   beforeEach(() => {
@@ -274,7 +367,7 @@ describe('useSkodaVehicleQuery', () => {
   }
 
   it('loads the vehicle and pre-fills start and target from it', async () => {
-    store[LS_KEYS.SKODA_PROXY] = JSON.stringify({ enabled: true, url: MOCK_SKODA.PROXY_URL });
+    store[LS_KEYS.SKODA_PROXY] = JSON.stringify({ enabled: true });
     const { result } = renderQuery();
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -282,11 +375,12 @@ describe('useSkodaVehicleQuery', () => {
     expect(getChargePrefill(result.current.data)).toEqual({
       startPercent: MOCK_SKODA.STATE_OF_CHARGE,
       endPercent: MOCK_SKODA.TARGET_STATE_OF_CHARGE,
+      atChargeLimit: false,
     });
   });
 
   it('makes no requests while the proxy is turned off', async () => {
-    store[LS_KEYS.SKODA_PROXY] = JSON.stringify({ enabled: false, url: MOCK_SKODA.PROXY_URL });
+    store[LS_KEYS.SKODA_PROXY] = JSON.stringify({ enabled: false });
     const requests = countProxyRequests();
 
     const { result } = renderQuery();
@@ -306,6 +400,19 @@ describe('getChargePrefill', () => {
 
   it('uses whatever values are available', () => {
     expect(getChargePrefill({ vin: MOCK_SKODA.VIN, charging: { isVehicleInSavedLocation: true, status: { battery: { stateOfChargeInPercent: 42 } } } }))
-      .toEqual({ startPercent: 42, endPercent: undefined });
+      .toEqual({ startPercent: 42, endPercent: undefined, atChargeLimit: false });
+  });
+
+  it('only pre-fills the target when the car is already at its charge limit', () => {
+    const charging = (soc: number) => ({
+      vin: MOCK_SKODA.VIN,
+      charging: {
+        isVehicleInSavedLocation: true,
+        status: { battery: { stateOfChargeInPercent: soc } },
+        settings: { targetStateOfChargeInPercent: 80 },
+      },
+    });
+    expect(getChargePrefill(charging(80))).toEqual({ endPercent: 80, atChargeLimit: true });
+    expect(getChargePrefill(charging(85))).toEqual({ endPercent: 80, atChargeLimit: true });
   });
 });

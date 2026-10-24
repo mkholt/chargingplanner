@@ -24,7 +24,9 @@ test.describe('Škoda connection', () => {
     await appPage.openSettings();
     await settingsPanePage.switchToAppTab();
 
-    await skodaPage.enableProxy(MOCK_SKODA.PROXY_URL);
+    await skodaPage.enableProxy();
+    // The proxy is set when the app is built
+    await expect(skodaPage.proxyUrl).toHaveText(MOCK_SKODA.PROXY_URL);
     await skodaPage.testConnection();
 
     await expect(skodaPage.connectionResult).toHaveAttribute('data-result', 'ok');
@@ -52,6 +54,28 @@ test.describe('Škoda connection', () => {
     await expect(skodaPage.vehicleChargeLimit).toContainText(`${MOCK_SKODA.TARGET_STATE_OF_CHARGE} %`);
     await expect(inputFormPage.startPercentInput).toHaveValue(String(MOCK_SKODA.STATE_OF_CHARGE));
     await expect(inputFormPage.endPercentInput).toHaveValue(String(MOCK_SKODA.TARGET_STATE_OF_CHARGE));
+  });
+
+  test('adds a car from its VIN and API key', async ({ appPage, settingsPanePage, inputFormPage, skodaPage, page }) => {
+    await clearAllStorage(page);
+    await seedSkodaProxy(page);
+    await page.goto('/');
+    await appPage.waitForAppReady();
+    await appPage.openSettings();
+    await settingsPanePage.switchToCarsTab();
+
+    await skodaPage.lookUpNewCar(MOCK_SKODA.VIN, MOCK_SKODA.API_KEY);
+
+    // The name comes from Škoda; battery size and charging power are filled in by the user
+    await expect(skodaPage.addCarCheckDetails).toBeVisible();
+    await expect(page.getByTestId('car-name-input')).toHaveValue(MOCK_SKODA.VEHICLE_NAME);
+    await page.getByTestId('car-battery-input').fill('77');
+    await skodaPage.saveCar();
+
+    await expect(skodaPage.carLinkStatus(MOCK_SKODA.VEHICLE_NAME)).toHaveAttribute('data-status', 'linked');
+    await settingsPanePage.close();
+    await inputFormPage.ensureExpanded();
+    await expect(skodaPage.vehicleSummary).toContainText(`${MOCK_SKODA.STATE_OF_CHARGE} %`);
   });
 
   test('shows an error when the Škoda key is rejected', async ({ appPage, settingsPanePage, skodaPage, page }) => {
@@ -122,7 +146,7 @@ test.describe('Škoda access in sync', () => {
     await settingsPanePage.switchToSyncTab();
 
     await expect(skodaPage.exportOptions).toBeVisible();
-    if (includeAccess) await skodaPage.includeAccessCheckbox.check();
+    const exportCode = includeAccess ? await skodaPage.includeAccess() : undefined;
     const code = await skodaPage.getSyncCode();
 
     // Import on a "new device"
@@ -132,7 +156,7 @@ test.describe('Škoda access in sync', () => {
     await appPage.waitForAppReady();
     await appPage.openSettings();
     await settingsPanePage.switchToSyncTab();
-    await skodaPage.importSyncCode(code);
+    await skodaPage.importSyncCode(code, exportCode);
     await settingsPanePage.switchToCarsTab();
   }
 

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -11,16 +13,15 @@ import tsconfigPaths from 'vite-tsconfig-paths';
  */
 function buildCsp(env: Record<string, string>): string {
   const priceApiOrigin = new URL(env.VITE_API_BASE || 'https://stromligning.dk').origin;
-  // With a build-time proxy URL, only that origin is allowed. Without one, users enter their own
-  // proxy URL in the settings, so any https origin has to be allowed.
-  const skodaProxySource = env.VITE_SKODA_PROXY_URL ? new URL(env.VITE_SKODA_PROXY_URL).origin : 'https:';
+  // The Škoda proxy URL is fixed at build time; without one, the Škoda connection is off
+  const skodaProxySource = env.VITE_SKODA_PROXY_URL ? ` ${new URL(env.VITE_SKODA_PROXY_URL).origin}` : '';
   return [
     "default-src 'self'",
     "script-src 'self'",
     // Fluent UI (Griffel) inserts <style> elements at runtime
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
-    `connect-src 'self' ${priceApiOrigin} ${skodaProxySource}`,
+    `connect-src 'self' ${priceApiOrigin}${skodaProxySource}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -40,8 +41,14 @@ function contentSecurityPolicy(csp: string): Plugin {
   };
 }
 
+/** The release workflow sets the package version from the release tag before building */
+const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   plugins: [
     react(),
     tsconfigPaths(),

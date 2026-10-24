@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { Button, Field, Input, Spinner, Switch, Text, tokens } from '@fluentui/react-components';
+import { Button, Spinner, Switch, Text, tokens } from '@fluentui/react-components';
 import { PlugConnected20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
@@ -12,19 +12,18 @@ import { SkodaVaultSection } from './SkodaVaultSection';
 
 type ConnectionState = 'idle' | 'checking' | 'ok' | 'failed';
 
-/** Turn the Škoda proxy on, set its URL and manage password protection */
+/** Turn the Škoda connection on and manage password protection. Hidden when the build has no proxy. */
 export const SkodaSection: React.FC = () => {
   const { t } = useTranslation();
-  const { settings, setEnabled, setUrl, baseUrl, isUrlValid } = useSkodaProxy();
+  const { proxyUrl, enabled, setEnabled, baseUrl } = useSkodaProxy();
   const [connection, setConnection] = useState<ConnectionState>('idle');
 
-  const handleTest = async () => {
-    if (!baseUrl) return;
-    setConnection('checking');
-    setConnection((await checkSkodaProxyHealth(baseUrl)) ? 'ok' : 'failed');
-  };
+  if (!proxyUrl) return null;
 
-  const showUrlError = settings.enabled && settings.url !== '' && !isUrlValid;
+  const handleTest = async () => {
+    setConnection('checking');
+    setConnection((await checkSkodaProxyHealth(proxyUrl)) ? 'ok' : 'failed');
+  };
 
   return (
     <Stack gap={tokens.spacingHorizontalXL} style={{ maxWidth: 600 }}>
@@ -34,34 +33,24 @@ export const SkodaSection: React.FC = () => {
           {t('skoda.settings.description')}
         </Text>
         <Switch
-          checked={settings.enabled}
+          checked={enabled}
           onChange={(_e, d) => setEnabled(d.checked)}
           label={t('skoda.settings.enable')}
           data-testid="skoda-enable-toggle"
         />
-        {settings.enabled && (
+        {enabled && (
           <>
-            <Field
-              label={t('skoda.settings.url')}
-              validationMessage={showUrlError ? t('skoda.settings.urlInvalid') : undefined}
-              validationState={showUrlError ? 'error' : 'none'}
-            >
-              <Input
-                type="url"
-                value={settings.url}
-                placeholder={t('skoda.settings.urlPlaceholder')}
-                onChange={(_e, d) => {
-                  setUrl(d.value);
-                  setConnection('idle');
-                }}
-                data-testid="skoda-proxy-url-input"
-              />
-            </Field>
+            <Stack gap={tokens.spacingVerticalXXS}>
+              <Text size={200} weight="semibold">{t('skoda.settings.proxy')}</Text>
+              <Text size={200} style={{ fontFamily: 'monospace', wordBreak: 'break-all' }} data-testid="skoda-proxy-url">
+                {proxyUrl}
+              </Text>
+            </Stack>
             <Stack horizontal gap={tokens.spacingHorizontalS} align="center" wrap>
               <Button
                 icon={connection === 'checking' ? <Spinner size="tiny" /> : <PlugConnected20Regular />}
                 onClick={() => void handleTest()}
-                disabled={!baseUrl || connection === 'checking'}
+                disabled={connection === 'checking'}
                 data-testid="skoda-test-connection-button"
               >
                 {t('skoda.settings.testConnection')}

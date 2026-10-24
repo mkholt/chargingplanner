@@ -117,6 +117,39 @@ describe('fetchSkodaVehicle', () => {
   });
 });
 
+describe('response validation', () => {
+  const expiresAt = '2027-01-22T12:00:00.000Z';
+
+  it.each([
+    ['no token', { vin: VIN, expiresAt }],
+    ['a token for another VIN', { token: 'jwt', vin: 'TMBJJ7NE8L0999999', expiresAt }],
+    ['no expiry', { token: 'jwt', vin: VIN }],
+  ])('rejects an issued token with %s', async (_label, body) => {
+    server.use(http.post('*/v1/tokens', () => HttpResponse.json(body)));
+
+    const error = await issueSkodaToken(PROXY_URL, API_KEY, VIN).catch(e => e);
+
+    expect(error).toBeInstanceOf(SkodaProxyError);
+    expect(error.problemType).toBe('invalid-response');
+  });
+
+  it('rejects vehicle data for another VIN', async () => {
+    server.use(http.get('*/v1/vehicles/:vin', () => HttpResponse.json({ vehicle: { vin: 'TMBJJ7NE8L0999999' } })));
+
+    const error = await fetchSkodaVehicle(PROXY_URL, 'jwt', VIN).catch(e => e);
+
+    expect(error).toMatchObject({ problemType: 'invalid-response' });
+  });
+
+  it('rejects a body that is not JSON', async () => {
+    server.use(http.get('*/v1/vehicles/:vin', () => new HttpResponse('<html>', { status: 200 })));
+
+    const error = await fetchSkodaVehicle(PROXY_URL, 'jwt', VIN).catch(e => e);
+
+    expect(error).toMatchObject({ problemType: 'invalid-response' });
+  });
+});
+
 describe('checkSkodaProxyHealth', () => {
   it('is true for a healthy proxy', async () => {
     expect(await checkSkodaProxyHealth(PROXY_URL)).toBe(true);

@@ -187,13 +187,13 @@ docs/
 
 **Global settings (`SkodaSection`)**
 - New settings section, `src/components/settings/SkodaSection.tsx`, added to the barrel and `SettingsPane`.
-- Toggle: *Use Škoda proxy*. Off by default.
-- Proxy URL. Must be `https://`; `http://localhost` is allowed in dev. An optional build-time default can come from `VITE_SKODA_PROXY_URL`.
+- The proxy URL is set when the app is built, from `VITE_SKODA_PROXY_URL`. It must be `https://`; `http://localhost` is allowed in dev. Users can't change it, so a link or a sync code can't point the app at another server. Without it, no Škoda UI is shown.
+- Toggle: *Use Škoda proxy*. Off by default. The proxy URL is shown read-only when it's on.
 - *Test connection* button, which calls `/healthz`.
-- Settings are persisted in `SkodaProxyContext` via `useLocalStorage(LS_KEYS.SKODA_PROXY, { enabled: false, url: '' })`.
+- The toggle is persisted in `SkodaProxyContext` via `useLocalStorage(LS_KEYS.SKODA_PROXY, { enabled: false })`.
 
 **Per car (`CarsContext`, car editor)**
-- New optional fields: `skoda: { vin, token, expiresAt }`.
+- New optional fields: `skoda: { vin, expiresAt, proxyUrl, token? }`. `proxyUrl` is the proxy that issued the token. A token from another proxy is never sent to the configured one; the car shows as needing a new link.
 - *Link to Škoda*:
   - The user enters this car's VIN and Škoda API key.
   - The app calls `POST /v1/tokens` and stores the returned token and expiry on the car.
@@ -202,17 +202,19 @@ docs/
   - Linked, with expiry.
   - Expires within 14 days, shown as a warning.
   - Expired or revoked, with a re-link prompt.
+- *Add Škoda car* (Settings → Cars): the user enters a VIN and API key. The app issues a token, reads the car's name with it, and opens the car form with the name filled in. Battery size and charging power aren't available from the Škoda API, so the user fills those in. The token is only stored when the car is saved; if the user cancels, the issued token is simply never used.
 - *Unlink* removes `skoda` from the car. The status text should tell users to also delete the key in the MyŠkoda app to fully revoke access.
 
 **Data**
-- New API client `src/api/skodaApi.ts`. Its `baseUrl` is the configured proxy URL, which may include a path prefix such as `https://example.com/skoda-proxy` for subpath deployments. Trailing slashes are normalised.
+- New API client `src/api/skodaApi.ts`. Responses are checked before use: an issued token must be for the requested VIN and have an expiry, and vehicle data must be for the requested VIN. Anything else is an `invalid-response` error. Its `baseUrl` is the configured proxy URL, which may include a path prefix such as `https://example.com/skoda-proxy` for subpath deployments. Trailing slashes are normalised.
 - New hook `useSkodaVehicleQuery(car)`:
   - Uses TanStack Query with a `staleTime` of 60 s.
   - Is disabled when the proxy is off or the car isn't linked.
-- When the selected car is linked, the input form pre-fills start % from the current state of charge and target % from the charge limit. The user can still override both.
+- When the selected car is linked, the input form pre-fills start % from the current state of charge and target % from the charge limit, once per selected car. Later refreshes don't overwrite what the user typed. If the car is already at its charge limit, the form says so.
 
 **Sync and PWA**
-- **Sync/QR export:** the VIN is included. The token is excluded by default. An opt-in *Include Škoda access* checkbox includes it, with a warning that this shares read access to the car.
+- **Sync/QR export:** the VIN, expiry and proxy URL are included. The token is excluded by default, and a plain token is never exported or imported. See *Sync with Škoda access* in §7.1 for the opt-in.
+- **Imported sync data is size-limited** before it is parsed: at most 20,000 characters encoded, 64 KB decompressed and 50 cars. If the data doesn't fit in a QR code, the app says so and offers the link or code instead.
 - **PWA:** no Workbox runtime cache for proxy URLs.
 - **CSP:** add a strict Content-Security-Policy to `index.html` and the host config: `default-src 'self'`, `connect-src` limited to stromligning.dk and the proxy origin, and no inline scripts. This reduces XSS token theft.
 
@@ -251,7 +253,15 @@ By default, tokens are stored in plain form on the car profiles in `localStorage
 | Change password | Asks for the current and the new password, then decrypts and re-encrypts the vault. |
 | Turn off | Requires the password. The tokens move back to plain storage on the car profiles. |
 | Forgot password | *Reset vault* deletes it, and the user re-links their cars with their Škoda keys. Nothing can be recovered on the server, and nothing is compromised. |
-| Sync/QR export with *Include Škoda access* | Exports each token as its own PBES2 JWE. The importing device asks for the password, then stores the tokens in its own vault (or in plain form if protection is off there). |
+| Sync/QR export with *Include Škoda access* | See *Sync with Škoda access* below. If the vault is locked, the export asks to unlock it first. |
+
+**Sync with Škoda access**
+- Ticking *Include Škoda access* generates a random **export code** of 24 characters (120 bits from `crypto.getRandomValues`, written in Crockford base32 as 6 groups of 4). The app shows it next to the sync link, QR code and text code.
+- Each car's `{ vin, token }` is sealed as its own PBES2 JWE with the export code as the password, using the same `jose` settings as the vault. The sync data only carries the sealed token, so the link or QR code alone gives no access.
+- The importing device asks for the export code, plus its own vault password if protection is on there. The code is typed in, so case, spaces and dashes don't matter, and I, L and O are read as 1, 1 and 0.
+- A sealed token only opens for the VIN it was sealed with. A wrong code, or a token moved to another car, is rejected as a wrong export code.
+- The user can skip this step. The cars are then imported without access, and show as needing a new link.
+- Send the code a different way than the link, or read it out, so that someone who sees one doesn't also get the other.
 
 **What it protects against, and what it doesn't**
 - **It protects against:** someone else reading the stored tokens from the browser profile, e.g. on a shared computer, from a copied profile or disk, or with dev tools while the vault is locked. Offline brute force is slowed by PBKDF2, but a weak password is still guessable. That is why there is a minimum length.
@@ -297,11 +307,16 @@ The step-by-step guide and config samples are in [skoda-proxy-deployment.md](sko
   - With protection on, no plain token is left in `localStorage` (check every key).
   - Auto-lock clears the in-memory tokens. Use fake timers.
   - Change password, and turning protection off, both work.
+  - Vault changes that run at the same time don't overwrite each other, and locking during an unlock keeps the vault locked.
+- Export codes: format, normalisation, round-trip, and rejection of a wrong code or another VIN.
+- Sync data: size limits, plain tokens dropped, and import with an export code into a protected and an unprotected device.
 
 **E2E**
 - Link a car and check that the state of charge is pre-filled.
 - With the proxy disabled, check that no proxy requests are made.
-- Check that the sync export excludes the token unless the user opts in.
+- Check that the sync export excludes the token unless the user opts in, and that importing with the export code restores access.
+- Add a car from its VIN and API key, and check that its name is filled in from Škoda.
+- The About dialog shows the installed version.
 - Turn on password protection, reload, unlock, and check the data loads. A wrong password shows an error. *Lock* hides the Škoda data again.
 
 ## 10. Future work (out of scope)

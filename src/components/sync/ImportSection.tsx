@@ -14,28 +14,13 @@ import {
 } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import {
-  CarImportResultDialog,
-  ImportPreviewDialog,
-  QRCodeScanner,
-  SkodaAccessImportDialog,
-} from '@/components/sync';
-import { useSyncImport } from '@/hooks';
+import { QRCodeScanner, SyncImportFlow } from '@/components/sync';
 import { parseAnyFormat, type SyncData } from '@/utils';
 
 type ImportTab = 'scan' | 'paste';
 
 export const ImportSection: React.FC = () => {
   const { t } = useTranslation();
-  const {
-    existingCarNames,
-    confirmImport,
-    importResult,
-    closeResult,
-    pendingAccess,
-    completeAccess,
-    skipAccess,
-  } = useSyncImport();
 
   const [activeTab, setActiveTab] = useState<ImportTab>('paste');
   const [pasteValue, setPasteValue] = useState('');
@@ -62,15 +47,9 @@ export const ImportSection: React.FC = () => {
     void handleParse(pasteValue);
   };
 
-  const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
-    if (!previewData) return;
-    confirmImport(previewData, selectedCarIndices, importSettings);
+  const handleImportDone = () => {
     setPreviewData(null);
     setPasteValue('');
-  };
-
-  const handleClosePreview = () => {
-    setPreviewData(null);
   };
 
   return (
@@ -122,27 +101,7 @@ export const ImportSection: React.FC = () => {
         </div>
       )}
 
-      <ImportPreviewDialog
-        open={previewData !== null}
-        onClose={handleClosePreview}
-        onConfirm={handleConfirmImport}
-        syncData={previewData}
-        existingCarNames={existingCarNames}
-      />
-
-      <SkodaAccessImportDialog
-        open={pendingAccess.count > 0}
-        needsExportPassword={pendingAccess.needsExportPassword}
-        needsLocalPassword={pendingAccess.needsLocalPassword}
-        onSubmit={completeAccess}
-        onSkip={skipAccess}
-      />
-
-      <CarImportResultDialog
-        open={importResult !== null && pendingAccess.count === 0}
-        onClose={closeResult}
-        result={importResult}
-      />
+      <SyncImportFlow data={previewData} onDone={handleImportDone} />
     </div>
   );
 };

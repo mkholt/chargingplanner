@@ -12,6 +12,7 @@ export const MOCK_SKODA = {
   REVOKED_API_KEY: 'revoked-skoda-api-key',
   STATE_OF_CHARGE: 64,
   TARGET_STATE_OF_CHARGE: 90,
+  VEHICLE_NAME: 'Enyaq iV 80',
   /** Token lifetime in days */
   TOKEN_DAYS: 90,
 } as const;
@@ -58,7 +59,7 @@ export function getMockVehicle(authorization: string | null, vin: string) {
   const body: components['schemas']['VehicleResponse'] = {
     vehicle: {
       vin,
-      name: 'Enyaq iV 80',
+      name: MOCK_SKODA.VEHICLE_NAME,
       charging: {
         isVehicleInSavedLocation: true,
         status: {

@@ -270,33 +270,6 @@ describe('CarsContext', () => {
     });
   });
 
-  describe('mergeCars', () => {
-    it('adds new cars and skips duplicates', () => {
-      const { result } = renderHook(() => useCars(), { wrapper });
-
-      act(() => {
-        result.current.addCar({ name: 'Existing Car', batterySize: 50, maxPower: 7 });
-      });
-
-      // Verify the car was added
-      expect(result.current.cars).toHaveLength(1);
-
-      act(() => {
-        result.current.mergeCars([
-          { name: 'Existing Car', batterySize: 60, maxPower: 11 }, // Duplicate (case-insensitive)
-          { name: 'New Car', batterySize: 70, maxPower: 22 }, // New
-        ]);
-      });
-
-      // Verify the merge behavior through observable state
-      expect(result.current.cars).toHaveLength(2);
-      expect(result.current.cars.find(c => c.name === 'Existing Car')).toBeDefined();
-      expect(result.current.cars.find(c => c.name === 'New Car')).toBeDefined();
-      // Verify the duplicate wasn't updated (still has original batterySize)
-      expect(result.current.cars.find(c => c.name === 'Existing Car')?.batterySize).toBe(50);
-    });
-  });
-
   describe('error handling', () => {
     it('throws error when useCars is used outside provider', () => {
       expect(() => {

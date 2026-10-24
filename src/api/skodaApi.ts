@@ -22,6 +22,8 @@ export type SkodaProblemType =
   | 'rate-limited'
   | 'upstream-unavailable'
   | 'network-error'
+  /** The proxy answered with something this app doesn't understand */
+  | 'invalid-response'
   | 'unknown';
 
 const PROBLEM_PREFIX = 'urn:skoda-proxy:problem:';
@@ -95,14 +97,35 @@ async function request(input: string, init: RequestInit): Promise<Response> {
   return response;
 }
 
-/** Exchange a Škoda API key for a proxy token bound to one VIN. The key is not stored anywhere. */
+async function readJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    throw new SkodaProxyError(response.status, 'invalid-response', 'The Škoda proxy sent an invalid response');
+  }
+}
+
+function invalidResponse(response: Response, detail: string): SkodaProxyError {
+  return new SkodaProxyError(response.status, 'invalid-response', `The Škoda proxy sent an invalid response: ${detail}`);
+}
+
+/**
+ * Exchange a Škoda API key for a proxy token bound to one VIN. The key is not stored anywhere.
+ * The response must be a token for the requested VIN.
+ */
 export async function issueSkodaToken(baseUrl: string, apiKey: string, vin: string): Promise<SkodaToken> {
   const response = await request(`${baseUrl}/v1/tokens`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ apiKey, vin }),
   });
-  return (await response.json()) as SkodaToken;
+  const body = (await readJson(response)) as Partial<Record<keyof SkodaToken, unknown>> | null;
+  if (typeof body?.token !== 'string' || !body.token) throw invalidResponse(response, 'no token');
+  if (body.vin !== vin) throw invalidResponse(response, 'token for another VIN');
+  if (typeof body.expiresAt !== 'string' || Number.isNaN(Date.parse(body.expiresAt))) {
+    throw invalidResponse(response, 'no expiry');
+  }
+  return { token: body.token, vin: body.vin, expiresAt: body.expiresAt };
 }
 
 /** Read the vehicle's info and charging state through the proxy */
@@ -110,7 +133,10 @@ export async function fetchSkodaVehicle(baseUrl: string, token: string, vin: str
   const response = await request(`${baseUrl}/v1/vehicles/${encodeURIComponent(vin)}?include=info,charging`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const body = (await response.json()) as VehicleResponse;
+  const body = (await readJson(response)) as Partial<VehicleResponse> | null;
+  if (typeof body?.vehicle !== 'object' || body.vehicle === null || body.vehicle.vin !== vin) {
+    throw invalidResponse(response, 'no vehicle data for this VIN');
+  }
   return body.vehicle;
 }
 

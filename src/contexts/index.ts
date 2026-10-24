@@ -22,9 +22,8 @@ export type {
 
 // Škoda proxy and token vault
 export { SkodaProxyProvider, useSkodaProxy } from './SkodaProxyContext';
-export type { SkodaProxySettings } from './SkodaProxyContext';
 export { SkodaVaultProvider, useSkodaVault } from './SkodaVaultContext';
-export type { AutoLockMinutes, VaultTokens } from './SkodaVaultContext';
+export type { AutoLockMinutes } from './SkodaVaultContext';
 
 // Settings UI
 export { SettingsUIProvider, useSettingsUI } from './SettingsUIContext';

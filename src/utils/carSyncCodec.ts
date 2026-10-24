@@ -8,21 +8,21 @@ import { VIN_PATTERN } from './constants';
 // =============================================================================
 
 /**
- * Škoda link of a synced car. The VIN and expiry are always included.
- * Access is only included when the user opts in: `token` in plain form, or `sealedToken`,
- * a PBES2 JWE of `{ vin, token }` encrypted with the exporting device's vault password.
+ * Škoda link of a synced car. The VIN, expiry and issuing proxy are always included.
+ * Access is only included when the user opts in, as `sealedToken`: a PBES2 JWE of `{ vin, token }`
+ * encrypted with a one-time export code that the exporting device shows (see `sealAccess`).
  */
-export type SyncSkodaLink = {
+type SyncSkodaLink = {
   vin: string;
   expiresAt: string;
-  token?: string;
+  proxyUrl: string;
   sealedToken?: string;
 };
 
 export type SyncCar = Omit<Car, 'id' | 'skoda'> & { skoda?: SyncSkodaLink };
 
-/** Opted-in Škoda access per car id, for export */
-export type SkodaAccessExport = Record<string, { token: string } | { sealedToken: string }>;
+/** Opted-in Škoda access for export: the sealed token per car id */
+export type SkodaAccessExport = Record<string, string>;
 
 /**
  * Sync data format.
@@ -36,6 +36,12 @@ export type SyncData = {
 };
 
 export type SyncInputFormat = 'url' | 'code' | 'raw' | 'unknown';
+
+// Limits for data from outside, so a crafted link or code can't make the app decompress or render huge amounts
+/** Characters of encoded sync data (a full share URL is limited to MAX_URL_LENGTH anyway) */
+const MAX_ENCODED_LENGTH = 20_000;
+const MAX_DECOMPRESSED_BYTES = 64 * 1024;
+const MAX_SYNC_CARS = 50;
 
 // =============================================================================
 // Compression (using browser Compression Streams API)
@@ -73,7 +79,7 @@ async function compress(data: string): Promise<Uint8Array> {
   return result;
 }
 
-async function decompress(data: Uint8Array): Promise<string> {
+async function decompress(data: Uint8Array, maxBytes: number): Promise<string> {
   const inputStream = new ReadableStream({
     start(controller) {
       controller.enqueue(data);
@@ -86,9 +92,15 @@ async function decompress(data: Uint8Array): Promise<string> {
   const decoder = new TextDecoder();
 
   let result = '';
+  let totalBytes = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    totalBytes += value.length;
+    if (totalBytes > maxBytes) {
+      await reader.cancel();
+      throw new Error('Sync data is too large');
+    }
     result += decoder.decode(value, { stream: true });
   }
   result += decoder.decode();
@@ -131,7 +143,7 @@ function validateSkodaLink(skoda: unknown, index: number): SyncSkodaLink | undef
     throw new Error(`Invalid Škoda link at index ${index}: expected object`);
   }
 
-  const { vin, expiresAt, token, sealedToken } = skoda as Record<string, unknown>;
+  const { vin, expiresAt, proxyUrl, sealedToken } = skoda as Record<string, unknown>;
 
   if (typeof vin !== 'string' || !VIN_PATTERN.test(vin)) {
     throw new Error(`Invalid Škoda VIN at index ${index}`);
@@ -139,16 +151,16 @@ function validateSkodaLink(skoda: unknown, index: number): SyncSkodaLink | undef
   if (typeof expiresAt !== 'string' || Number.isNaN(Date.parse(expiresAt))) {
     throw new Error(`Invalid Škoda expiry at index ${index}`);
   }
-  if (token !== undefined && (typeof token !== 'string' || !token)) {
-    throw new Error(`Invalid Škoda token at index ${index}`);
+  if (typeof proxyUrl !== 'string' || !proxyUrl) {
+    throw new Error(`Invalid Škoda proxy URL at index ${index}`);
   }
   if (sealedToken !== undefined && (typeof sealedToken !== 'string' || !sealedToken)) {
     throw new Error(`Invalid sealed Škoda token at index ${index}`);
   }
 
-  const link: SyncSkodaLink = { vin, expiresAt };
-  if (token !== undefined) link.token = token;
-  else if (sealedToken !== undefined) link.sealedToken = sealedToken;
+  // Anything else, such as a plain token, is left out
+  const link: SyncSkodaLink = { vin, expiresAt, proxyUrl };
+  if (sealedToken !== undefined) link.sealedToken = sealedToken;
   return link;
 }
 
@@ -322,6 +334,9 @@ function validateSyncData(data: unknown): SyncData {
   if (!Array.isArray(cars)) {
     throw new Error('Invalid sync data: cars must be an array');
   }
+  if (cars.length > MAX_SYNC_CARS) {
+    throw new Error(`Invalid sync data: more than ${MAX_SYNC_CARS} cars`);
+  }
 
   return {
     cars: cars.map((car, i) => validateCar(car, i)),
@@ -335,8 +350,11 @@ function validateSyncData(data: unknown): SyncData {
 
 function toSyncCar({ id, name, batterySize, maxPower, skoda }: Car, skodaAccess: SkodaAccessExport): SyncCar {
   const car: SyncCar = { name, batterySize, maxPower };
-  // Tokens are never taken from the car profile: access is only exported when passed in explicitly
-  if (skoda) car.skoda = { vin: skoda.vin, expiresAt: skoda.expiresAt, ...skodaAccess[id] };
+  // Tokens are never taken from the car profile: access is only exported sealed, when passed in explicitly
+  if (skoda) {
+    car.skoda = { vin: skoda.vin, expiresAt: skoda.expiresAt, proxyUrl: skoda.proxyUrl };
+    if (skodaAccess[id]) car.skoda.sealedToken = skodaAccess[id];
+  }
   return car;
 }
 
@@ -373,8 +391,9 @@ export async function encodeSyncData(
 
 export async function decodeSyncData(encoded: string): Promise<SyncData> {
   try {
+    if (encoded.length > MAX_ENCODED_LENGTH) throw new Error('Sync data is too large');
     const compressed = fromUrlSafeBase64(encoded);
-    const json = await decompress(compressed);
+    const json = await decompress(compressed, MAX_DECOMPRESSED_BYTES);
     const data = JSON.parse(json);
     return validateSyncData(data);
   } catch (error) {

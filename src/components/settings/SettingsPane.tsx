@@ -19,7 +19,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { SyncPanel } from '@/components/sync';
-import { type SettingsTab, usePriceSettings, useSettingsUI } from '@/contexts';
+import { type SettingsTab, usePriceSettings, useSettingsUI, useSkodaProxy } from '@/contexts';
 import { useIsMobile } from '@/hooks';
 
 import { AggregationSection } from './AggregationSection';
@@ -33,6 +33,7 @@ export const SettingsPane: React.FC = () => {
   const { t } = useTranslation();
   const { activeTab, setActiveTab, closeSettings } = useSettingsUI();
   const { clearAll: clearPriceSettings, refetchIfStale } = usePriceSettings();
+  const { proxyUrl } = useSkodaProxy();
   const isMobile = useIsMobile();
   const paneRef = useRef<HTMLDivElement>(null);
 
@@ -128,8 +129,12 @@ export const SettingsPane: React.FC = () => {
         {activeTab === 'app' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalXL }}>
             <AppSettingsSection />
-            <Divider />
-            <SkodaSection />
+            {proxyUrl && (
+              <>
+                <Divider />
+                <SkodaSection />
+              </>
+            )}
           </div>
         )}
       </div>

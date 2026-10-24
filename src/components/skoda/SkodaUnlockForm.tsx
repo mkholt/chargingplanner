@@ -1,33 +1,35 @@
 import React, { useState } from 'react';
 
-import { Button, Field, Input, Text, tokens } from '@fluentui/react-components';
+import { Button, Text, tokens } from '@fluentui/react-components';
 import { LockOpen20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { Stack } from '@/components/ui';
+import { PasswordInput, Stack } from '@/components/ui';
 import { useSkodaVault } from '@/contexts';
+import { useAsyncAction } from '@/hooks';
 
 import { getSkodaErrorMessage } from './skodaErrors';
 
-/** Asks for the vault password, with a Skip option for this session */
-export const SkodaUnlockForm: React.FC<{ carName: string }> = ({ carName }) => {
+type Props = {
+  prompt: string;
+  /** Shows a Skip button */
+  onSkip?: () => void;
+  /** Shows a Cancel button */
+  onCancel?: () => void;
+  onUnlocked?: () => void;
+};
+
+/** Asks for the vault password and unlocks the vault */
+export const SkodaUnlockForm: React.FC<Props> = ({ prompt, onSkip, onCancel, onUnlocked }) => {
   const { t } = useTranslation();
-  const { unlock, skipUnlock } = useSkodaVault();
+  const { unlock } = useSkodaVault();
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { run, pending, error } = useAsyncAction();
 
   const handleUnlock = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      await unlock(password);
-    } catch (e) {
-      setError(getSkodaErrorMessage(e, t));
-    } finally {
-      setPassword('');
-      setPending(false);
-    }
+    const unlocked = await run(() => unlock(password));
+    setPassword('');
+    if (unlocked) onUnlocked?.();
   };
 
   return (
@@ -39,20 +41,15 @@ export const SkodaUnlockForm: React.FC<{ carName: string }> = ({ carName }) => {
       data-testid="skoda-unlock-form"
     >
       <Stack gap={tokens.spacingHorizontalS}>
-        <Text size={200}>{t('skoda.vault.unlockPrompt', { name: carName })}</Text>
-        <Field
+        <Text size={200}>{prompt}</Text>
+        <PasswordInput
           label={t('skoda.vault.password')}
-          validationMessage={error ?? undefined}
-          validationState={error ? 'error' : 'none'}
-        >
-          <Input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(_e, d) => setPassword(d.value)}
-            data-testid="skoda-unlock-password-input"
-          />
-        </Field>
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          testId="skoda-unlock-password-input"
+          error={error ? getSkodaErrorMessage(error, t) : null}
+        />
         <Stack horizontal gap={tokens.spacingHorizontalS}>
           <Button
             type="submit"
@@ -63,9 +60,16 @@ export const SkodaUnlockForm: React.FC<{ carName: string }> = ({ carName }) => {
           >
             {t('skoda.vault.unlock')}
           </Button>
-          <Button appearance="subtle" onClick={skipUnlock} data-testid="skoda-unlock-skip-button">
-            {t('skoda.vault.skip')}
-          </Button>
+          {onSkip && (
+            <Button appearance="subtle" onClick={onSkip} data-testid="skoda-unlock-skip-button">
+              {t('skoda.vault.skip')}
+            </Button>
+          )}
+          {onCancel && (
+            <Button appearance="subtle" onClick={onCancel} data-testid="skoda-unlock-cancel-button">
+              {t('common.cancel')}
+            </Button>
+          )}
         </Stack>
       </Stack>
     </form>

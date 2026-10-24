@@ -22,7 +22,7 @@ import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
 import { SkodaVehicleStatus } from '@/components/skoda';
 import { type Car } from '@/contexts';
-import { getChargePrefill, useDebouncedCallback, useIsMobile, useSkodaVehicleQuery } from '@/hooks';
+import { type ChargePrefill, getChargePrefill, useDebouncedCallback, useIsMobile, useSkodaVehicleQuery } from '@/hooks';
 import {
   CHARGING_POWER_OPTIONS,
   DEBOUNCE_MS,
@@ -111,8 +111,11 @@ export const InputForm: React.FC<Props> = ({
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Battery levels from the linked Škoda, if any. Values the user picks take precedence.
+  // Only the first data is used, so a refetch or a locked vault doesn't change the form under the user.
   const { data: vehicle } = useSkodaVehicleQuery(selectedCar);
-  const prefill = getChargePrefill(vehicle);
+  const [prefill, setPrefill] = useState<ChargePrefill | null>(null);
+  const latestPrefill = getChargePrefill(vehicle);
+  if (prefill === null && latestPrefill !== null) setPrefill(latestPrefill);
   const [startOverride, setStartOverride] = useState<number | null>(null);
   const [endOverride, setEndOverride] = useState<number | null>(null);
   const endPercent = Math.max(endOverride ?? prefill?.endPercent ?? 80, 1);
@@ -238,6 +241,16 @@ export const InputForm: React.FC<Props> = ({
         <>
           <CarSelector />
           <SkodaVehicleStatus car={selectedCar} />
+          {prefill?.atChargeLimit && (
+            <Text
+              size={200}
+              block
+              style={{ color: tokens.colorNeutralForeground3, marginBottom: tokens.spacingVerticalM }}
+              data-testid="skoda-at-charge-limit"
+            >
+              {t('skoda.vehicle.atChargeLimit')}
+            </Text>
+          )}
           <form
             style={{ display: "flex", flexDirection: "column", gap: tokens.spacingHorizontalL }}
             onSubmit={e => {

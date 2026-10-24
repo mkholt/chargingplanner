@@ -5,9 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { Car } from '@/contexts';
 import { useSkodaLinkStatus } from '@/hooks';
-import type { SkodaLinkStatus } from '@/utils';
-
-import { formatExpiryDate } from './skodaErrors';
+import { formatMediumDate, type SkodaLinkStatus } from '@/utils';
 
 const STATUS_COLORS: Record<SkodaLinkStatus, string> = {
   linked: tokens.colorNeutralForeground3,
@@ -25,7 +23,7 @@ export const SkodaLinkStatusText: React.FC<{ car: Car }> = ({ car }) => {
 
   return (
     <Text size={200} style={{ color: STATUS_COLORS[status] }} data-testid="skoda-link-status" data-status={status}>
-      {t(`skoda.link.status.${status}`, { date: formatExpiryDate(car.skoda.expiresAt, i18n.language) })}
+      {t(`skoda.link.status.${status}`, { date: formatMediumDate(car.skoda.expiresAt, i18n.language) })}
     </Text>
   );
 };

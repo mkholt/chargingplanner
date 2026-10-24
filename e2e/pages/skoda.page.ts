@@ -13,7 +13,7 @@ export class SkodaPage {
   // Settings → App → Škoda connection
   readonly settings: Locator;
   readonly enableToggle: Locator;
-  readonly proxyUrlInput: Locator;
+  readonly proxyUrl: Locator;
   readonly testConnectionButton: Locator;
   readonly connectionResult: Locator;
   // Password protection (vault)
@@ -31,12 +31,16 @@ export class SkodaPage {
   // Sync
   readonly exportOptions: Locator;
   readonly includeAccessCheckbox: Locator;
+  readonly exportCode: Locator;
+  // Add a car from Škoda
+  readonly addCarForm: Locator;
+  readonly addCarCheckDetails: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.settings = page.getByTestId('skoda-settings');
     this.enableToggle = page.getByTestId('skoda-enable-toggle');
-    this.proxyUrlInput = page.getByTestId('skoda-proxy-url-input');
+    this.proxyUrl = page.getByTestId('skoda-proxy-url');
     this.testConnectionButton = page.getByTestId('skoda-test-connection-button');
     this.connectionResult = page.getByTestId('skoda-connection-result');
     this.vaultSettings = page.getByTestId('skoda-vault-settings');
@@ -50,6 +54,9 @@ export class SkodaPage {
     this.unlockForm = page.getByTestId('skoda-unlock-form');
     this.exportOptions = page.getByTestId('skoda-export-options');
     this.includeAccessCheckbox = page.getByTestId('skoda-include-access-checkbox');
+    this.exportCode = page.getByTestId('skoda-export-code');
+    this.addCarForm = page.getByTestId('add-skoda-car-form');
+    this.addCarCheckDetails = page.getByTestId('add-skoda-car-check-details');
   }
 
   /** Link status text on a car card in Settings → Cars */
@@ -59,9 +66,8 @@ export class SkodaPage {
 
   // ========== Settings ==========
 
-  async enableProxy(url: string): Promise<void> {
+  async enableProxy(): Promise<void> {
     await this.enableToggle.check();
-    await this.proxyUrlInput.fill(url);
   }
 
   async testConnection(): Promise<void> {
@@ -79,6 +85,16 @@ export class SkodaPage {
     await this.page.getByTestId('skoda-vin-input').fill(vin);
     await this.page.getByTestId('skoda-api-key-input').fill(apiKey);
     await this.page.getByTestId('skoda-link-submit-button').click();
+  }
+
+  /** In Settings → Cars: add a car from its VIN and API key. Stops at the car form, with the name filled in. */
+  async lookUpNewCar(vin: string, apiKey: string): Promise<void> {
+    const addCard = this.page.getByTestId('add-skoda-car-card');
+    await addCard.scrollIntoViewIfNeeded();
+    await addCard.click();
+    await this.addCarForm.getByTestId('skoda-vin-input').fill(vin);
+    await this.addCarForm.getByTestId('skoda-api-key-input').fill(apiKey);
+    await this.page.getByTestId('add-skoda-car-lookup-button').click();
   }
 
   async saveCar(): Promise<void> {
@@ -119,12 +135,30 @@ export class SkodaPage {
     return output.inputValue();
   }
 
-  /** Paste a sync code in Settings → Sync → Import and import everything */
-  async importSyncCode(code: string): Promise<void> {
+  /** Include the Škoda access in the export, and read the export code that unlocks it */
+  async includeAccess(): Promise<string> {
+    await this.includeAccessCheckbox.check();
+    await expect(this.exportCode).not.toBeEmpty();
+    return (await this.exportCode.textContent()) ?? '';
+  }
+
+  /**
+   * Paste a sync code in Settings → Sync → Import and import everything.
+   * With an export code, the Škoda access in the sync code is imported as well; otherwise it is skipped.
+   */
+  async importSyncCode(code: string, exportCode?: string): Promise<void> {
     await this.page.getByTestId('sync-import-tab').click();
     await this.page.getByTestId('sync-paste-input').fill(code);
     await this.page.getByTestId('sync-import-button').click();
     await this.page.getByTestId('import-preview-confirm-button').click();
+    const accessDialog = this.page.getByTestId('skoda-access-import-dialog');
+    if (exportCode !== undefined) {
+      await accessDialog.getByTestId('skoda-import-export-code-input').fill(exportCode);
+      await accessDialog.getByTestId('skoda-import-submit-button').click();
+      await expect(accessDialog).not.toBeVisible();
+    } else if (await accessDialog.isVisible()) {
+      await accessDialog.getByTestId('skoda-import-skip-button').click();
+    }
     await this.page.getByTestId('import-result-done-button').click();
   }
 }

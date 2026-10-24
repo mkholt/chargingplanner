@@ -9,7 +9,7 @@ import { SelectableCard } from '@/components/ui';
 import { type Car, useCars } from '@/contexts';
 
 import { CarForm } from './CarForm';
-import type { CarFormState } from './carFormState';
+import { type CarFormState, isCarFormValid } from './carFormState';
 
 /** Slugify a car name for use in data-testid */
 function slugify(name: string): string {
@@ -45,7 +45,7 @@ export const CarCard: React.FC<Props> = ({
   };
 
   const handleSave = () => {
-    if (!formState || !formState.name.trim() || formState.batterySize <= 0 || formState.maxPower <= 0) return;
+    if (!formState || !isCarFormValid(formState)) return;
     updateCar(car.id, {
       name: formState.name.trim(),
       batterySize: formState.batterySize,

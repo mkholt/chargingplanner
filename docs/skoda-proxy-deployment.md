@@ -223,7 +223,7 @@ ProxyRequests Off
 ```
 
 Then:
-- **In the app**, set the Proxy URL to `https://example.com/skoda-proxy`.
+- **In the app**, build it with `VITE_SKODA_PROXY_URL=https://example.com/skoda-proxy` (see §8).
 - **Health check:** `https://example.com/skoda-proxy/healthz`.
 - **CORS:** if the app is served from the same origin (`https://example.com`), the browser makes same-origin requests and CORS doesn't apply. Still set `ALLOWED_ORIGINS=https://example.com`.
 
@@ -325,19 +325,21 @@ sudo install -o 65532 -g 65532 -m 400 /etc/skoda-proxy/token-secrets /etc/skoda-
 
 ## 8. The app: build settings and Content-Security-Policy
 
-The app connects to the proxy straight from the browser. Two build-time settings affect this:
+The app connects to the proxy straight from the browser. The proxy URL is set when the app is built. Users can turn the Škoda connection on and off, but can't change the URL:
 
 ```bash
-# .env.production (optional): the proxy URL users get by default; they can still change it in the settings
+# .env.production: without it, the Škoda connection is hidden in the app
 VITE_SKODA_PROXY_URL=https://skoda-proxy.example.com
 ```
+
+If the app is built by a CI workflow (for example a release workflow), set the variable there as well. Otherwise the released app has no Škoda connection.
 
 `npm run build` adds a Content-Security-Policy `<meta>` tag to `dist/index.html`. It allows scripts only from the app's own origin and limits `connect-src` to the price API and the proxy:
 
 | Build | `connect-src` |
 |---|---|
 | `VITE_SKODA_PROXY_URL` set | `'self' https://stromligning.dk https://skoda-proxy.example.com` |
-| Not set | `'self' https://stromligning.dk https:`. Users enter any proxy URL, so every https origin is allowed. Set the variable to tighten this. |
+| Not set | `'self' https://stromligning.dk`. The Škoda connection is hidden. |
 
 A `<meta>` CSP cannot set `frame-ancestors`, so also send the policy as a header from the web server that serves the app. Use the same value as the meta tag (copy it from `dist/index.html`) and add `frame-ancestors 'none'`:
 
@@ -377,9 +379,9 @@ curl -si -x https://skoda-proxy.example.com:443 http://example.org/
 ```
 
 Then, in the app:
-1. Open **Settings → App → Škoda Connection**, enable the proxy and enter its URL.
+1. Open **Settings → App → Škoda Connection** and enable the proxy. Check that the URL shown is the one you deployed.
 2. Run **Test connection**.
-3. Link each car.
+3. Link each car, or add it with **Add Škoda car** in Settings → Cars.
 
 ## 10. Operations
 

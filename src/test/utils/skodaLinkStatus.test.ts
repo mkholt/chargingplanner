@@ -5,7 +5,7 @@ const inDays = (days: number) => new Date(NOW.getTime() + days * MS_PER_DAY).toI
 const usable = { hasToken: true, isLocked: false, isRevoked: false, now: NOW };
 
 describe('getSkodaLinkStatus', () => {
-  const link = { vin: 'TMBJJ7NE8L0123456', expiresAt: inDays(60) };
+  const link = { vin: 'TMBJJ7NE8L0123456', expiresAt: inDays(60), proxyUrl: 'https://skoda-proxy.example' };
 
   it('is linked with a usable token far from expiry', () => {
     expect(getSkodaLinkStatus(link, usable)).toBe('linked');

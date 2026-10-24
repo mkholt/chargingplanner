@@ -23,14 +23,16 @@ const containerStyle: React.CSSProperties = {
 export const SkodaVehicleStatus: React.FC<{ car: Car | null }> = ({ car }) => {
   const { t } = useTranslation();
   const { baseUrl } = useSkodaProxy();
-  const { isProtected, isUnlocked, unlockSkipped } = useSkodaVault();
+  const { isProtected, isUnlocked, unlockSkipped, skipUnlock } = useSkodaVault();
   const { data, error, isLoading } = useSkodaVehicleQuery(car);
 
   if (!baseUrl || !car?.skoda) return null;
 
   const renderContent = () => {
     if (isProtected && !isUnlocked) {
-      return unlockSkipped ? <SkodaLinkStatusText car={car} /> : <SkodaUnlockForm carName={car.name} />;
+      return unlockSkipped
+        ? <SkodaLinkStatusText car={car} />
+        : <SkodaUnlockForm prompt={t('skoda.vault.unlockPrompt', { name: car.name })} onSkip={skipUnlock} />;
     }
     if (isLoading) return <Spinner size="tiny" label={t('skoda.vehicle.loading')} labelPosition="after" />;
     if (error) {

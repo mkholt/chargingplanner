@@ -1,177 +1,190 @@
 import React, { useState } from 'react';
 
-import { Badge, Button, Dropdown, Field, Input, Option, Text, tokens } from '@fluentui/react-components';
+import { Badge, Button, Dropdown, Field, Option, Text, tokens } from '@fluentui/react-components';
 import { LockClosed20Regular, LockOpen20Regular } from '@fluentui/react-icons';
 import { useTranslation } from 'react-i18next';
 
-import { getSkodaErrorMessage } from '@/components/skoda';
-import { Stack } from '@/components/ui';
+import { getSkodaErrorMessage, SkodaUnlockForm } from '@/components/skoda';
+import { PasswordInput, Stack } from '@/components/ui';
 import { type AutoLockMinutes, useSkodaVault } from '@/contexts';
+import { useAsyncAction } from '@/hooks';
 import { VAULT_MIN_PASSWORD_LENGTH } from '@/utils';
 
 type Panel = 'enable' | 'unlock' | 'change' | 'disable' | 'reset' | null;
 
 const AUTO_LOCK_OPTIONS: AutoLockMinutes[] = [5, 15, 60, null];
 
-type PasswordInputProps = {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  autoComplete: 'current-password' | 'new-password';
+type FormActionsProps = {
+  submitLabel: string;
+  disabled: boolean;
   testId: string;
-  error?: string | null;
+  onCancel: () => void;
 };
 
-const PasswordInput: React.FC<PasswordInputProps> = ({ label, value, onChange, autoComplete, testId, error }) => (
-  <Field label={label} validationMessage={error ?? undefined} validationState={error ? 'error' : 'none'}>
-    <Input
-      type="password"
-      autoComplete={autoComplete}
-      value={value}
-      onChange={(_e, d) => onChange(d.value)}
-      data-testid={testId}
-    />
-  </Field>
-);
+const FormActions: React.FC<FormActionsProps> = ({ submitLabel, disabled, testId, onCancel }) => {
+  const { t } = useTranslation();
+  return (
+    <Stack horizontal gap={tokens.spacingHorizontalS} justify="flex-end">
+      <Button appearance="subtle" onClick={onCancel}>
+        {t('common.cancel')}
+      </Button>
+      <Button type="submit" appearance="primary" disabled={disabled} data-testid={testId}>
+        {submitLabel}
+      </Button>
+    </Stack>
+  );
+};
+
+type PasswordFormProps = {
+  /** Ask for the current password as well */
+  current: boolean;
+  /** Ask for a new password, with confirmation */
+  next: boolean;
+  description?: string;
+  submitLabel: string;
+  submitTestId: string;
+  onSubmit: (currentPassword: string, newPassword: string) => Promise<void>;
+  onDone: () => void;
+};
+
+/** Current and/or new vault password, submitted together */
+const PasswordForm: React.FC<PasswordFormProps> = ({
+  current,
+  next,
+  description,
+  submitLabel,
+  submitTestId,
+  onSubmit,
+  onDone,
+}) => {
+  const { t } = useTranslation();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const { run, pending, error } = useAsyncAction();
+  const errorMessage = error ? getSkodaErrorMessage(error, t) : null;
+
+  const newPasswordError = (() => {
+    if (!next) return null;
+    if (newPassword.length < VAULT_MIN_PASSWORD_LENGTH) {
+      return t('skoda.vault.passwordTooShort', { count: VAULT_MIN_PASSWORD_LENGTH });
+    }
+    if (newPassword !== confirm) return t('skoda.vault.passwordMismatch');
+    return null;
+  })();
+
+  const handleSubmit = async () => {
+    if (await run(() => onSubmit(currentPassword, newPassword))) onDone();
+  };
+
+  return (
+    <form onSubmit={e => { e.preventDefault(); void handleSubmit(); }}>
+      <Stack gap={tokens.spacingHorizontalS}>
+        {description && (
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>{description}</Text>
+        )}
+        {current && (
+          <PasswordInput
+            label={next ? t('skoda.vault.currentPassword') : t('skoda.vault.password')}
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            autoComplete="current-password"
+            testId="skoda-vault-password-input"
+            error={errorMessage}
+          />
+        )}
+        {next && (
+          <>
+            <PasswordInput
+              label={current ? t('skoda.vault.newPassword') : t('skoda.vault.password')}
+              value={newPassword}
+              onChange={setNewPassword}
+              autoComplete="new-password"
+              testId="skoda-vault-new-password-input"
+            />
+            <PasswordInput
+              label={t('skoda.vault.confirmPassword')}
+              value={confirm}
+              onChange={setConfirm}
+              autoComplete="new-password"
+              testId="skoda-vault-confirm-password-input"
+              error={(confirm ? newPasswordError : null) ?? (current ? null : errorMessage)}
+            />
+          </>
+        )}
+        <FormActions
+          submitLabel={submitLabel}
+          disabled={pending || (current && !currentPassword) || newPasswordError !== null}
+          testId={submitTestId}
+          onCancel={onDone}
+        />
+      </Stack>
+    </form>
+  );
+};
 
 /** Optional password protection of the Škoda tokens stored in this browser */
 export const SkodaVaultSection: React.FC = () => {
   const { t } = useTranslation();
   const vault = useSkodaVault();
   const [panel, setPanel] = useState<Panel>(null);
-  const [password, setPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  const openPanel = (next: Panel) => {
-    setPanel(next);
-    setPassword('');
-    setNewPassword('');
-    setConfirm('');
-    setError(null);
-  };
-
-  const run = async (action: () => Promise<void> | void) => {
-    setPending(true);
-    setError(null);
-    try {
-      await action();
-      openPanel(null);
-    } catch (e) {
-      setError(getSkodaErrorMessage(e, t));
-    } finally {
-      setPending(false);
-    }
-  };
-
-  /** Validation message for a new password and its confirmation, or null if they're fine */
-  const newPasswordError = (value: string): string | null => {
-    if (value.length < VAULT_MIN_PASSWORD_LENGTH) return t('skoda.vault.passwordTooShort', { count: VAULT_MIN_PASSWORD_LENGTH });
-    if (value !== confirm) return t('skoda.vault.passwordMismatch');
-    return null;
-  };
+  const reset = useAsyncAction();
+  const close = () => setPanel(null);
 
   const autoLockLabel = (minutes: AutoLockMinutes) =>
     minutes === null ? t('skoda.vault.autoLockNever') : t('skoda.vault.autoLockMinutes', { count: minutes });
 
-  const actions = (submitLabel: string, disabled: boolean, testId: string) => (
-    <Stack horizontal gap={tokens.spacingHorizontalS} justify="flex-end">
-      <Button appearance="subtle" onClick={() => openPanel(null)}>
-        {t('common.cancel')}
-      </Button>
-      <Button type="submit" appearance="primary" disabled={disabled || pending} data-testid={testId}>
-        {submitLabel}
-      </Button>
-    </Stack>
-  );
-
   const renderPanel = () => {
     switch (panel) {
-      case 'enable': {
-        const validation = newPasswordError(password);
+      case 'enable':
         return (
-          <form onSubmit={e => { e.preventDefault(); void run(() => vault.enable(password)); }}>
-            <Stack gap={tokens.spacingHorizontalS}>
-              <PasswordInput label={t('skoda.vault.password')} value={password} onChange={setPassword} autoComplete="new-password" testId="skoda-vault-new-password-input" />
-              <PasswordInput
-                label={t('skoda.vault.confirmPassword')}
-                value={confirm}
-                onChange={setConfirm}
-                autoComplete="new-password"
-                testId="skoda-vault-confirm-password-input"
-                error={confirm ? validation ?? error : error}
-              />
-              {actions(t('skoda.vault.turnOn'), validation !== null, 'skoda-vault-turn-on-button')}
-            </Stack>
-          </form>
+          <PasswordForm
+            current={false}
+            next
+            submitLabel={t('skoda.vault.turnOn')}
+            submitTestId="skoda-vault-turn-on-button"
+            onSubmit={(_current, password) => vault.enable(password)}
+            onDone={close}
+          />
         );
-      }
       case 'unlock':
+        return <SkodaUnlockForm prompt={t('skoda.vault.unlockSettingsPrompt')} onCancel={close} onUnlocked={close} />;
+      case 'change':
+        return (
+          <PasswordForm
+            current
+            next
+            submitLabel={t('skoda.vault.changePassword')}
+            submitTestId="skoda-vault-change-submit-button"
+            onSubmit={vault.changePassword}
+            onDone={close}
+          />
+        );
       case 'disable':
         return (
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              void run(() => (panel === 'unlock' ? vault.unlock(password) : vault.disable(password)));
-            }}
-          >
-            <Stack gap={tokens.spacingHorizontalS}>
-              {panel === 'disable' && (
-                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                  {t('skoda.vault.turnOffDescription')}
-                </Text>
-              )}
-              <PasswordInput
-                label={t('skoda.vault.password')}
-                value={password}
-                onChange={setPassword}
-                autoComplete="current-password"
-                testId="skoda-vault-password-input"
-                error={error}
-              />
-              {panel === 'unlock'
-                ? actions(t('skoda.vault.unlock'), !password, 'skoda-vault-unlock-submit-button')
-                : actions(t('skoda.vault.turnOff'), !password, 'skoda-vault-turn-off-submit-button')}
-            </Stack>
-          </form>
+          <PasswordForm
+            current
+            next={false}
+            description={t('skoda.vault.turnOffDescription')}
+            submitLabel={t('skoda.vault.turnOff')}
+            submitTestId="skoda-vault-turn-off-submit-button"
+            onSubmit={password => vault.disable(password)}
+            onDone={close}
+          />
         );
-      case 'change': {
-        const validation = newPasswordError(newPassword);
-        return (
-          <form onSubmit={e => { e.preventDefault(); void run(() => vault.changePassword(password, newPassword)); }}>
-            <Stack gap={tokens.spacingHorizontalS}>
-              <PasswordInput
-                label={t('skoda.vault.currentPassword')}
-                value={password}
-                onChange={setPassword}
-                autoComplete="current-password"
-                testId="skoda-vault-password-input"
-                error={error}
-              />
-              <PasswordInput label={t('skoda.vault.newPassword')} value={newPassword} onChange={setNewPassword} autoComplete="new-password" testId="skoda-vault-new-password-input" />
-              <PasswordInput
-                label={t('skoda.vault.confirmPassword')}
-                value={confirm}
-                onChange={setConfirm}
-                autoComplete="new-password"
-                testId="skoda-vault-confirm-password-input"
-                error={confirm ? validation : null}
-              />
-              {actions(t('skoda.vault.changePassword'), !password || validation !== null, 'skoda-vault-change-submit-button')}
-            </Stack>
-          </form>
-        );
-      }
       case 'reset':
         return (
-          <form onSubmit={e => { e.preventDefault(); void run(vault.reset); }}>
+          <form onSubmit={e => { e.preventDefault(); void reset.run(vault.reset).then(done => done && close()); }}>
             <Stack gap={tokens.spacingHorizontalS}>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                 {t('skoda.vault.resetDescription')}
               </Text>
-              {actions(t('skoda.vault.resetConfirm'), false, 'skoda-vault-reset-confirm-button')}
+              <FormActions
+                submitLabel={t('skoda.vault.resetConfirm')}
+                disabled={reset.pending}
+                testId="skoda-vault-reset-confirm-button"
+                onCancel={close}
+              />
             </Stack>
           </form>
         );
@@ -196,7 +209,7 @@ export const SkodaVaultSection: React.FC = () => {
 
       {panel === null && !vault.isProtected && (
         <Stack horizontal>
-          <Button icon={<LockClosed20Regular />} onClick={() => openPanel('enable')} data-testid="skoda-vault-enable-button">
+          <Button icon={<LockClosed20Regular />} onClick={() => setPanel('enable')} data-testid="skoda-vault-enable-button">
             {t('skoda.vault.enable')}
           </Button>
         </Stack>
@@ -210,17 +223,17 @@ export const SkodaVaultSection: React.FC = () => {
                 {t('skoda.vault.lock')}
               </Button>
             ) : (
-              <Button icon={<LockOpen20Regular />} onClick={() => openPanel('unlock')} data-testid="skoda-vault-unlock-button">
+              <Button icon={<LockOpen20Regular />} onClick={() => setPanel('unlock')} data-testid="skoda-vault-unlock-button">
                 {t('skoda.vault.unlock')}
               </Button>
             )}
-            <Button appearance="subtle" onClick={() => openPanel('change')} data-testid="skoda-vault-change-button">
+            <Button appearance="subtle" onClick={() => setPanel('change')} data-testid="skoda-vault-change-button">
               {t('skoda.vault.changePassword')}
             </Button>
-            <Button appearance="subtle" onClick={() => openPanel('disable')} data-testid="skoda-vault-turn-off-button">
+            <Button appearance="subtle" onClick={() => setPanel('disable')} data-testid="skoda-vault-turn-off-button">
               {t('skoda.vault.turnOff')}
             </Button>
-            <Button appearance="subtle" onClick={() => openPanel('reset')} data-testid="skoda-vault-reset-button">
+            <Button appearance="subtle" onClick={() => setPanel('reset')} data-testid="skoda-vault-reset-button">
               {t('skoda.vault.reset')}
             </Button>
           </Stack>

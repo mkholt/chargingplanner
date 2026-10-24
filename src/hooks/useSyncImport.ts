@@ -1,35 +1,20 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { useCars, usePriceSettings, useSkodaVault } from '@/contexts';
-import { mergeCars, type MergeResult, openWithPassword, type SyncCar, type SyncData, WrongPasswordError } from '@/utils';
+import { type SkodaLink, useCars, usePriceSettings, useSkodaVault } from '@/contexts';
+import { mergeCars, type MergeResult, openAccess, type SyncCar, type SyncData, WrongPasswordError } from '@/utils';
 
-/** Škoda access of an imported car that still needs a password before it can be stored */
+/** Sealed Škoda access of an imported car, waiting for the export code */
 type PendingAccess = {
   carId: string;
-  vin: string;
-  expiresAt: string;
-  token?: string;
-  sealedToken?: string;
+  link: SkodaLink;
+  sealedToken: string;
 };
 
 /**
- * A password entered on import is wrong; `field` says which one.
- * Not a subclass of WrongPasswordError: `@/utils` may not be initialised yet when this module loads.
- */
-export class SkodaImportPasswordError extends Error {
-  readonly field: 'exportPassword' | 'localPassword';
-
-  constructor(field: 'exportPassword' | 'localPassword') {
-    super('Wrong password');
-    this.name = 'SkodaImportPasswordError';
-    this.field = field;
-  }
-}
-
-/**
  * Import cars and settings from sync data.
- * Škoda access that is password-sealed, or that has to go into this device's vault, is kept
- * pending until `completeAccess` gets the passwords. Skipping it leaves the cars linked without access.
+ * Škoda access is sealed with the export code shown on the exporting device. It is kept pending until
+ * `completeAccess` gets the code (and this device's vault password, if protected). Skipping it leaves
+ * the cars linked without access.
  */
 export function useSyncImport() {
   const { cars, addCar, updateCar } = useCars();
@@ -50,16 +35,9 @@ export function useSyncImport() {
     const pending: PendingAccess[] = [];
 
     result.added.forEach(({ name, batterySize, maxPower, skoda }) => {
-      const storeNow = skoda?.token !== undefined && !isProtected;
-      const car = addCar({
-        name,
-        batterySize,
-        maxPower,
-        skoda: skoda && { vin: skoda.vin, expiresAt: skoda.expiresAt, token: storeNow ? skoda.token : undefined },
-      });
-      if (skoda && !storeNow && (skoda.token || skoda.sealedToken)) {
-        pending.push({ carId: car.id, ...skoda });
-      }
+      const link = skoda && { vin: skoda.vin, expiresAt: skoda.expiresAt, proxyUrl: skoda.proxyUrl };
+      const car = addCar({ name, batterySize, maxPower, skoda: link });
+      if (link && skoda.sealedToken) pending.push({ carId: car.id, link, sealedToken: skoda.sealedToken });
     });
 
     if (importSettings && data.settings) {
@@ -68,32 +46,26 @@ export function useSyncImport() {
 
     setPendingAccess(pending);
     setImportResult(result);
-  }, [addCar, applySettings, cars, isProtected]);
+  }, [addCar, applySettings, cars]);
 
-  const completeAccess = useCallback(async (exportPassword: string, localPassword: string) => {
-    const resolved = await Promise.all(pendingAccess.map(async entry => {
-      if (!entry.sealedToken) return { ...entry, token: entry.token! };
-      try {
-        const opened = await openWithPassword<{ vin: string; token: string }>(entry.sealedToken, exportPassword);
-        // The sealed access must belong to the VIN it was exported with
-        if (opened.vin !== entry.vin) throw new WrongPasswordError();
-        return { ...entry, token: opened.token };
-      } catch {
-        throw new SkodaImportPasswordError('exportPassword');
-      }
-    }));
+  /** Throws WrongPasswordError with `field` set to the password that is wrong */
+  const completeAccess = useCallback(async (exportCode: string, localPassword: string) => {
+    const opened = await Promise.all(pendingAccess.map(async entry => ({
+      ...entry,
+      token: await openAccess(entry.sealedToken, exportCode, entry.link.vin),
+    })));
 
     if (isProtected) {
       try {
         await updateVault(localPassword, tokens => ({
           ...tokens,
-          ...Object.fromEntries(resolved.map(({ carId, vin, token }) => [carId, { vin, token }])),
+          ...Object.fromEntries(opened.map(({ carId, link, token }) => [carId, { vin: link.vin, token }])),
         }));
       } catch (e) {
-        throw e instanceof WrongPasswordError ? new SkodaImportPasswordError('localPassword') : e;
+        throw e instanceof WrongPasswordError ? new WrongPasswordError('localPassword') : e;
       }
     } else {
-      resolved.forEach(({ carId, vin, expiresAt, token }) => updateCar(carId, { skoda: { vin, expiresAt, token } }));
+      opened.forEach(({ carId, link, token }) => updateCar(carId, { skoda: { ...link, token } }));
     }
     setPendingAccess([]);
   }, [isProtected, pendingAccess, updateCar, updateVault]);
@@ -105,7 +77,6 @@ export function useSyncImport() {
     closeResult: useCallback(() => setImportResult(null), []),
     pendingAccess: {
       count: pendingAccess.length,
-      needsExportPassword: pendingAccess.some(entry => entry.sealedToken),
       needsLocalPassword: isProtected,
     },
     completeAccess,

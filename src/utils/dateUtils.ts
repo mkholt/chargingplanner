@@ -155,3 +155,8 @@ export function formatDuration(hours: number): string {
 export function formatTime(date: Date): string {
   return date.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 }
+
+/** Date for display in the given language, e.g. "12 Jan 2027" */
+export function formatMediumDate(iso: string, language: string): string {
+  return new Date(iso).toLocaleDateString(language, { day: 'numeric', month: 'short', year: 'numeric' });
+}

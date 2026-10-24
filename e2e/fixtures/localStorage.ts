@@ -181,10 +181,10 @@ export async function seedDefaultLatest(page: Page, value: string): Promise<void
 }
 
 /**
- * Seeds the Škoda proxy settings. The mock API answers proxy requests on any origin.
+ * Turns the Škoda connection on or off. The proxy URL is set at build time (see playwright.config.ts).
  */
 export async function seedSkodaProxy(page: Page, enabled = true): Promise<void> {
-  await setLocalStorageItem(page, LS_KEYS.SKODA_PROXY, { enabled, url: MOCK_SKODA.PROXY_URL });
+  await setLocalStorageItem(page, LS_KEYS.SKODA_PROXY, { enabled });
 }
 
 /**
@@ -192,5 +192,5 @@ export async function seedSkodaProxy(page: Page, enabled = true): Promise<void> 
  */
 export function createLinkedTestCar(id: string, car: Omit<Car, 'id' | 'skoda'>): Car {
   const expiresAt = new Date(Date.now() + MOCK_SKODA.TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  return { id, ...car, skoda: { vin: MOCK_SKODA.VIN, expiresAt, token: `mock-token.${MOCK_SKODA.VIN}` } };
+  return { id, ...car, skoda: { vin: MOCK_SKODA.VIN, expiresAt, proxyUrl: MOCK_SKODA.PROXY_URL, token: `mock-token.${MOCK_SKODA.VIN}` } };
 }

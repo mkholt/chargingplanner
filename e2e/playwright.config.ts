@@ -40,6 +40,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       VITE_USE_MOCK_API: 'true',
+      // Same URL as MOCK_SKODA.PROXY_URL
+      VITE_SKODA_PROXY_URL: 'https://skoda-proxy.example',
     },
   },
 });

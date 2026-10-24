@@ -16,53 +16,38 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { getSkodaErrorMessage } from '@/components/skoda';
-import { Stack } from '@/components/ui';
-import { SkodaImportPasswordError } from '@/hooks';
+import { PasswordInput, Stack } from '@/components/ui';
+import { useAsyncAction } from '@/hooks';
+import { type PasswordField, WrongPasswordError } from '@/utils';
 
 type Props = {
   open: boolean;
-  needsExportPassword: boolean;
   needsLocalPassword: boolean;
-  onSubmit: (exportPassword: string, localPassword: string) => Promise<void>;
+  onSubmit: (exportCode: string, localPassword: string) => Promise<void>;
   onSkip: () => void;
 };
 
-/** Asks for the passwords needed to store imported Škoda access */
-export const SkodaAccessImportDialog: React.FC<Props> = ({
-  open,
-  needsExportPassword,
-  needsLocalPassword,
-  onSubmit,
-  onSkip,
-}) => {
+/** Asks for the export code (and this device's vault password) needed to store imported Škoda access */
+export const SkodaAccessImportDialog: React.FC<Props> = ({ open, needsLocalPassword, onSubmit, onSkip }) => {
   const { t } = useTranslation();
-  const [exportPassword, setExportPassword] = useState('');
+  const [exportCode, setExportCode] = useState('');
   const [localPassword, setLocalPassword] = useState('');
-  const [error, setError] = useState<{ field: 'exportPassword' | 'localPassword' | null; message: string } | null>(null);
-  const [pending, setPending] = useState(false);
+  const { run, pending, error, reset } = useAsyncAction();
 
   const close = (action: () => void) => {
-    setExportPassword('');
+    setExportCode('');
     setLocalPassword('');
-    setError(null);
+    reset();
     action();
   };
 
   const handleSubmit = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      await onSubmit(exportPassword, localPassword);
-      close(() => {});
-    } catch (e) {
-      setError({ field: e instanceof SkodaImportPasswordError ? e.field : null, message: getSkodaErrorMessage(e, t) });
-    } finally {
-      setPending(false);
-    }
+    if (await run(() => onSubmit(exportCode, localPassword))) close(() => {});
   };
 
-  const fieldError = (field: 'exportPassword' | 'localPassword') =>
-    error?.field === field ? { validationMessage: error.message, validationState: 'error' as const } : {};
+  const message = error ? getSkodaErrorMessage(error, t) : null;
+  const errorField: PasswordField | null = error instanceof WrongPasswordError ? error.field ?? null : null;
+  const fieldError = (field: PasswordField) => (errorField === field ? message : null);
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && close(onSkip)}>
@@ -77,31 +62,33 @@ export const SkodaAccessImportDialog: React.FC<Props> = ({
             <DialogTitle>{t('skoda.sync.importTitle')}</DialogTitle>
             <DialogContent>
               <Stack gap={tokens.spacingHorizontalM}>
-                <Text>{needsExportPassword ? t('skoda.sync.importDescription') : t('skoda.sync.importLocalPrompt')}</Text>
-                {needsExportPassword && (
-                  <Field label={t('skoda.sync.exportPassword')} {...fieldError('exportPassword')}>
-                    <Input
-                      type="password"
-                      autoComplete="off"
-                      value={exportPassword}
-                      onChange={(_e, d) => setExportPassword(d.value)}
-                      data-testid="skoda-import-export-password-input"
-                    />
-                  </Field>
-                )}
+                <Text>{t('skoda.sync.importDescription')}</Text>
+                <Field
+                  label={t('skoda.sync.exportCode')}
+                  validationMessage={fieldError('exportCode') ?? undefined}
+                  validationState={fieldError('exportCode') ? 'error' : 'none'}
+                >
+                  <Input
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={exportCode}
+                    onChange={(_e, d) => setExportCode(d.value)}
+                    style={{ fontFamily: 'monospace' }}
+                    data-testid="skoda-import-export-code-input"
+                  />
+                </Field>
                 {needsLocalPassword && (
-                  <Field label={t('skoda.sync.localPassword')} {...fieldError('localPassword')}>
-                    <Input
-                      type="password"
-                      autoComplete="current-password"
-                      value={localPassword}
-                      onChange={(_e, d) => setLocalPassword(d.value)}
-                      data-testid="skoda-import-local-password-input"
-                    />
-                  </Field>
+                  <PasswordInput
+                    label={t('skoda.sync.localPassword')}
+                    value={localPassword}
+                    onChange={setLocalPassword}
+                    autoComplete="current-password"
+                    testId="skoda-import-local-password-input"
+                    error={fieldError('localPassword')}
+                  />
                 )}
-                {error && error.field === null && (
-                  <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>{error.message}</Text>
+                {message && errorField === null && (
+                  <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>{message}</Text>
                 )}
               </Stack>
             </DialogContent>
@@ -112,9 +99,7 @@ export const SkodaAccessImportDialog: React.FC<Props> = ({
               <Button
                 type="submit"
                 appearance="primary"
-                disabled={
-                  pending || (needsExportPassword && !exportPassword) || (needsLocalPassword && !localPassword)
-                }
+                disabled={pending || !exportCode.trim() || (needsLocalPassword && !localPassword)}
                 data-testid="skoda-import-submit-button"
               >
                 {t('skoda.sync.importButton')}
