@@ -26,7 +26,7 @@ import { SkodaExportOptions } from '@/components/skoda';
 import { Stack } from '@/components/ui';
 import { type Car, type PriceSettings } from '@/contexts';
 import { useIsMobile, useSkodaAccessExport } from '@/hooks';
-import { encodeSyncData, generateShareableUrl, generateSyncCode } from '@/utils';
+import { encodeSyncData, generateShareableUrl, generateSyncCode, SyncDataTooLargeError } from '@/utils';
 
 type Props = {
   cars: Car[];
@@ -82,6 +82,8 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     qrData: string;
     shareUrl: string | null;
     syncCode: string;
+    /** More data than an import accepts: there are no outputs */
+    tooLarge: boolean;
     /** The Škoda access the outputs were generated with */
     skodaAccess: typeof skodaAccessData;
   } | null>(null);
@@ -90,14 +92,21 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     let cancelled = false;
 
     async function generate() {
-      const [qrData, shareUrl, syncCode] = await Promise.all([
-        encodeSyncData(cars, settingsToInclude, skodaAccessData),
-        generateShareableUrl(cars, settingsToInclude, skodaAccessData),
-        generateSyncCode(cars, settingsToInclude, skodaAccessData),
-      ]);
+      try {
+        const [qrData, shareUrl, syncCode] = await Promise.all([
+          encodeSyncData(cars, settingsToInclude, skodaAccessData),
+          generateShareableUrl(cars, settingsToInclude, skodaAccessData),
+          generateSyncCode(cars, settingsToInclude, skodaAccessData),
+        ]);
 
-      if (!cancelled) {
-        setExportData({ qrData, shareUrl, syncCode, skodaAccess: skodaAccessData });
+        if (!cancelled) {
+          setExportData({ qrData, shareUrl, syncCode, tooLarge: false, skodaAccess: skodaAccessData });
+        }
+      } catch (error) {
+        if (!(error instanceof SyncDataTooLargeError)) throw error;
+        if (!cancelled) {
+          setExportData({ qrData: '', shareUrl: null, syncCode: '', tooLarge: true, skodaAccess: skodaAccessData });
+        }
       }
     }
 
@@ -154,6 +163,18 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
             <Text size={200}>{t('sync.generating')}</Text>
           </div>
         )}
+      </Stack>
+    );
+  }
+
+  if (exportData.tooLarge) {
+    return (
+      <Stack gap={tokens.spacingHorizontalM}>
+        {settingsCheckbox}
+        {skodaAccessOptions}
+        <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }} data-testid="sync-export-too-large">
+          {t('sync.exportTooLarge')}
+        </Text>
       </Stack>
     );
   }

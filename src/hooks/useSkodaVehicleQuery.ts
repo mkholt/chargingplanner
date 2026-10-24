@@ -27,8 +27,9 @@ export function getChargePrefill(vehicle: SkodaVehicle | undefined): ChargePrefi
   const stateOfCharge = charging?.status?.battery?.stateOfChargeInPercent;
   const target = charging?.settings?.targetStateOfChargeInPercent;
   if (stateOfCharge === undefined && target === undefined) return null;
-  if (stateOfCharge !== undefined && target !== undefined && stateOfCharge >= target) {
-    return { endPercent: target, atChargeLimit: true };
+  // Without a known limit, only a full battery is at it
+  if (stateOfCharge !== undefined && stateOfCharge >= (target ?? 100)) {
+    return { endPercent: target ?? 100, atChargeLimit: true };
   }
   return { startPercent: stateOfCharge, endPercent: target, atChargeLimit: false };
 }

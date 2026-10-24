@@ -118,7 +118,9 @@ export const InputForm: React.FC<Props> = ({
   if (prefill === null && latestPrefill !== null) setPrefill(latestPrefill);
   const [startOverride, setStartOverride] = useState<number | null>(null);
   const [endOverride, setEndOverride] = useState<number | null>(null);
-  const endPercent = Math.max(endOverride ?? prefill?.endPercent ?? 80, 1);
+  // Without a known charge limit, the default target stays above the car's current charge
+  const defaultEnd = Math.min(Math.max(80, (prefill?.startPercent ?? 0) + 1), 100);
+  const endPercent = Math.max(endOverride ?? prefill?.endPercent ?? defaultEnd, 1);
   const startPercent = Math.min(startOverride ?? prefill?.startPercent ?? 20, endPercent - 1);
 
   // Initialize form state from selected car (component remounts when car changes via key prop)
@@ -146,8 +148,10 @@ export const InputForm: React.FC<Props> = ({
     });
   };
 
-  // Submit on mount to trigger the initial calculation, and again when Škoda data arrives
+  // Submit on mount to trigger the initial calculation, and again when Škoda data arrives.
+  // This submit has the newest values, so a pending debounced one must not replace it.
   useEffect(() => {
+    debouncedSubmit.cancel();
     onSubmit({
       startPercent,
       endPercent,

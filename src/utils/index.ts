@@ -8,6 +8,7 @@ export {
   mergeCars,
   parseAnyFormat,
   parseShareableUrl,
+  SyncDataTooLargeError,
 } from './carSyncCodec';
 export type { MergeResult, SkodaAccessExport, SyncCar, SyncData } from './carSyncCodec';
 export {

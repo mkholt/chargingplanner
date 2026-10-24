@@ -32,77 +32,89 @@ type Props = {
  */
 export const SkodaAccessImportDialog: React.FC<Props> = ({ open, onSubmit, onSkip }) => {
   const { t } = useTranslation();
-  const [exportCode, setExportCode] = useState('');
   const { run, pending, error, reset } = useAsyncAction();
 
-  const close = (action: () => void) => {
-    setExportCode('');
+  // Not while the access is being stored: it would be stored anyway after the dialog is gone
+  const skip = () => {
+    if (pending) return;
     reset();
-    action();
+    onSkip();
   };
 
-  const handleSubmit = async () => {
-    if (await run(() => onSubmit(exportCode))) close(() => {});
+  const handleSubmit = async (exportCode: string) => {
+    if (await run(() => onSubmit(exportCode))) reset();
   };
-
-  const message = error ? getSkodaErrorMessage(error, t) : null;
-  const codeError = error instanceof WrongExportCodeError ? message : null;
-  const skipButton = (
-    <Button appearance="secondary" onClick={() => close(onSkip)} data-testid="skoda-import-skip-button">
-      {t('skoda.vault.skip')}
-    </Button>
-  );
 
   return (
-    <Dialog open={open} onOpenChange={(_, data) => !data.open && close(onSkip)}>
-      <DialogSurface data-testid="skoda-access-import-dialog">
-        <SkodaVaultGate
-          prompt={t('skoda.sync.unlockToImportPrompt')}
-          onCancel={() => close(onSkip)}
-        >
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              void handleSubmit();
-            }}
-          >
-            <DialogBody>
-              <DialogTitle>{t('skoda.sync.importTitle')}</DialogTitle>
-              <DialogContent>
-                <Stack gap={tokens.spacingHorizontalM}>
-                  <Text>{t('skoda.sync.importDescription')}</Text>
-                  <Field
-                    label={t('skoda.sync.exportCode')}
-                    validationMessage={codeError ?? undefined}
-                    validationState={codeError ? 'error' : 'none'}
-                  >
-                    <Input
-                      autoComplete="off"
-                      spellCheck={false}
-                      value={exportCode}
-                      onChange={(_e, d) => setExportCode(d.value)}
-                      style={{ fontFamily: 'monospace' }}
-                      data-testid="skoda-import-export-code-input"
-                    />
-                  </Field>
-                  <ErrorText message={codeError ? null : message} testId="skoda-import-error" />
-                </Stack>
-              </DialogContent>
-              <DialogActions>
-                {skipButton}
-                <Button
-                  type="submit"
-                  appearance="primary"
-                  disabled={pending || !exportCode.trim()}
-                  data-testid="skoda-import-submit-button"
-                >
-                  {t('skoda.sync.importButton')}
-                </Button>
-              </DialogActions>
-            </DialogBody>
-          </form>
+    <Dialog open={open} onOpenChange={(_, data) => !data.open && skip()}>
+      {/* Named here too, as the unlock form that replaces the body while locked has no title */}
+      <DialogSurface aria-label={t('skoda.sync.importTitle')} data-testid="skoda-access-import-dialog">
+        <SkodaVaultGate prompt={t('skoda.sync.unlockToImportPrompt')} onCancel={skip}>
+          <ExportCodeForm pending={pending} error={error} onSubmit={handleSubmit} onSkip={skip} />
         </SkodaVaultGate>
       </DialogSurface>
     </Dialog>
+  );
+};
+
+type FormProps = {
+  pending: boolean;
+  error: unknown;
+  onSubmit: (exportCode: string) => Promise<void>;
+  onSkip: () => void;
+};
+
+/** Holds the export code below the vault gate, so locking the vault drops it */
+const ExportCodeForm: React.FC<FormProps> = ({ pending, error, onSubmit, onSkip }) => {
+  const { t } = useTranslation();
+  const [exportCode, setExportCode] = useState('');
+
+  const message = error ? getSkodaErrorMessage(error, t) : null;
+  const codeError = error instanceof WrongExportCodeError ? message : null;
+
+  return (
+    <form
+      onSubmit={e => {
+        e.preventDefault();
+        void onSubmit(exportCode);
+      }}
+    >
+      <DialogBody>
+        <DialogTitle>{t('skoda.sync.importTitle')}</DialogTitle>
+        <DialogContent>
+          <Stack gap={tokens.spacingHorizontalM}>
+            <Text>{t('skoda.sync.importDescription')}</Text>
+            <Field
+              label={t('skoda.sync.exportCode')}
+              validationMessage={codeError ?? undefined}
+              validationState={codeError ? 'error' : 'none'}
+            >
+              <Input
+                autoComplete="off"
+                spellCheck={false}
+                value={exportCode}
+                onChange={(_e, d) => setExportCode(d.value)}
+                style={{ fontFamily: 'monospace' }}
+                data-testid="skoda-import-export-code-input"
+              />
+            </Field>
+            <ErrorText message={codeError ? null : message} testId="skoda-import-error" />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button appearance="secondary" onClick={onSkip} disabled={pending} data-testid="skoda-import-skip-button">
+            {t('skoda.vault.skip')}
+          </Button>
+          <Button
+            type="submit"
+            appearance="primary"
+            disabled={pending || !exportCode.trim()}
+            data-testid="skoda-import-submit-button"
+          >
+            {t('skoda.sync.importButton')}
+          </Button>
+        </DialogActions>
+      </DialogBody>
+    </form>
   );
 };

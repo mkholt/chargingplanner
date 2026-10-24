@@ -474,4 +474,13 @@ describe('getChargePrefill', () => {
     expect(getChargePrefill(charging(80))).toEqual({ endPercent: 80, atChargeLimit: true });
     expect(getChargePrefill(charging(85))).toEqual({ endPercent: 80, atChargeLimit: true });
   });
+
+  it('treats only a full battery as at the limit when the charge limit is unknown', () => {
+    const charging = (soc: number) => ({
+      vin: MOCK_SKODA.VIN,
+      charging: { isVehicleInSavedLocation: true, status: { battery: { stateOfChargeInPercent: soc } } },
+    });
+    expect(getChargePrefill(charging(85))).toEqual({ startPercent: 85, endPercent: undefined, atChargeLimit: false });
+    expect(getChargePrefill(charging(100))).toEqual({ endPercent: 100, atChargeLimit: true });
+  });
 });

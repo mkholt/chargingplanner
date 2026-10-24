@@ -22,15 +22,12 @@ export const SkodaLinkSection: React.FC<{ car: Car }> = ({ car }) => {
   const { baseUrl } = useSkodaProxy();
   const { link, unlink } = useSkodaLink();
   const [mode, setMode] = useState<Mode>('view');
-  const [values, setValues] = useState<SkodaKeyValues>({ vin: car.skoda?.vin ?? '', apiKey: '' });
   const { run, pending, error, reset } = useAsyncAction();
 
   if (!baseUrl) return null;
 
   const changeMode = (next: Mode) => {
     setMode(next);
-    // The key is only needed for one request, so it doesn't stay in the form
-    setValues(prev => ({ ...prev, apiKey: '' }));
     reset();
   };
 
@@ -71,18 +68,13 @@ export const SkodaLinkSection: React.FC<{ car: Car }> = ({ car }) => {
 
       {mode === 'link' && (
         <SkodaVaultGate prompt={t('skoda.vault.unlockToLinkPrompt')} onCancel={cancel}>
-          <form onSubmit={e => { e.preventDefault(); void submit(() => link(car, values.vin, values.apiKey.trim())); }}>
-            <Stack gap={tokens.spacingHorizontalS}>
-              <SkodaKeyFields values={values} onChange={setValues} />
-              {errorText}
-              <FormActions
-                submitLabel={car.skoda ? t('skoda.link.relink') : t('skoda.link.link')}
-                disabled={pending || !isSkodaKeyComplete(values)}
-                testId="skoda-link-submit-button"
-                onCancel={cancel}
-              />
-            </Stack>
-          </form>
+          <SkodaLinkForm
+            car={car}
+            pending={pending}
+            errorText={errorText}
+            onSubmit={values => submit(() => link(car, values.vin, values.apiKey.trim()))}
+            onCancel={cancel}
+          />
         </SkodaVaultGate>
       )}
 
@@ -105,5 +97,34 @@ export const SkodaLinkSection: React.FC<{ car: Car }> = ({ car }) => {
         </SkodaVaultGate>
       )}
     </Stack>
+  );
+};
+
+type LinkFormProps = {
+  car: Car;
+  pending: boolean;
+  errorText: React.ReactNode;
+  onSubmit: (values: SkodaKeyValues) => Promise<void>;
+  onCancel: () => void;
+};
+
+/** Holds the API key below the vault gate, so locking the vault drops it */
+const SkodaLinkForm: React.FC<LinkFormProps> = ({ car, pending, errorText, onSubmit, onCancel }) => {
+  const { t } = useTranslation();
+  const [values, setValues] = useState<SkodaKeyValues>({ vin: car.skoda?.vin ?? '', apiKey: '' });
+
+  return (
+    <form onSubmit={e => { e.preventDefault(); void onSubmit(values); }}>
+      <Stack gap={tokens.spacingHorizontalS}>
+        <SkodaKeyFields values={values} onChange={setValues} />
+        {errorText}
+        <FormActions
+          submitLabel={car.skoda ? t('skoda.link.relink') : t('skoda.link.link')}
+          disabled={pending || !isSkodaKeyComplete(values)}
+          testId="skoda-link-submit-button"
+          onCancel={onCancel}
+        />
+      </Stack>
+    </form>
   );
 };

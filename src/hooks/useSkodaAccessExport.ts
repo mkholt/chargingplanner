@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { type Car, useSkodaProxy, useSkodaVault } from '@/contexts';
 import { generateExportCode, sealAccess, type SkodaAccessExport } from '@/utils';
@@ -19,40 +19,51 @@ type Sealed = { exportCode: string; access: SkodaAccessExport | null; error: unk
 /**
  * Optional Škoda access for sync export. Including it creates a new one-time export code,
  * and every available token is sealed with that code. A locked vault must be unlocked first.
+ * Locking the vault drops the code and the sealed access; unlocking seals again with a new code.
  */
 export function useSkodaAccessExport(cars: Car[]) {
   const { baseUrl } = useSkodaProxy();
   const { isProtected, isUnlocked, getToken } = useSkodaVault();
-  const [exportCode, setExportCode] = useState<string | null>(null);
+  const [included, setIncluded] = useState(false);
   const [sealed, setSealed] = useState<Sealed | null>(null);
+  const codeRef = useRef<string | null>(null);
 
-  const needsUnlock = exportCode !== null && isProtected && !isUnlocked;
+  const locked = isProtected && !isUnlocked;
+  const active = included && !locked;
+
+  // Together, the code and the sealed access give the tokens, so neither outlives a lock
+  if (!active && sealed !== null) setSealed(null);
 
   useEffect(() => {
-    if (!exportCode || needsUnlock) return;
+    if (!active) {
+      codeRef.current = null;
+      return;
+    }
+    codeRef.current ??= generateExportCode();
+    const exportCode = codeRef.current;
     let cancelled = false;
     void sealAll(cars, getToken, exportCode).then(
       access => !cancelled && setSealed({ exportCode, access, error: null }),
       (error: unknown) => !cancelled && setSealed({ exportCode, access: null, error }),
     );
     return () => { cancelled = true; };
-  }, [cars, exportCode, getToken, needsUnlock]);
+  }, [active, cars, getToken]);
 
-  const current = exportCode !== null && !needsUnlock && sealed?.exportCode === exportCode ? sealed : null;
+  const current = active ? sealed : null;
   const access = current?.access ?? null;
 
   return {
     /** There are linked cars whose access could be exported */
     available: baseUrl !== null && cars.some(car => car.skoda),
-    included: exportCode !== null,
-    setIncluded: (included: boolean) => setExportCode(included ? generateExportCode() : null),
-    exportCode,
-    needsUnlock,
-    sealing: exportCode !== null && !needsUnlock && current === null,
+    included,
+    setIncluded,
+    exportCode: current?.exportCode ?? null,
+    needsUnlock: included && locked,
+    sealing: active && current === null,
     /** Sealing failed; including the access again retries with a new code */
     error: current?.error ?? null,
     /** The access is included and sealed, or not included at all: the export can be shown */
-    ready: exportCode === null || access !== null,
+    ready: !included || access !== null,
     /** Sealed tokens by car id; empty until they are sealed */
     access: access ?? NO_ACCESS,
   };

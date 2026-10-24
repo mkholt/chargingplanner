@@ -285,6 +285,7 @@ export const da = {
       tapToClose: 'Tryk hvor som helst for at lukke',
       dataTooLarge: 'Data for stor til URL. Brug QR-kode eller kode i stedet.',
       qrTooLarge: 'For meget data til en QR-kode. Brug linket eller koden i stedet.',
+      exportTooLarge: 'For meget data til at eksportere. Udelad elindstillingerne eller Škoda-adgangen, eller eksportér færre biler.',
       copyLink: 'Kopier link',
       copied: 'Kopieret!',
       copyCode: 'Kopier kode',

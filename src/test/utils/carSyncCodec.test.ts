@@ -6,6 +6,7 @@ import {
   parseAnyFormat,
   detectInputFormat,
   mergeCars,
+  SyncDataTooLargeError,
 } from '@/utils/carSyncCodec';
 import type { Car, PriceSettings } from '@/contexts';
 
@@ -376,6 +377,25 @@ describe('limits on imported sync data', () => {
   it('rejects more than 50 cars', async () => {
     await expect(decodeSyncData(await encodeRaw({ cars: Array(51).fill(car) }))).rejects.toThrow(/more than 50/);
     await expect(decodeSyncData(await encodeRaw({ cars: Array(50).fill(car) }))).resolves.toBeDefined();
+  });
+});
+
+describe('limits on exported sync data', () => {
+  const toCars = (names: string[]): Car[] => names.map((name, i) => ({ id: `${i}`, name, batterySize: 50, maxPower: 7 }));
+  // Random characters, which hardly compress
+  const randomName = (length: number) => Array.from(crypto.getRandomValues(new Uint8Array(length)), b => String.fromCharCode(48 + (b % 64))).join('');
+
+  it('refuses more cars than an import accepts', async () => {
+    await expect(encodeSyncData(toCars(Array(51).fill('Car')))).rejects.toThrow(SyncDataTooLargeError);
+    await expect(decodeSyncData(await encodeSyncData(toCars(Array(50).fill('Car'))))).resolves.toBeDefined();
+  });
+
+  it('refuses data that decompresses to more than an import accepts', async () => {
+    await expect(encodeSyncData(toCars(['a'.repeat(70_000)]))).rejects.toThrow(SyncDataTooLargeError);
+  });
+
+  it('refuses data that encodes to more than an import accepts', async () => {
+    await expect(encodeSyncData(toCars([randomName(40_000)]))).rejects.toThrow(SyncDataTooLargeError);
   });
 });
 

@@ -96,6 +96,29 @@ describe('useSkodaAccessExport', () => {
     expect(Object.keys(result.current.skodaExport.access)).toEqual([CAR.id]);
   });
 
+  it('drops the code and sealed access when the vault locks, and seals with a new code when unlocked', async () => {
+    const { result } = renderExport();
+    await act(() => result.current.vault.enable(PASSWORD));
+
+    act(() => result.current.skodaExport.setIncluded(true));
+    await waitFor(() => expect(result.current.skodaExport.ready).toBe(true));
+    const { exportCode } = result.current.skodaExport;
+
+    act(() => result.current.vault.lock());
+    expect(result.current.skodaExport.included).toBe(true);
+    expect(result.current.skodaExport.needsUnlock).toBe(true);
+    expect(result.current.skodaExport.exportCode).toBeNull();
+    expect(result.current.skodaExport.access).toEqual({});
+    expect(result.current.skodaExport.ready).toBe(false);
+
+    await act(() => result.current.vault.unlock(PASSWORD));
+    await waitFor(() => expect(result.current.skodaExport.ready).toBe(true));
+    const { exportCode: newCode, access } = result.current.skodaExport;
+    expect(newCode).not.toBeNull();
+    expect(newCode).not.toBe(exportCode);
+    await expect(openAccess(access[CAR.id], newCode!, MOCK_SKODA.VIN)).resolves.toBe(TOKEN);
+  });
+
   it('reports a failure to seal and never becomes ready', async () => {
     // E.g. Web Crypto being unavailable
     vi.spyOn(crypto.subtle, 'encrypt').mockRejectedValue(new Error('No crypto'));

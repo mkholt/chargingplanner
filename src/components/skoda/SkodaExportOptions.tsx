@@ -27,6 +27,8 @@ export const SkodaExportOptions: React.FC<{ state: SkodaAccessExportState }> = (
   const { t } = useTranslation();
   // The code it was shown for: a new code is hidden again
   const [shownCode, setShownCode] = useState<string | null>(null);
+  // Don't keep a code that is gone, e.g. after locking the vault
+  if (shownCode !== null && shownCode !== state.exportCode) setShownCode(null);
   if (!state.available) return null;
 
   const count = Object.keys(state.access).length;

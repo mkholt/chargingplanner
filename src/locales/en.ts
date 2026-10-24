@@ -285,6 +285,7 @@ export const en = {
       tapToClose: 'Tap anywhere to close',
       dataTooLarge: 'Data too large for URL. Use QR Code or Code instead.',
       qrTooLarge: 'Too much data for a QR code. Use the Link or Code instead.',
+      exportTooLarge: 'Too much data to export. Leave out the electricity settings or the Škoda access, or export fewer cars.',
       copyLink: 'Copy Link',
       copied: 'Copied!',
       copyCode: 'Copy Code',

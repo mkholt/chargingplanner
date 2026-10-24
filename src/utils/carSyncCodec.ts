@@ -43,6 +43,14 @@ const MAX_ENCODED_LENGTH = 20_000;
 const MAX_DECOMPRESSED_BYTES = 64 * 1024;
 const MAX_SYNC_CARS = 50;
 
+/** The data is more than an import accepts, so an export of it couldn't be imported */
+export class SyncDataTooLargeError extends Error {
+  constructor() {
+    super('Sync data is too large to import');
+    this.name = 'SyncDataTooLargeError';
+  }
+}
+
 // =============================================================================
 // Compression (using browser Compression Streams API)
 // =============================================================================
@@ -380,9 +388,14 @@ export async function encodeSyncData(
     };
   }
 
+  // Within the limits of decodeSyncData, so the export can always be imported
   const json = JSON.stringify(data);
-  const compressed = await compress(json);
-  return toUrlSafeBase64(compressed);
+  if (data.cars.length > MAX_SYNC_CARS || new TextEncoder().encode(json).length > MAX_DECOMPRESSED_BYTES) {
+    throw new SyncDataTooLargeError();
+  }
+  const encoded = toUrlSafeBase64(await compress(json));
+  if (encoded.length > MAX_ENCODED_LENGTH) throw new SyncDataTooLargeError();
+  return encoded;
 }
 
 // =============================================================================
