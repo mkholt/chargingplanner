@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "pretest": "npm run lint",
-    "test": "vitest run",
+    "test": "vitest run && npm run proxy:test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts",
@@ -17,8 +17,14 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "codegen:api": "openapi-typescript https://stromligning.dk/api/swagger.json -o src/types/stromligning.d.ts",
+    "codegen:api": "npm run codegen:api:stromligning && npm run codegen:api:skoda",
+    "codegen:api:stromligning": "openapi-typescript https://stromligning.dk/api/swagger.json -o src/types/stromligning.d.ts",
+    "codegen:api:skoda": "openapi-typescript https://public.api.connect.skoda-auto.cz/docs/myskoda-public-api.yaml -o src/types/skoda.d.ts",
     "generate:icons": "node scripts/generate-pwa-icons.mjs",
+    "proxy:dev": "npm run dev -w proxy",
+    "proxy:build": "npm run build -w proxy",
+    "proxy:test": "npm run test -w proxy",
+    "proxy:secret": "npm run secret -w proxy",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -67,5 +73,8 @@
     "workerDirectory": [
       "public"
     ]
-  }
+  },
+  "workspaces": [
+    "proxy"
+  ]
 }

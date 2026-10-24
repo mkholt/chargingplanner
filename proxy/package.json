@@ -1,0 +1,38 @@
+{
+  "name": "skoda-proxy",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.js --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "secret": "tsx scripts/secret.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/proxy-addr": "^2.0.3",
+    "esbuild": "^0.28.2",
+    "msw": "^2.12.7",
+    "tsx": "^4.23.15",
+    "vite-tsconfig-paths": "^6.0.3",
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@hono/zod-validator": "^0.9.1",
+    "hono": "^4.13.13",
+    "hono-rate-limiter": "^0.5.4",
+    "jose": "^6.2.13",
+    "lru-cache": "^11.5.3",
+    "openapi-fetch": "^0.15.0",
+    "pino": "^10.4.0",
+    "proxy-addr": "^2.0.8",
+    "zod": "^4.6.7"
+  }
+}

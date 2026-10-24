@@ -8,7 +8,7 @@ import reactDom from 'eslint-plugin-react-dom'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig(
-  { ignores: ['dist', 'e2e', 'scripts'] },
+  { ignores: ['dist', 'proxy/dist', 'e2e', 'scripts'] },
   js.configs.recommended,
   tseslint.configs.recommended,
   {
@@ -34,6 +34,12 @@ export default defineConfig(
       // React 19 patterns - disable for now, can adopt incrementally
       'react-x/no-context-provider': 'off', // <Context.Provider> is still valid
       'react-x/no-use-context': 'off', // useContext is still valid
+    },
+  },
+  {
+    files: ['proxy/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 )

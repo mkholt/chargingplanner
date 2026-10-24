@@ -1,0 +1,8 @@
+# Build context is the repository root; send only what the proxy build needs
+*
+!package.json
+!package-lock.json
+!proxy/package.json
+!proxy/tsconfig.json
+!proxy/src
+!src/types/skoda.d.ts

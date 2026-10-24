@@ -26,22 +26,19 @@ describe('useSuppliersByLocationQuery', () => {
       expect(Array.isArray(result.current.data)).toBe(true);
     });
 
-    it('returns error for unknown postal code', async () => {
+    it('returns no suppliers for unknown postal code', async () => {
       // 3800 is not covered by any mock supplier (gap between 3799 and 4000)
-      // The API returns a "not found" error for unknown postal codes
+      // The mock answers with an empty list so the UI can show "No grid operator found"
       const { result } = renderHook(
         () => useSuppliersByLocationQuery(3800),
         { wrapper: createQueryWrapper() }
       );
 
-      // Wait for fetching to complete
       await waitFor(() => {
-        expect(result.current.isFetching).toBe(false);
+        expect(result.current.isSuccess).toBe(true);
       });
 
-      // Should have an error for unknown postal code
-      expect(result.current.isError).toBe(true);
-      expect(result.current.error).toBeDefined();
+      expect(result.current.data).toEqual([]);
     });
 
     it('is disabled for invalid postal codes', () => {

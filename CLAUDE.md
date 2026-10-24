@@ -17,6 +17,10 @@ npm run lint          # Run ESLint
 npm run preview       # Preview production build
 npm run codegen:api   # Generate API types from stromligning.dk swagger
 npm run generate:icons # Generate PWA icons from SVG (requires sharp)
+npm run proxy:dev     # Run the Škoda proxy (proxy/ workspace) with reload
+npm run proxy:test    # Run proxy tests (also run by npm run test)
+npm run proxy:build   # Bundle the proxy to proxy/dist/index.js
+npm run proxy:secret  # Print a new token secrets file
 ```
 
 ## Architecture

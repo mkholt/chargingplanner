@@ -43,6 +43,19 @@ Price data is fetched from [stromligning.dk](https://stromligning.dk).
 npm run codegen:api  # Regenerate API types from swagger
 ```
 
+## Škoda proxy (optional)
+
+The MyŠkoda Public API doesn't allow browser calls (no CORS), so `proxy/` contains a small self-hosted, read-only proxy. It hands out encrypted tokens, each locked to one VIN, and forwards only the vehicle reads the app needs.
+
+```bash
+npm run proxy:dev     # Run the proxy locally with reload
+npm run proxy:test    # Run the proxy tests (also part of npm run test)
+npm run proxy:build   # Bundle to proxy/dist/index.js for deployment
+npm run proxy:secret  # Generate a token secrets file
+```
+
+See [docs/skoda-proxy-spec.md](docs/skoda-proxy-spec.md) for the design and [docs/skoda-proxy-deployment.md](docs/skoda-proxy-deployment.md) for systemd, Apache, nginx, Caddy and Docker setup.
+
 ## License
 
 MIT
