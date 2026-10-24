@@ -1,12 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-import { CarImportResultDialog, ImportPreviewDialog } from '@/components/sync';
-import { useCars, usePriceSettings } from '@/contexts';
-import { mergeCars, parseShareableUrl, type MergeResult, type SyncData } from '@/utils';
+import { CarImportResultDialog, ImportPreviewDialog, SkodaAccessImportDialog } from '@/components/sync';
+import { useSyncImport } from '@/hooks';
+import { parseShareableUrl, type SyncData } from '@/utils';
 
 export const SyncLinkHandler: React.FC = () => {
-  const { cars, addCar } = useCars();
-  const { applySettings } = usePriceSettings();
+  const {
+    existingCarNames,
+    confirmImport,
+    importResult,
+    closeResult,
+    pendingAccess,
+    completeAccess,
+    skipAccess,
+  } = useSyncImport();
 
   const [dataToImport, setDataToImport] = useState<SyncData | null>(null);
 
@@ -26,47 +33,16 @@ export const SyncLinkHandler: React.FC = () => {
 
     checkUrl();
   }, []);
-  const [importResult, setImportResult] = useState<MergeResult | null>(null);
 
   const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
     if (!dataToImport) return;
-
-    // Filter cars by selected indices
-    const selectedCars = selectedCarIndices.map(i => dataToImport.cars[i]);
-
-    // Generate IDs for new cars
-    const generateId = () => Math.random().toString(36).slice(2);
-
-    // Merge cars
-    const result = mergeCars(cars, selectedCars, generateId);
-
-    // Add new cars
-    result.added.forEach(car => {
-      addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
-    });
-
-    // Apply settings if requested (sync data contains full cached objects)
-    if (importSettings && dataToImport.settings) {
-      applySettings(dataToImport.settings);
-    }
-
-    setImportResult(result);
+    confirmImport(dataToImport, selectedCarIndices, importSettings);
     setDataToImport(null);
   };
 
   const handleClosePreview = () => {
     setDataToImport(null);
   };
-
-  const handleCloseResult = () => {
-    setImportResult(null);
-  };
-
-  // Memoize existing car names for duplicate detection
-  const existingCarNames = useMemo(
-    () => new Set(cars.map(c => c.name.toLowerCase().trim())),
-    [cars]
-  );
 
   return (
     <>
@@ -78,9 +54,17 @@ export const SyncLinkHandler: React.FC = () => {
         existingCarNames={existingCarNames}
       />
 
+      <SkodaAccessImportDialog
+        open={pendingAccess.count > 0}
+        needsExportPassword={pendingAccess.needsExportPassword}
+        needsLocalPassword={pendingAccess.needsLocalPassword}
+        onSubmit={completeAccess}
+        onSkip={skipAccess}
+      />
+
       <CarImportResultDialog
-        open={importResult !== null}
-        onClose={handleCloseResult}
+        open={importResult !== null && pendingAccess.count === 0}
+        onClose={closeResult}
         result={importResult}
       />
     </>

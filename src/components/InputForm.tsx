@@ -20,8 +20,9 @@ import { useTranslation } from 'react-i18next';
 
 import { CarSelector } from '@/components';
 import { BatteryPercentageSlider, TimeWindowSelector } from '@/components/form';
+import { SkodaVehicleStatus } from '@/components/skoda';
 import { type Car } from '@/contexts';
-import { useDebouncedCallback, useIsMobile } from '@/hooks';
+import { getChargePrefill, useDebouncedCallback, useIsMobile, useSkodaVehicleQuery } from '@/hooks';
 import {
   CHARGING_POWER_OPTIONS,
   DEBOUNCE_MS,
@@ -109,9 +110,15 @@ export const InputForm: React.FC<Props> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
+  // Battery levels from the linked Škoda, if any. Values the user picks take precedence.
+  const { data: vehicle } = useSkodaVehicleQuery(selectedCar);
+  const prefill = getChargePrefill(vehicle);
+  const [startOverride, setStartOverride] = useState<number | null>(null);
+  const [endOverride, setEndOverride] = useState<number | null>(null);
+  const endPercent = Math.max(endOverride ?? prefill?.endPercent ?? 80, 1);
+  const startPercent = Math.min(startOverride ?? prefill?.startPercent ?? 20, endPercent - 1);
+
   // Initialize form state from selected car (component remounts when car changes via key prop)
-  const [startPercent, setStartPercent] = useState(20);
-  const [endPercent, setEndPercent] = useState(80);
   const [batterySize, setBatterySize] = useState(selectedCar?.batterySize ?? 60);
   const [chargingSpeed, setChargingSpeed] = useState(selectedCar?.maxPower ?? 11);
   const [earliest, setEarliest] = useState(getDefaultEarliest);
@@ -136,7 +143,7 @@ export const InputForm: React.FC<Props> = ({
     });
   };
 
-  // Submit once on mount to trigger initial calculation
+  // Submit on mount to trigger the initial calculation, and again when Škoda data arrives
   useEffect(() => {
     onSubmit({
       startPercent,
@@ -147,18 +154,18 @@ export const InputForm: React.FC<Props> = ({
       latest,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [prefill?.startPercent, prefill?.endPercent]);
 
   // Field update handlers that also trigger debounced submit
   const updateStartPercent = (value: number) => {
     const clamped = Math.min(value, endPercent - 1);
-    setStartPercent(clamped);
+    setStartOverride(clamped);
     triggerSubmit({ startPercent: clamped });
   };
 
   const updateEndPercent = (value: number) => {
     const clamped = Math.max(value, startPercent + 1);
-    setEndPercent(clamped);
+    setEndOverride(clamped);
     triggerSubmit({ endPercent: clamped });
   };
 
@@ -230,6 +237,7 @@ export const InputForm: React.FC<Props> = ({
       {isContentVisible && (
         <>
           <CarSelector />
+          <SkodaVehicleStatus car={selectedCar} />
           <form
             style={{ display: "flex", flexDirection: "column", gap: tokens.spacingHorizontalL }}
             onSubmit={e => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   Button,
@@ -6,6 +6,8 @@ import {
   Dialog,
   DialogBody,
   DialogSurface,
+  Field,
+  Input,
   Tab,
   TabList,
   Text,
@@ -22,10 +24,11 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 
+import { getSkodaErrorMessage } from '@/components/skoda';
 import { Stack } from '@/components/ui';
-import type { Car, PriceSettings } from '@/contexts';
+import { type Car, type PriceSettings, useSkodaProxy, useSkodaVault } from '@/contexts';
 import { useIsMobile } from '@/hooks';
-import { encodeSyncData, generateShareableUrl, generateSyncCode } from '@/utils';
+import { encodeSyncData, generateShareableUrl, generateSyncCode, type SkodaAccessExport } from '@/utils';
 
 type Props = {
   cars: Car[];
@@ -66,6 +69,34 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
 
   const hasSettings = hasAnySettings(priceSettings);
   const settingsToInclude = includeSettings && hasSettings ? priceSettings : null;
+
+  // Škoda access is only exported when the user opts in. Protected access is sealed with the vault password.
+  const { baseUrl } = useSkodaProxy();
+  const vault = useSkodaVault();
+  const [includeSkodaAccess, setIncludeSkodaAccess] = useState(false);
+  const [sealedAccess, setSealedAccess] = useState<Record<string, string> | null>(null);
+  const [vaultPassword, setVaultPassword] = useState('');
+  const [vaultError, setVaultError] = useState<string | null>(null);
+  const hasSkodaLinks = baseUrl !== null && cars.some(car => car.skoda);
+
+  const skodaAccess = useMemo<SkodaAccessExport>(() => {
+    if (!includeSkodaAccess) return {};
+    if (vault.isProtected) {
+      return Object.fromEntries(Object.entries(sealedAccess ?? {}).map(([id, sealedToken]) => [id, { sealedToken }]));
+    }
+    return Object.fromEntries(cars.flatMap(car => (car.skoda?.token ? [[car.id, { token: car.skoda.token }]] : [])));
+  }, [cars, includeSkodaAccess, sealedAccess, vault.isProtected]);
+
+  const handleSealAccess = async () => {
+    setVaultError(null);
+    try {
+      setSealedAccess(await vault.sealTokensForExport(vaultPassword, cars.map(car => car.id)));
+    } catch (e) {
+      setVaultError(getSkodaErrorMessage(e, t));
+    } finally {
+      setVaultPassword('');
+    }
+  };
   const qrCodeSize = isMobile ? 200 : 256;
 
   // Generate export data (async due to compression)
@@ -80,9 +111,9 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
 
     async function generate() {
       const [qrData, shareUrl, syncCode] = await Promise.all([
-        encodeSyncData(cars, settingsToInclude),
-        generateShareableUrl(cars, settingsToInclude),
-        generateSyncCode(cars, settingsToInclude),
+        encodeSyncData(cars, settingsToInclude, skodaAccess),
+        generateShareableUrl(cars, settingsToInclude, skodaAccess),
+        generateSyncCode(cars, settingsToInclude, skodaAccess),
       ]);
 
       if (!cancelled) {
@@ -92,7 +123,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
 
     generate();
     return () => { cancelled = true; };
-  }, [cars, settingsToInclude]);
+  }, [cars, settingsToInclude, skodaAccess]);
 
   const handleCopy = async (text: string, type: 'link' | 'code') => {
     const success = await copyToClipboard(text);
@@ -217,6 +248,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         resize="none"
         style={{ fontFamily: 'monospace', fontSize: 12 }}
         rows={2}
+        data-testid="sync-code-output"
       />
       <Button
         appearance="secondary"
@@ -237,6 +269,56 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
     />
   );
 
+  const skodaAccessOptions = hasSkodaLinks && (
+    <Stack gap={tokens.spacingHorizontalS} data-testid="skoda-export-options">
+      <Checkbox
+        checked={includeSkodaAccess}
+        onChange={(_, data) => {
+          setIncludeSkodaAccess(!!data.checked);
+          setSealedAccess(null);
+          setVaultError(null);
+        }}
+        label={t('skoda.sync.includeAccess')}
+        data-testid="skoda-include-access-checkbox"
+      />
+      {includeSkodaAccess && (
+        <Text size={200} style={{ color: tokens.colorPaletteYellowForeground2 }}>
+          <Warning20Regular style={{ verticalAlign: 'middle' }} /> {t('skoda.sync.includeAccessWarning')}
+        </Text>
+      )}
+      {includeSkodaAccess && vault.isProtected && !sealedAccess && (
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            void handleSealAccess();
+          }}
+        >
+          <Stack gap={tokens.spacingHorizontalS}>
+            <Text size={200}>{t('skoda.sync.exportPasswordPrompt')}</Text>
+            <Field
+              label={t('skoda.vault.password')}
+              validationMessage={vaultError ?? undefined}
+              validationState={vaultError ? 'error' : 'none'}
+            >
+              <Input
+                type="password"
+                autoComplete="current-password"
+                value={vaultPassword}
+                onChange={(_e, d) => setVaultPassword(d.value)}
+                data-testid="skoda-export-password-input"
+              />
+            </Field>
+            <Stack horizontal>
+              <Button type="submit" disabled={!vaultPassword} data-testid="skoda-export-include-button">
+                {t('skoda.sync.includeButton')}
+              </Button>
+            </Stack>
+          </Stack>
+        </form>
+      )}
+    </Stack>
+  );
+
   // Desktop layout: QR on left, Link + Code stacked on right
   if (!isMobile) {
     return (
@@ -244,6 +326,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         {qrDialog}
         <Stack gap={tokens.spacingHorizontalL}>
           {settingsCheckbox}
+          {skodaAccessOptions}
           <Stack horizontal gap={tokens.spacingHorizontalXL} align="start">
             {qrCodeDisplay}
             <Stack gap={tokens.spacingHorizontalL} style={{ flex: 1 }}>
@@ -262,6 +345,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
       {qrDialog}
       <Stack gap={tokens.spacingHorizontalM}>
         {settingsCheckbox}
+        {skodaAccessOptions}
 
       <TabList
         selectedValue={activeTab}
@@ -276,7 +360,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
         >
           {t('sync.link')}
         </Tab>
-        <Tab value="code" icon={<Copy20Regular />}>{t('sync.code')}</Tab>
+        <Tab value="code" icon={<Copy20Regular />} data-testid="export-code-tab">{t('sync.code')}</Tab>
       </TabList>
 
       {activeTab === 'qr' && qrCodeDisplay}
@@ -321,6 +405,7 @@ export const ExportSection: React.FC<Props> = ({ cars, priceSettings }) => {
             resize="none"
             style={{ fontFamily: 'monospace', fontSize: 12 }}
             rows={3}
+            data-testid="sync-code-output"
           />
           <Button
             appearance="primary"

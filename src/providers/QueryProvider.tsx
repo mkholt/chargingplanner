@@ -1,8 +1,9 @@
-import { QueryClient } from '@tanstack/react-query';
+import { defaultShouldDehydrateQuery, QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { ReactNode } from 'react';
 
+import { skodaQueryKeys } from '@/hooks';
 import { LS_KEYS, QUERY_TIMING } from '@/utils';
 
 const queryClient = new QueryClient({
@@ -44,6 +45,11 @@ export const QueryProvider: React.FC<Props> = ({ children }) => (
     persistOptions={{
       persister,
       maxAge: QUERY_TIMING.prices.staleTime,
+      dehydrateOptions: {
+        // Live Škoda vehicle data (VIN, state of charge) stays in memory only
+        shouldDehydrateQuery: query =>
+          defaultShouldDehydrateQuery(query) && query.queryKey[0] !== skodaQueryKeys.all[0],
+      },
     }}
   >
     {children}

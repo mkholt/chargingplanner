@@ -1,9 +1,28 @@
 import { type Car, type PriceSettings } from '@/contexts';
 import type { Product } from '@/data';
 
+import { VIN_PATTERN } from './constants';
+
 // =============================================================================
 // Types
 // =============================================================================
+
+/**
+ * Škoda link of a synced car. The VIN and expiry are always included.
+ * Access is only included when the user opts in: `token` in plain form, or `sealedToken`,
+ * a PBES2 JWE of `{ vin, token }` encrypted with the exporting device's vault password.
+ */
+export type SyncSkodaLink = {
+  vin: string;
+  expiresAt: string;
+  token?: string;
+  sealedToken?: string;
+};
+
+export type SyncCar = Omit<Car, 'id' | 'skoda'> & { skoda?: SyncSkodaLink };
+
+/** Opted-in Škoda access per car id, for export */
+export type SkodaAccessExport = Record<string, { token: string } | { sealedToken: string }>;
 
 /**
  * Sync data format.
@@ -11,7 +30,7 @@ import type { Product } from '@/data';
  * Location is intentionally excluded for privacy.
  */
 export type SyncData = {
-  cars: Omit<Car, 'id'>[];
+  cars: SyncCar[];
   /** Settings with location always null (not synced for privacy) */
   settings?: Omit<PriceSettings, 'location'> & { location: null };
 };
@@ -104,12 +123,41 @@ function fromUrlSafeBase64(str: string): Uint8Array {
 // Validation
 // =============================================================================
 
-function validateCar(car: unknown, index: number): Omit<Car, 'id'> {
+function validateSkodaLink(skoda: unknown, index: number): SyncSkodaLink | undefined {
+  if (skoda === undefined || skoda === null) {
+    return undefined;
+  }
+  if (typeof skoda !== 'object') {
+    throw new Error(`Invalid Škoda link at index ${index}: expected object`);
+  }
+
+  const { vin, expiresAt, token, sealedToken } = skoda as Record<string, unknown>;
+
+  if (typeof vin !== 'string' || !VIN_PATTERN.test(vin)) {
+    throw new Error(`Invalid Škoda VIN at index ${index}`);
+  }
+  if (typeof expiresAt !== 'string' || Number.isNaN(Date.parse(expiresAt))) {
+    throw new Error(`Invalid Škoda expiry at index ${index}`);
+  }
+  if (token !== undefined && (typeof token !== 'string' || !token)) {
+    throw new Error(`Invalid Škoda token at index ${index}`);
+  }
+  if (sealedToken !== undefined && (typeof sealedToken !== 'string' || !sealedToken)) {
+    throw new Error(`Invalid sealed Škoda token at index ${index}`);
+  }
+
+  const link: SyncSkodaLink = { vin, expiresAt };
+  if (token !== undefined) link.token = token;
+  else if (sealedToken !== undefined) link.sealedToken = sealedToken;
+  return link;
+}
+
+function validateCar(car: unknown, index: number): SyncCar {
   if (typeof car !== 'object' || car === null) {
     throw new Error(`Invalid car at index ${index}: expected object`);
   }
 
-  const { name, batterySize, maxPower } = car as Record<string, unknown>;
+  const { name, batterySize, maxPower, skoda } = car as Record<string, unknown>;
 
   if (typeof name !== 'string' || !name.trim()) {
     throw new Error(`Invalid car name at index ${index}`);
@@ -121,11 +169,14 @@ function validateCar(car: unknown, index: number): Omit<Car, 'id'> {
     throw new Error(`Invalid max power at index ${index}`);
   }
 
-  return {
+  const result: SyncCar = {
     name: name.trim(),
     batterySize,
     maxPower,
   };
+  const link = validateSkodaLink(skoda, index);
+  if (link) result.skoda = link;
+  return result;
 }
 
 function validateSupplier(supplier: unknown): PriceSettings['supplier'] {
@@ -282,9 +333,20 @@ function validateSyncData(data: unknown): SyncData {
 // Encoding
 // =============================================================================
 
-export async function encodeSyncData(cars: Car[], settings?: PriceSettings | null): Promise<string> {
+function toSyncCar({ id, name, batterySize, maxPower, skoda }: Car, skodaAccess: SkodaAccessExport): SyncCar {
+  const car: SyncCar = { name, batterySize, maxPower };
+  // Tokens are never taken from the car profile: access is only exported when passed in explicitly
+  if (skoda) car.skoda = { vin: skoda.vin, expiresAt: skoda.expiresAt, ...skodaAccess[id] };
+  return car;
+}
+
+export async function encodeSyncData(
+  cars: Car[],
+  settings?: PriceSettings | null,
+  skodaAccess: SkodaAccessExport = {},
+): Promise<string> {
   const data: SyncData = {
-    cars: cars.map(({ name, batterySize, maxPower }) => ({ name, batterySize, maxPower })),
+    cars: cars.map(car => toSyncCar(car, skodaAccess)),
   };
 
   // Only include settings if there are meaningful values
@@ -329,8 +391,12 @@ export async function decodeSyncData(encoded: string): Promise<SyncData> {
 
 const MAX_URL_LENGTH = 2000;
 
-export async function generateShareableUrl(cars: Car[], settings?: PriceSettings | null): Promise<string | null> {
-  const encoded = await encodeSyncData(cars, settings);
+export async function generateShareableUrl(
+  cars: Car[],
+  settings?: PriceSettings | null,
+  skodaAccess?: SkodaAccessExport,
+): Promise<string | null> {
+  const encoded = await encodeSyncData(cars, settings, skodaAccess);
   const baseUrl = window.location.origin + window.location.pathname;
   const url = `${baseUrl}#sync=${encoded}`;
 
@@ -363,8 +429,12 @@ export async function parseShareableUrl(url: string): Promise<SyncData | null> {
 
 const SYNC_CODE_PREFIX = 'EV:';
 
-export async function generateSyncCode(cars: Car[], settings?: PriceSettings | null): Promise<string> {
-  const encoded = await encodeSyncData(cars, settings);
+export async function generateSyncCode(
+  cars: Car[],
+  settings?: PriceSettings | null,
+  skodaAccess?: SkodaAccessExport,
+): Promise<string> {
+  const encoded = await encodeSyncData(cars, settings, skodaAccess);
   return SYNC_CODE_PREFIX + encoded;
 }
 
@@ -429,23 +499,23 @@ export async function parseAnyFormat(input: string): Promise<SyncData | null> {
 // Merge Logic (unchanged - still synchronous)
 // =============================================================================
 
-export type MergeResult = {
-  added: Car[];
-  skipped: Omit<Car, 'id'>[];
+export type MergeResult<T extends { name: string } = Omit<Car, 'id'>> = {
+  added: (T & { id: string })[];
+  skipped: T[];
   total: number;
 };
 
-export function mergeCars(
+export function mergeCars<T extends { name: string }>(
   existing: Car[],
-  imported: Omit<Car, 'id'>[],
+  imported: T[],
   generateId: () => string
-): MergeResult {
+): MergeResult<T> {
   const existingNames = new Set(
     existing.map(c => c.name.toLowerCase().trim())
   );
 
-  const added: Car[] = [];
-  const skipped: Omit<Car, 'id'>[] = [];
+  const added: (T & { id: string })[] = [];
+  const skipped: T[] = [];
 
   for (const car of imported) {
     const normalizedName = car.name.toLowerCase().trim();

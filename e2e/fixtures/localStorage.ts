@@ -2,6 +2,7 @@ import { Page } from '@playwright/test';
 import { type Car, type PriceSettings } from './test-fixtures';
 import { LS_KEYS } from '../../src/utils/constants';
 import type { PriceScenario } from '../../src/test/mocks/mockPrices';
+import { MOCK_SKODA } from '../../src/test/mocks/mockSkoda';
 
 /**
  * Ensures the page is on the app's origin before manipulating localStorage.
@@ -177,4 +178,19 @@ export async function seedDefaultEarliest(page: Page, value: 'now' | string): Pr
  */
 export async function seedDefaultLatest(page: Page, value: string): Promise<void> {
   await setLocalStorageItem(page, LS_KEYS.DEFAULT_LATEST, value);
+}
+
+/**
+ * Seeds the Škoda proxy settings. The mock API answers proxy requests on any origin.
+ */
+export async function seedSkodaProxy(page: Page, enabled = true): Promise<void> {
+  await setLocalStorageItem(page, LS_KEYS.SKODA_PROXY, { enabled, url: MOCK_SKODA.PROXY_URL });
+}
+
+/**
+ * Creates a car linked to Škoda with a token the mock proxy accepts.
+ */
+export function createLinkedTestCar(id: string, car: Omit<Car, 'id' | 'skoda'>): Car {
+  const expiresAt = new Date(Date.now() + MOCK_SKODA.TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  return { id, ...car, skoda: { vin: MOCK_SKODA.VIN, expiresAt, token: `mock-token.${MOCK_SKODA.VIN}` } };
 }

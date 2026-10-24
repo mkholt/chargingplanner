@@ -18,6 +18,8 @@ import {
   CarsProvider,
   PriceSettingsProvider,
   SettingsUIProvider,
+  SkodaProxyProvider,
+  SkodaVaultProvider,
   useCars,
   usePriceSettings,
   useSettingsUI,
@@ -150,11 +152,15 @@ const AppContent: React.FC = () => {
 // Wrap with all providers
 const App: React.FC = () => (
   <CarsProvider>
-    <PriceSettingsProvider>
-      <SettingsUIProvider>
-        <AppContent />
-      </SettingsUIProvider>
-    </PriceSettingsProvider>
+    <SkodaProxyProvider>
+      <SkodaVaultProvider>
+        <PriceSettingsProvider>
+          <SettingsUIProvider>
+            <AppContent />
+          </SettingsUIProvider>
+        </PriceSettingsProvider>
+      </SkodaVaultProvider>
+    </SkodaProxyProvider>
   </CarsProvider>
 );
 

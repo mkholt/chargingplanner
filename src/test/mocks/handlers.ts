@@ -6,6 +6,7 @@ import type { PriceArea } from '@/contexts';
 import { getMockApiResponse, getMockApiResponseWithScenario, type PriceScenario } from './mockPrices';
 import { getMockCompanies } from './mockCompanies';
 import { getMockSuppliers, findSupplierByPostalCode } from './mockSuppliers';
+import { getMockVehicle, issueMockToken } from './mockSkoda';
 
 // Note: The /api/suppliers endpoint (list all suppliers) is not mocked because
 // the application only uses /api/suppliers/find (location-based lookup).
@@ -105,5 +106,24 @@ export const handlers = [
     }
 
     return HttpResponse.json([]);
+  }),
+
+  // Škoda proxy (any origin, so whichever proxy URL is configured is mocked)
+  http.get('*/healthz', async () => {
+    await delay(MOCK_DELAY);
+    return HttpResponse.json({ status: 'ok' });
+  }),
+
+  http.post('*/v1/tokens', async ({ request }) => {
+    await delay(MOCK_DELAY);
+    const body = (await request.json().catch(() => ({}))) as { apiKey?: unknown; vin?: unknown };
+    const result = issueMockToken(body.apiKey, body.vin);
+    return HttpResponse.json(result.body, { status: result.status });
+  }),
+
+  http.get('*/v1/vehicles/:vin', async ({ request, params }) => {
+    await delay(MOCK_DELAY);
+    const result = getMockVehicle(request.headers.get('Authorization'), String(params.vin));
+    return HttpResponse.json(result.body, { status: result.status });
   }),
 ];

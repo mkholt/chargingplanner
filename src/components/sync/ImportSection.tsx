@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 
 import {
   Button,
@@ -18,22 +18,29 @@ import {
   CarImportResultDialog,
   ImportPreviewDialog,
   QRCodeScanner,
+  SkodaAccessImportDialog,
 } from '@/components/sync';
-import { useCars, usePriceSettings } from '@/contexts';
-import { mergeCars, parseAnyFormat, type MergeResult, type SyncData } from '@/utils';
+import { useSyncImport } from '@/hooks';
+import { parseAnyFormat, type SyncData } from '@/utils';
 
 type ImportTab = 'scan' | 'paste';
 
 export const ImportSection: React.FC = () => {
   const { t } = useTranslation();
-  const { cars, addCar } = useCars();
-  const { applySettings } = usePriceSettings();
+  const {
+    existingCarNames,
+    confirmImport,
+    importResult,
+    closeResult,
+    pendingAccess,
+    completeAccess,
+    skipAccess,
+  } = useSyncImport();
 
   const [activeTab, setActiveTab] = useState<ImportTab>('paste');
   const [pasteValue, setPasteValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<SyncData | null>(null);
-  const [importResult, setImportResult] = useState<MergeResult | null>(null);
 
   const handleParse = async (input: string) => {
     setError(null);
@@ -57,44 +64,14 @@ export const ImportSection: React.FC = () => {
 
   const handleConfirmImport = (selectedCarIndices: number[], importSettings: boolean) => {
     if (!previewData) return;
-
-    // Filter cars by selected indices
-    const selectedCars = selectedCarIndices.map(i => previewData.cars[i]);
-
-    // Generate IDs for new cars
-    const generateId = () => Math.random().toString(36).slice(2);
-
-    // Merge cars
-    const result = mergeCars(cars, selectedCars, generateId);
-
-    // Add new cars
-    result.added.forEach(car => {
-      addCar({ name: car.name, batterySize: car.batterySize, maxPower: car.maxPower });
-    });
-
-    // Apply settings if requested (sync data contains full cached objects)
-    if (importSettings && previewData.settings) {
-      applySettings(previewData.settings);
-    }
-
-    setImportResult(result);
+    confirmImport(previewData, selectedCarIndices, importSettings);
     setPreviewData(null);
     setPasteValue('');
-  };
-
-  const handleCloseResult = () => {
-    setImportResult(null);
   };
 
   const handleClosePreview = () => {
     setPreviewData(null);
   };
-
-  // Memoize existing car names for duplicate detection
-  const existingCarNames = useMemo(
-    () => new Set(cars.map(c => c.name.toLowerCase().trim())),
-    [cars]
-  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalM }}>
@@ -115,11 +92,13 @@ export const ImportSection: React.FC = () => {
             placeholder={t('sync.pastePlaceholder')}
             resize="vertical"
             rows={3}
+            data-testid="sync-paste-input"
           />
           <Button
             appearance="primary"
             onClick={handlePasteSubmit}
             disabled={!pasteValue.trim()}
+            data-testid="sync-import-button"
           >
             {t('sync.importButton')}
           </Button>
@@ -151,9 +130,17 @@ export const ImportSection: React.FC = () => {
         existingCarNames={existingCarNames}
       />
 
+      <SkodaAccessImportDialog
+        open={pendingAccess.count > 0}
+        needsExportPassword={pendingAccess.needsExportPassword}
+        needsLocalPassword={pendingAccess.needsLocalPassword}
+        onSubmit={completeAccess}
+        onSkip={skipAccess}
+      />
+
       <CarImportResultDialog
-        open={importResult !== null}
-        onClose={handleCloseResult}
+        open={importResult !== null && pendingAccess.count === 0}
+        onClose={closeResult}
         result={importResult}
       />
     </div>

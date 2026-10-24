@@ -345,3 +345,55 @@ describe('mergeCars', () => {
     expect(result.skipped).toHaveLength(1);
   });
 });
+
+describe('Škoda links in sync data', () => {
+  const VIN = 'TMBJJ7NE8L0123456';
+  const expiresAt = '2027-01-22T12:00:00.000Z';
+  const linkedCar: Car = {
+    id: 'car-1',
+    name: 'Enyaq',
+    batterySize: 77,
+    maxPower: 11,
+    skoda: { vin: VIN, expiresAt, token: 'secret-token' },
+  };
+
+  it('exports the VIN and expiry but not the token by default', async () => {
+    const decoded = await decodeSyncData(await encodeSyncData([linkedCar]));
+
+    expect(decoded.cars[0].skoda).toEqual({ vin: VIN, expiresAt });
+  });
+
+  it('exports the token only when the access is passed in', async () => {
+    const decoded = await decodeSyncData(
+      await encodeSyncData([linkedCar], null, { 'car-1': { token: 'secret-token' } })
+    );
+
+    expect(decoded.cars[0].skoda).toEqual({ vin: VIN, expiresAt, token: 'secret-token' });
+  });
+
+  it('exports sealed access', async () => {
+    const decoded = await decodeSyncData(
+      await encodeSyncData([linkedCar], null, { 'car-1': { sealedToken: 'jwe' } })
+    );
+
+    expect(decoded.cars[0].skoda).toEqual({ vin: VIN, expiresAt, sealedToken: 'jwe' });
+  });
+
+  it('leaves cars without a Škoda link unchanged', async () => {
+    const decoded = await decodeSyncData(
+      await encodeSyncData([{ id: '2', name: 'Other', batterySize: 50, maxPower: 7 }])
+    );
+
+    expect(decoded.cars[0]).toEqual({ name: 'Other', batterySize: 50, maxPower: 7 });
+  });
+
+  it.each([
+    ['an invalid VIN', { vin: 'TMBJJ7NE8L012345O', expiresAt }, {}],
+    ['an invalid expiry', { vin: VIN, expiresAt: 'tomorrow' }, {}],
+    ['an empty token', { vin: VIN, expiresAt }, { 'car-1': { token: '' } }],
+  ])('rejects a link with %s', async (_label, skoda, access) => {
+    const encoded = await encodeSyncData([{ ...linkedCar, skoda }], null, access);
+
+    await expect(decodeSyncData(encoded)).rejects.toThrow(/Škoda/);
+  });
+});

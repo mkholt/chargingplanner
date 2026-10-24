@@ -4,7 +4,7 @@ export type { AppSettings, DefaultTimeMode } from './AppSettingsContext';
 
 // Cars
 export { CarsProvider, useCars } from './CarsContext';
-export type { Car } from './CarsContext';
+export type { Car, SkodaLink } from './CarsContext';
 
 // Price Settings
 export { isCoordinates, isPostalCode } from '@/hooks';
@@ -19,6 +19,12 @@ export type {
   ResolvedPriceSettings,
   SelectedCompany,
 } from './PriceSettingsContext';
+
+// Škoda proxy and token vault
+export { SkodaProxyProvider, useSkodaProxy } from './SkodaProxyContext';
+export type { SkodaProxySettings } from './SkodaProxyContext';
+export { SkodaVaultProvider, useSkodaVault } from './SkodaVaultContext';
+export type { AutoLockMinutes, VaultTokens } from './SkodaVaultContext';
 
 // Settings UI
 export { SettingsUIProvider, useSettingsUI } from './SettingsUIContext';

@@ -323,7 +323,37 @@ Compose bind-mounts file secrets with the host file's ownership and mode, so the
 sudo install -o 65532 -g 65532 -m 400 /etc/skoda-proxy/token-secrets /etc/skoda-proxy/docker-token-secrets
 ```
 
-## 8. Verify the deployment
+## 8. The app: build settings and Content-Security-Policy
+
+The app connects to the proxy straight from the browser. Two build-time settings affect this:
+
+```bash
+# .env.production (optional): the proxy URL users get by default; they can still change it in the settings
+VITE_SKODA_PROXY_URL=https://skoda-proxy.example.com
+```
+
+`npm run build` adds a Content-Security-Policy `<meta>` tag to `dist/index.html`. It allows scripts only from the app's own origin and limits `connect-src` to the price API and the proxy:
+
+| Build | `connect-src` |
+|---|---|
+| `VITE_SKODA_PROXY_URL` set | `'self' https://stromligning.dk https://skoda-proxy.example.com` |
+| Not set | `'self' https://stromligning.dk https:`. Users enter any proxy URL, so every https origin is allowed. Set the variable to tighten this. |
+
+A `<meta>` CSP cannot set `frame-ancestors`, so also send the policy as a header from the web server that serves the app. Use the same value as the meta tag (copy it from `dist/index.html`) and add `frame-ancestors 'none'`:
+
+```apache
+# Apache: in the app's <VirtualHost> (mod_headers)
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://stromligning.dk https://skoda-proxy.example.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+```
+
+```nginx
+# nginx: in the app's server block
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://stromligning.dk https://skoda-proxy.example.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+```
+
+When both the header and the meta tag are present, the browser enforces both, so they must allow the same sources. `style-src 'unsafe-inline'` is needed because Fluent UI inserts its styles at runtime. Scripts stay restricted to the app's own files.
+
+## 9. Verify the deployment
 
 ```bash
 # Health
@@ -347,11 +377,11 @@ curl -si -x https://skoda-proxy.example.com:443 http://example.org/
 ```
 
 Then, in the app:
-1. Open **Settings → Škoda connection**, enable the proxy and enter its URL.
+1. Open **Settings → App → Škoda Connection**, enable the proxy and enter its URL.
 2. Run **Test connection**.
 3. Link each car.
 
-## 9. Operations
+## 10. Operations
 
 ### Rotating the token secret
 
@@ -371,7 +401,7 @@ Delete the API key in the **MyŠkoda app**. Škoda then answers `401`, and the t
 
 Rebuild, copy `proxy/dist` over `/opt/skoda-proxy/dist`, then run `sudo systemctl restart skoda-proxy`. The proxy stores no state, so there is nothing to migrate.
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|

@@ -4,4 +4,6 @@ export { CarsSection } from './CarsSection';
 export { CompanySection } from './CompanySection';
 export { SelectionCard } from './SelectionCard';
 export { SettingsPane } from './SettingsPane';
+export { SkodaSection } from './SkodaSection';
+export { SkodaVaultSection } from './SkodaVaultSection';
 export { SupplierSection } from './SupplierSection';

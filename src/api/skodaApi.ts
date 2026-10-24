@@ -1,0 +1,126 @@
+import type { components } from '@/types/skoda';
+
+export type SkodaVehicle = components['schemas']['Vehicle'];
+type VehicleResponse = components['schemas']['VehicleResponse'];
+
+export type SkodaToken = {
+  token: string;
+  vin: string;
+  /** ISO 8601 timestamp; the token and the Škoda key behind it stop working then */
+  expiresAt: string;
+};
+
+/** Problem types the proxy returns (RFC 9457 `type` without the URN prefix) */
+export type SkodaProblemType =
+  | 'invalid-request'
+  | 'unauthorized'
+  | 'vin-not-allowed'
+  | 'invalid-api-key'
+  | 'key-revoked'
+  | 'vehicle-access-denied'
+  | 'vehicle-not-found'
+  | 'rate-limited'
+  | 'upstream-unavailable'
+  | 'network-error'
+  | 'unknown';
+
+const PROBLEM_PREFIX = 'urn:skoda-proxy:problem:';
+
+export class SkodaProxyError extends Error {
+  readonly status: number;
+  readonly problemType: SkodaProblemType;
+
+  constructor(status: number, problemType: SkodaProblemType, message: string) {
+    super(message);
+    this.name = 'SkodaProxyError';
+    this.status = status;
+    this.problemType = problemType;
+  }
+
+  /** The token no longer grants access: the user has to link the car again */
+  get requiresRelink(): boolean {
+    return this.status === 401 || this.problemType === 'vin-not-allowed' || this.problemType === 'vehicle-access-denied';
+  }
+}
+
+/**
+ * Validate and normalise a proxy base URL.
+ * The proxy may live under a path prefix (e.g. https://example.com/skoda-proxy); trailing slashes are removed.
+ * Only https is allowed, except http://localhost during development.
+ * Returns null for anything else.
+ */
+export function normalizeProxyUrl(input: string, allowLocalHttp = import.meta.env.DEV): string | null {
+  let url: URL;
+  try {
+    url = new URL(input.trim());
+  } catch {
+    return null;
+  }
+  const isLocalHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(allowLocalHttp && isLocalHttp)) return null;
+  if (url.username || url.password || url.search || url.hash) return null;
+  return url.origin + url.pathname.replace(/\/+$/, '');
+}
+
+async function toError(response: Response): Promise<SkodaProxyError> {
+  let problemType: SkodaProblemType = 'unknown';
+  let title = response.statusText || `HTTP ${response.status}`;
+  try {
+    const body = (await response.json()) as { type?: unknown; title?: unknown };
+    if (typeof body.type === 'string' && body.type.startsWith(PROBLEM_PREFIX)) {
+      problemType = body.type.slice(PROBLEM_PREFIX.length) as SkodaProblemType;
+    }
+    if (typeof body.title === 'string') title = body.title;
+  } catch {
+    // Not a problem+json body (e.g. a reverse proxy error page)
+  }
+  return new SkodaProxyError(response.status, problemType, title);
+}
+
+async function request(input: string, init: RequestInit): Promise<Response> {
+  let response: Response;
+  try {
+    // Resolve fetch per call so MSW, which patches fetch after this module loads, intercepts requests
+    response = await globalThis.fetch(input, {
+      ...init,
+      // Tokens are bearer credentials: never send cookies and never follow redirects to another host
+      credentials: 'omit',
+      redirect: 'error',
+      cache: 'no-store',
+    });
+  } catch {
+    throw new SkodaProxyError(0, 'network-error', 'Could not reach the Škoda proxy');
+  }
+  if (!response.ok) throw await toError(response);
+  return response;
+}
+
+/** Exchange a Škoda API key for a proxy token bound to one VIN. The key is not stored anywhere. */
+export async function issueSkodaToken(baseUrl: string, apiKey: string, vin: string): Promise<SkodaToken> {
+  const response = await request(`${baseUrl}/v1/tokens`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiKey, vin }),
+  });
+  return (await response.json()) as SkodaToken;
+}
+
+/** Read the vehicle's info and charging state through the proxy */
+export async function fetchSkodaVehicle(baseUrl: string, token: string, vin: string): Promise<SkodaVehicle> {
+  const response = await request(`${baseUrl}/v1/vehicles/${encodeURIComponent(vin)}?include=info,charging`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = (await response.json()) as VehicleResponse;
+  return body.vehicle;
+}
+
+/** Check that the proxy is reachable (GET /healthz) */
+export async function checkSkodaProxyHealth(baseUrl: string): Promise<boolean> {
+  try {
+    const response = await request(`${baseUrl}/healthz`, {});
+    const body = (await response.json()) as { status?: unknown };
+    return body.status === 'ok';
+  } catch {
+    return false;
+  }
+}

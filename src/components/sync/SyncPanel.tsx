@@ -30,8 +30,8 @@ export const SyncPanel: React.FC = () => {
         onTabSelect={(_, data) => setActiveTab(data.value as SyncTab)}
         style={{ marginBottom: tokens.spacingHorizontalM }}
       >
-        <Tab value="export" icon={<ArrowUpload20Regular />}>{t('sync.export')}</Tab>
-        <Tab value="import" icon={<ArrowDownload20Regular />}>{t('sync.import')}</Tab>
+        <Tab value="export" icon={<ArrowUpload20Regular />} data-testid="sync-export-tab">{t('sync.export')}</Tab>
+        <Tab value="import" icon={<ArrowDownload20Regular />} data-testid="sync-import-tab">{t('sync.import')}</Tab>
       </TabList>
 
       <div
