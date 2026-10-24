@@ -5,6 +5,6 @@ import { API_BASE } from './config';
 
 export const apiClient = createClient<paths>({
   baseUrl: API_BASE,
-  // Resolve fetch per call so MSW, which patches fetch after this module loads, intercepts requests
+  // Resolve fetch per request so interceptors installed after module load (e.g. MSW in tests) apply
   fetch: (request) => globalThis.fetch(request),
 });

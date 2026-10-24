@@ -1,6 +1,6 @@
 import type { PriceArea } from '@/contexts';
 import type { PricesApiResponse, PriceEntry } from '@/types';
-import { MS_PER_DAY } from '@/utils';
+import { MS_PER_MINUTE } from '@/utils';
 
 /**
  * Price scenarios for E2E testing.
@@ -127,58 +127,61 @@ function generatePriceDetails(hour: number, quarter: number, daySeed: number, pr
 }
 
 /**
+ * Start of every 15-minute interval of a local day, like the real API: 25 hours on the day daylight saving
+ * time ends, 23 when it starts.
+ */
+function quartersOfDay(day: Date): Date[] {
+  const quarters: Date[] = [];
+  const end = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime();
+  for (let ms = day.getTime(); ms < end; ms += 15 * MS_PER_MINUTE) {
+    quarters.push(new Date(ms));
+  }
+  return quarters;
+}
+
+/**
  * Generate mock API response with 48 hours of price data (today + tomorrow).
  * Always generates 15-minute resolution data with full price breakdown.
  */
 export function getMockApiResponse(priceArea: PriceArea = 'DK1'): PricesApiResponse {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today.getTime() + MS_PER_DAY);
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
   const prices: PriceEntry[] = [];
 
   // Generate 15-minute prices for today
   const todaySeed = today.getTime();
-  for (let hour = 0; hour < 24; hour++) {
-    for (let quarter = 0; quarter < 4; quarter++) {
-      const date = new Date(today);
-      date.setHours(hour, quarter * 15, 0, 0);
+  for (const date of quartersOfDay(today)) {
+    const { total, details } = generatePriceDetails(date.getHours(), date.getMinutes() / 15, todaySeed, priceArea);
 
-      const { total, details } = generatePriceDetails(hour, quarter, todaySeed, priceArea);
-
-      prices.push({
-        date: date.toISOString(),
-        price: {
-          total,
-          unit: 'kr/kWh',
-        },
-        details,
-        forecast: false,
-        resolution: '15m',
-      });
-    }
+    prices.push({
+      date: date.toISOString(),
+      price: {
+        total,
+        unit: 'kr/kWh',
+      },
+      details,
+      forecast: false,
+      resolution: '15m',
+    });
   }
 
   // Generate 15-minute prices for tomorrow
   const tomorrowSeed = tomorrow.getTime();
-  for (let hour = 0; hour < 24; hour++) {
-    for (let quarter = 0; quarter < 4; quarter++) {
-      const date = new Date(tomorrow);
-      date.setHours(hour, quarter * 15, 0, 0);
+  for (const date of quartersOfDay(tomorrow)) {
+    const { total, details } = generatePriceDetails(date.getHours(), date.getMinutes() / 15, tomorrowSeed, priceArea);
 
-      const { total, details } = generatePriceDetails(hour, quarter, tomorrowSeed, priceArea);
-
-      prices.push({
-        date: date.toISOString(),
-        price: {
-          total,
-          unit: 'kr/kWh',
-        },
-        details,
-        forecast: false,
-        resolution: '15m',
-      });
-    }
+    prices.push({
+      date: date.toISOString(),
+      price: {
+        total,
+        unit: 'kr/kWh',
+      },
+      details,
+      forecast: false,
+      resolution: '15m',
+    });
   }
 
   return {
@@ -234,44 +237,19 @@ export function getMockApiResponseWithScenario(
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today.getTime() + MS_PER_DAY);
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
   const prices: PriceEntry[] = [];
   const totalHours = 48;
 
-  // Generate 15-minute prices for today (24 hours = 96 intervals)
-  for (let hour = 0; hour < 24; hour++) {
-    const basePrice = getScenarioPrice(scenario, hour, totalHours);
-
-    for (let quarter = 0; quarter < 4; quarter++) {
-      const date = new Date(today);
-      date.setHours(hour, quarter * 15, 0, 0);
-
+  // Generate 15-minute prices for today and tomorrow
+  for (const [day, hourOffset] of [[today, 0], [tomorrow, 24]] as const) {
+    for (const date of quartersOfDay(day)) {
       // Simplified price entry for scenario testing
       prices.push({
         date: date.toISOString(),
         price: {
-          total: basePrice,
-          unit: 'kr/kWh',
-        },
-        forecast: false,
-        resolution: '15m',
-      });
-    }
-  }
-
-  // Generate 15-minute prices for tomorrow
-  for (let hour = 0; hour < 24; hour++) {
-    const basePrice = getScenarioPrice(scenario, hour + 24, totalHours);
-
-    for (let quarter = 0; quarter < 4; quarter++) {
-      const date = new Date(tomorrow);
-      date.setHours(hour, quarter * 15, 0, 0);
-
-      prices.push({
-        date: date.toISOString(),
-        price: {
-          total: basePrice,
+          total: getScenarioPrice(scenario, date.getHours() + hourOffset, totalHours),
           unit: 'kr/kWh',
         },
         forecast: false,

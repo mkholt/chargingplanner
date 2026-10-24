@@ -26,9 +26,9 @@ describe('useSuppliersByLocationQuery', () => {
       expect(Array.isArray(result.current.data)).toBe(true);
     });
 
-    it('returns no suppliers for unknown postal code', async () => {
+    it('returns empty list for unknown postal code', async () => {
       // 3800 is not covered by any mock supplier (gap between 3799 and 4000)
-      // The mock answers with an empty list so the UI can show "No grid operator found"
+      // The mock returns an empty array so the UI can show "No grid operator found"
       const { result } = renderHook(
         () => useSuppliersByLocationQuery(3800),
         { wrapper: createQueryWrapper() }

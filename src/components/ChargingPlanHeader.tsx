@@ -5,6 +5,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
+  Calculator16Regular,
   CalendarClock24Regular,
   Clock16Regular,
   Flash16Regular,
@@ -40,6 +41,10 @@ export const ChargingPlanHeader: React.FC<Props> = ({
   const subtitle = selectedCar
     ? `${selectedCar.name} · ${priceSource}`
     : priceSource;
+
+  const avgPricePerKwh = result && result.energyNeeded > 0
+    ? result.totalCost / result.energyNeeded
+    : null;
 
   return (
     <>
@@ -141,12 +146,23 @@ export const ChargingPlanHeader: React.FC<Props> = ({
                     <div>{t('results.tariffsPortion', { amount: result.costBreakdown.tariffCost.toFixed(2) })}</div>
                   </>
                 ) : (
-                  <div>{result.energyNeeded.toFixed(1)} kWh × {(result.totalCost / result.energyNeeded).toFixed(2)} DKK/kWh</div>
+                  <div>{result.energyNeeded.toFixed(1)} kWh × {avgPricePerKwh?.toFixed(2)} DKK/kWh</div>
                 )}
                 <div style={{ fontWeight: 600, marginTop: tokens.spacingHorizontalXS }}>{t('results.totalCost', { amount: result.totalCost.toFixed(2) })}</div>
               </div>
             </InfoPopover>
           </div>
+          {avgPricePerKwh !== null && (
+            <div data-testid="result-avg-price">
+              <Stack horizontal gap={tokens.spacingHorizontalXS} align="center" style={{ color: secondary }}>
+                <Calculator16Regular />
+                <Text size={200} style={{ color: secondary }}>{t('results.avgPrice')}</Text>
+              </Stack>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                {avgPricePerKwh.toFixed(2)} DKK/kWh
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

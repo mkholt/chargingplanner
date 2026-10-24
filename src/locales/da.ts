@@ -32,6 +32,8 @@ export const da = {
       showVehicleSettings: 'Vis bilindstillinger',
       hideVehicleSettings: 'Skjul bilindstillinger',
       vehicleSettingsSummary: '{{batterySize}} kWh · {{chargingSpeed}} kW',
+      increase: 'Forøg',
+      decrease: 'Formindsk',
     },
 
     // Results
@@ -53,6 +55,7 @@ export const da = {
       supplierSurchargePortion: 'Leverandørtillæg: {{amount}} DKK',
       tariffsPortion: 'Tariffer: {{amount}} DKK',
       totalCost: '= {{amount}} DKK',
+      avgPrice: 'Gns. pris',
     },
 
     // Result errors

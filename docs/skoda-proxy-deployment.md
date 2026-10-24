@@ -332,7 +332,7 @@ The app connects to the proxy straight from the browser. The proxy URL is set wh
 VITE_SKODA_PROXY_URL=https://skoda-proxy.example.com
 ```
 
-If the app is built by a CI workflow (for example a release workflow), set the variable there as well. Otherwise the released app has no Škoda connection.
+The repo's `ci.yml` and `release.yml` workflows read it from the GitHub Actions **variable** `SKODA_PROXY_URL` (Settings → Secrets and variables → Actions → Variables). It is a variable, not a secret, because the URL is public anyway: it is in the built app and its CSP. Without it, the released app has no Škoda connection. The proxy's own settings and token secrets stay on the proxy host and never go into GitHub.
 
 `npm run build` adds a Content-Security-Policy `<meta>` tag to `dist/index.html`. It allows scripts only from the app's own origin and limits `connect-src` to the price API and the proxy:
 
