@@ -1,9 +1,11 @@
 import { VIN_PATTERN } from '@/utils';
 import type { components } from '@/types/skoda';
 
-/** Mock Škoda proxy. Handlers match any origin, so any configured proxy URL works with the mock API. */
+/** Mock Škoda proxy, at /api/skoda on any origin like the real one */
 export const MOCK_SKODA = {
-  PROXY_URL: 'https://skoda-proxy.example',
+  PROXY_PATH: '/api/skoda',
+  /** localStorage key: when set, the mock answers like a web server without a proxy (the app page) */
+  ABSENT_STORAGE_KEY: 'mock-skoda-proxy-absent',
   VIN: 'TMBJJ7NE8L0123456',
   API_KEY: 'mock-skoda-api-key',
   /** Rejected by the mock proxy at issuance (422 invalid-api-key) */

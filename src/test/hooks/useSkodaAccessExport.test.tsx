@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { SKODA_PROXY_URL } from '@/api';
 import {
   type Car,
   CarsProvider,
@@ -21,7 +22,7 @@ const CAR: Car = {
   name: 'Enyaq',
   batterySize: 77,
   maxPower: 11,
-  skoda: { vin: MOCK_SKODA.VIN, expiresAt: '2099-01-01T00:00:00.000Z', proxyUrl: MOCK_SKODA.PROXY_URL, token: TOKEN },
+  skoda: { vin: MOCK_SKODA.VIN, expiresAt: '2099-01-01T00:00:00.000Z', proxyUrl: SKODA_PROXY_URL, token: TOKEN },
 };
 
 describe('useSkodaAccessExport', () => {

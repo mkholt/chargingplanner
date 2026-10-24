@@ -16,7 +16,6 @@ const writeSecrets = (content: unknown, name = 'token-secrets') => {
 };
 
 const baseEnv = (secretsPath: string) => ({
-  ALLOWED_ORIGINS: 'https://ev.example.com',
   TOKEN_SECRETS_FILE: secretsPath,
 });
 
@@ -29,7 +28,6 @@ describe('loadConfig', () => {
     expect(config).toMatchObject({
       host: '127.0.0.1',
       port: 8080,
-      allowedOrigins: ['https://ev.example.com'],
       issuer: 'skoda-proxy',
       trustedProxies: [],
       cacheTtlSeconds: 60,
@@ -39,36 +37,23 @@ describe('loadConfig', () => {
     expect(config.tokenSecrets.keys.get('k1')).toHaveLength(32);
   });
 
-  it('parses comma separated lists', () => {
+  it('parses a comma separated list', () => {
     const { path } = writeSecrets({ current: 'k1', keys: { k1: KEY } });
 
     const config = loadConfig({
       ...baseEnv(path),
-      ALLOWED_ORIGINS: 'https://ev.example.com, http://localhost:5173',
       TRUSTED_PROXIES: 'loopback, 10.0.0.0/8',
     });
 
-    expect(config.allowedOrigins).toEqual(['https://ev.example.com', 'http://localhost:5173']);
     expect(config.trustedProxies).toEqual(['loopback', '10.0.0.0/8']);
   });
 
   it('reads secrets from the systemd credentials directory', () => {
     const { dir } = writeSecrets({ current: 'k1', keys: { k1: KEY } });
 
-    const config = loadConfig({ ALLOWED_ORIGINS: 'https://ev.example.com', CREDENTIALS_DIRECTORY: dir });
+    const config = loadConfig({ CREDENTIALS_DIRECTORY: dir });
 
     expect(config.tokenSecrets.currentKid).toBe('k1');
-  });
-
-  it.each([
-    ['missing', undefined],
-    ['with a path', 'https://ev.example.com/app'],
-    ['with a trailing slash', 'https://ev.example.com/'],
-    ['wildcard', '*'],
-  ])('rejects ALLOWED_ORIGINS %s', (_, origins) => {
-    const { path } = writeSecrets({ current: 'k1', keys: { k1: KEY } });
-
-    expect(() => loadConfig({ ...baseEnv(path), ALLOWED_ORIGINS: origins })).toThrow(ConfigError);
   });
 
   it.each([
@@ -81,7 +66,7 @@ describe('loadConfig', () => {
   });
 
   it('requires a secrets file', () => {
-    expect(() => loadConfig({ ALLOWED_ORIGINS: 'https://ev.example.com' })).toThrow(/TOKEN_SECRETS_FILE/);
+    expect(() => loadConfig({})).toThrow(/TOKEN_SECRETS_FILE/);
   });
 
   it.each([

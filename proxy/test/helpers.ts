@@ -6,8 +6,6 @@ import { createApp } from '@proxy/app';
 import type { ProxyConfig, TokenSecrets } from '@proxy/config';
 import { createLogger } from '@proxy/logger';
 
-export const APP_ORIGIN = 'https://ev.example.com';
-
 export const makeSecrets = (kid = 'k1'): TokenSecrets => ({
   currentKid: kid,
   keys: new Map([[kid, new Uint8Array(randomBytes(32))]]),
@@ -16,7 +14,6 @@ export const makeSecrets = (kid = 'k1'): TokenSecrets => ({
 export const makeConfig = (overrides: Partial<ProxyConfig> = {}): ProxyConfig => ({
   host: '127.0.0.1',
   port: 8080,
-  allowedOrigins: [APP_ORIGIN],
   issuer: 'skoda-proxy',
   trustedProxies: [],
   cacheTtlSeconds: 60,

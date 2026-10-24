@@ -45,25 +45,6 @@ export class SkodaProxyError extends Error {
   }
 }
 
-/**
- * Validate and normalise a proxy base URL.
- * The proxy may live under a path prefix (e.g. https://example.com/skoda-proxy); trailing slashes are removed.
- * Only https is allowed, except http://localhost during development.
- * Returns null for anything else.
- */
-export function normalizeProxyUrl(input: string, allowLocalHttp = import.meta.env.DEV): string | null {
-  let url: URL;
-  try {
-    url = new URL(input.trim());
-  } catch {
-    return null;
-  }
-  const isLocalHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-  if (url.protocol !== 'https:' && !(allowLocalHttp && isLocalHttp)) return null;
-  if (url.username || url.password || url.search || url.hash) return null;
-  return url.origin + url.pathname.replace(/\/+$/, '');
-}
-
 async function toError(response: Response): Promise<SkodaProxyError> {
   let problemType: SkodaProblemType = 'unknown';
   let title = response.statusText || `HTTP ${response.status}`;
@@ -140,7 +121,10 @@ export async function fetchSkodaVehicle(baseUrl: string, token: string, vin: str
   return body.vehicle;
 }
 
-/** Check that the proxy is reachable (GET /healthz) */
+/**
+ * Check that the proxy answers (GET /healthz). False for anything else, such as the app's own page served by the
+ * web server's fallback route when no proxy is deployed.
+ */
 export async function checkSkodaProxyHealth(baseUrl: string): Promise<boolean> {
   try {
     const response = await request(`${baseUrl}/healthz`, {});

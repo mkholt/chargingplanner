@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { SKODA_PROXY_URL } from '@/api';
 import {
   CarsProvider,
   PriceSettingsProvider,
@@ -45,7 +46,7 @@ async function syncDataWithAccess(): Promise<SyncData> {
       skoda: {
         vin: MOCK_SKODA.VIN,
         expiresAt: '2027-01-22T12:00:00.000Z',
-        proxyUrl: MOCK_SKODA.PROXY_URL,
+        proxyUrl: SKODA_PROXY_URL,
         sealedToken: await sealAccess({ vin: MOCK_SKODA.VIN, token: TOKEN }, EXPORT_CODE),
       },
     }],
@@ -91,7 +92,7 @@ describe('useSyncImport with Škoda access', () => {
     await importCar(result);
 
     const car = result.current.cars[0];
-    expect(car.skoda).toEqual({ vin: MOCK_SKODA.VIN, expiresAt: '2027-01-22T12:00:00.000Z', proxyUrl: MOCK_SKODA.PROXY_URL });
+    expect(car.skoda).toEqual({ vin: MOCK_SKODA.VIN, expiresAt: '2027-01-22T12:00:00.000Z', proxyUrl: SKODA_PROXY_URL });
     expect(result.current.syncImport.pendingAccessCount).toBe(1);
 
     await act(() => result.current.syncImport.completeAccess(EXPORT_CODE));

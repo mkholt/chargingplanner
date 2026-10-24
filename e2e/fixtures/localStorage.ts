@@ -3,6 +3,10 @@ import { type Car, type PriceSettings } from './test-fixtures';
 import { LS_KEYS } from '../../src/utils/constants';
 import type { PriceScenario } from '../../src/test/mocks/mockPrices';
 import { MOCK_SKODA } from '../../src/test/mocks/mockSkoda';
+import { E2E_BASE_URL } from '../playwright.config';
+
+/** The app's Škoda proxy URL during E2E tests */
+export const SKODA_PROXY_URL = `${E2E_BASE_URL}${MOCK_SKODA.PROXY_PATH}`;
 
 /**
  * Ensures the page is on the app's origin before manipulating localStorage.
@@ -188,9 +192,18 @@ export async function seedSkodaProxy(page: Page, enabled = true): Promise<void> 
 }
 
 /**
+ * Make the mock answer like a web server without a Škoda proxy: /api/skoda/healthz returns the app page.
+ * Must be called before the app loads.
+ */
+export async function setSkodaProxyAbsent(page: Page): Promise<void> {
+  await ensureOnOrigin(page);
+  await page.evaluate(key => localStorage.setItem(key, 'true'), MOCK_SKODA.ABSENT_STORAGE_KEY);
+}
+
+/**
  * Creates a car linked to Škoda with a token the mock proxy accepts.
  */
 export function createLinkedTestCar(id: string, car: Omit<Car, 'id' | 'skoda'>): Car {
   const expiresAt = new Date(Date.now() + MOCK_SKODA.TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  return { id, ...car, skoda: { vin: MOCK_SKODA.VIN, expiresAt, proxyUrl: MOCK_SKODA.PROXY_URL, token: `mock-token.${MOCK_SKODA.VIN}` } };
+  return { id, ...car, skoda: { vin: MOCK_SKODA.VIN, expiresAt, proxyUrl: SKODA_PROXY_URL, token: `mock-token.${MOCK_SKODA.VIN}` } };
 }

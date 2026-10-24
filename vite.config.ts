@@ -13,15 +13,14 @@ import tsconfigPaths from 'vite-tsconfig-paths';
  */
 function buildCsp(env: Record<string, string>): string {
   const priceApiOrigin = new URL(env.VITE_API_BASE || 'https://stromligning.dk').origin;
-  // The Škoda proxy URL is fixed at build time; without one, the Škoda connection is off
-  const skodaProxySource = env.VITE_SKODA_PROXY_URL ? ` ${new URL(env.VITE_SKODA_PROXY_URL).origin}` : '';
   return [
     "default-src 'self'",
     "script-src 'self'",
     // Fluent UI (Griffel) inserts <style> elements at runtime
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
-    `connect-src 'self' ${priceApiOrigin}${skodaProxySource}`,
+    // The Škoda proxy is served from the app's own origin (/api/skoda), so 'self' covers it
+    `connect-src 'self' ${priceApiOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -46,6 +45,15 @@ const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', imp
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
+  server: {
+    // Like the production web server: /api/skoda goes to the proxy (npm run proxy:dev) without the prefix
+    proxy: {
+      '/api/skoda': {
+        target: 'http://localhost:8080',
+        rewrite: path => path.replace(/^\/api\/skoda/, ''),
+      },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
   },
@@ -86,6 +94,8 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // The Škoda proxy lives under /api/skoda: never answer it with the cached app page
+        navigateFallbackDenylist: [/^\/api\//],
         // Only price data is cached. Škoda proxy responses are never cached: they are per-user and
         // short-lived, and the proxy marks them `Cache-Control: no-store`.
         runtimeCaching: [

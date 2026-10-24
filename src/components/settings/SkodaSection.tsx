@@ -12,13 +12,11 @@ import { SkodaVaultSection } from './SkodaVaultSection';
 
 type ConnectionState = 'idle' | 'checking' | 'ok' | 'failed';
 
-/** Turn the Škoda connection on and manage password protection. Hidden when the build has no proxy. */
+/** Turn the Škoda connection on and manage password protection. Only shown when a proxy is available. */
 export const SkodaSection: React.FC = () => {
   const { t } = useTranslation();
   const { proxyUrl, enabled, setEnabled, baseUrl } = useSkodaProxy();
   const [connection, setConnection] = useState<ConnectionState>('idle');
-
-  if (!proxyUrl) return null;
 
   const handleTest = async () => {
     setConnection('checking');

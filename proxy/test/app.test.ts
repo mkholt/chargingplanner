@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 
-import { APP_ORIGIN, createTestApp } from './helpers';
+import { createTestApp } from './helpers';
 import { API_KEY, KEY_EXPIRES_AT, OTHER_VIN, skodaApi, VIN, vehicleBody } from './mocks/skodaApi';
 
 const PROBLEM_JSON = 'application/problem+json';
@@ -51,37 +51,19 @@ describe('routing', () => {
 });
 
 describe('CORS', () => {
-  const preflight = (origin: string) =>
-    createTestApp().request('/v1/tokens', {
+  // The app calls the proxy on its own origin, so no other origin is ever allowed
+  it('allows no cross-origin requests', async () => {
+    const res = await createTestApp().request('/v1/tokens', {
       method: 'OPTIONS',
       headers: {
-        Origin: origin,
+        Origin: 'https://evil.example.com',
         'Access-Control-Request-Method': 'POST',
         'Access-Control-Request-Headers': 'content-type',
       },
     });
 
-  it('allows the configured origin', async () => {
-    const res = await preflight(APP_ORIGIN);
-
-    expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(APP_ORIGIN);
-    expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET,POST');
-    expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull();
-  });
-
-  it('does not allow other origins', async () => {
-    const res = await preflight('https://evil.example.com');
-
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
-  });
-
-  it('exposes only the forwarded Škoda headers', async () => {
-    const res = await createTestApp().request('/healthz', { headers: { Origin: APP_ORIGIN } });
-
-    expect(res.headers.get('Access-Control-Expose-Headers')).toBe(
-      'RateLimit-Limit,RateLimit-Remaining,RateLimit-Reset,Retry-After,X-API-Key-Expires-At'
-    );
+    expect(res.headers.get('Access-Control-Allow-Methods')).toBeNull();
   });
 });
 

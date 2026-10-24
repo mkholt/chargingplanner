@@ -6,6 +6,8 @@ import {
   createTestCar,
   seedCars,
   seedSkodaProxy,
+  setSkodaProxyAbsent,
+  SKODA_PROXY_URL,
   TEST_CARS,
 } from '../fixtures/localStorage';
 import { AppPage } from '../pages/app.page';
@@ -25,8 +27,8 @@ test.describe('Škoda connection', () => {
     await settingsPanePage.switchToAppTab();
 
     await skodaPage.enableProxy();
-    // The proxy is set when the app is built
-    await expect(skodaPage.proxyUrl).toHaveText(MOCK_SKODA.PROXY_URL);
+    // The proxy is served from the app's own origin
+    await expect(skodaPage.proxyUrl).toHaveText(SKODA_PROXY_URL);
     await skodaPage.testConnection();
 
     await expect(skodaPage.connectionResult).toHaveAttribute('data-result', 'ok');
@@ -106,6 +108,20 @@ test.describe('Škoda connection', () => {
     await expect(skodaPage.vehicleError).toHaveText(t.vehicle.relink);
   });
 
+  test('hides the Škoda connection when no proxy is deployed', async ({ appPage, settingsPanePage, skodaPage, page }) => {
+    await clearAllStorage(page);
+    await setSkodaProxyAbsent(page);
+    const healthChecked = page.waitForResponse(`${SKODA_PROXY_URL}/healthz`);
+    await page.goto('/');
+    await appPage.waitForAppReady();
+    await healthChecked;
+    await appPage.openSettings();
+    await settingsPanePage.switchToAppTab();
+
+    await expect(settingsPanePage.pane).toBeVisible();
+    await expect(skodaPage.settings).not.toBeVisible();
+  });
+
   test('makes no Škoda requests and shows no Škoda UI when the proxy is off', async ({ appPage, settingsPanePage, inputFormPage, skodaPage, page }) => {
     await clearAllStorage(page);
     await seedCars(page, [createLinkedTestCar('car-1', TEST_CARS.VW_ID4)], 'car-1');
@@ -113,7 +129,10 @@ test.describe('Škoda connection', () => {
 
     const proxyRequests: string[] = [];
     page.on('request', request => {
-      if (request.url().startsWith(MOCK_SKODA.PROXY_URL)) proxyRequests.push(request.url());
+      // The availability check carries no user data; nothing else may reach the proxy
+      if (request.url().startsWith(SKODA_PROXY_URL) && request.url() !== `${SKODA_PROXY_URL}/healthz`) {
+        proxyRequests.push(request.url());
+      }
     });
 
     await page.goto('/');

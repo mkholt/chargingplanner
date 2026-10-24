@@ -33,7 +33,7 @@ export const SettingsPane: React.FC = () => {
   const { t } = useTranslation();
   const { activeTab, setActiveTab, closeSettings } = useSettingsUI();
   const { clearAll: clearPriceSettings, refetchIfStale } = usePriceSettings();
-  const { proxyUrl } = useSkodaProxy();
+  const { available: skodaAvailable } = useSkodaProxy();
   const isMobile = useIsMobile();
   const paneRef = useRef<HTMLDivElement>(null);
 
@@ -129,7 +129,7 @@ export const SettingsPane: React.FC = () => {
         {activeTab === 'app' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingHorizontalXL }}>
             <AppSettingsSection />
-            {proxyUrl && (
+            {skodaAvailable && (
               <>
                 <Divider />
                 <SkodaSection />

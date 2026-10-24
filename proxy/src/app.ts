@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { routePath } from 'hono/route';
 import { secureHeaders } from 'hono/secure-headers';
@@ -12,10 +11,9 @@ import { problem } from '@proxy/problem';
 import { tokenRoutes, vehicleRoutes } from '@proxy/routes';
 import { maskVin } from '@proxy/schemas';
 import { createTokenService } from '@proxy/tokens';
-import { createSkodaClient, FORWARDED_HEADERS, UpstreamUnavailableError } from '@proxy/upstream';
+import { createSkodaClient, UpstreamUnavailableError } from '@proxy/upstream';
 
-const CORS_MAX_AGE_SECONDS = 600;
-/** No includeSubDomains: the proxy may share a domain with other sites (subpath deployment). */
+/** No includeSubDomains: the proxy is served on the app's domain, which may have other sites on subdomains. */
 const HSTS = 'max-age=31536000';
 
 export const createApp = ({ config, logger }: { config: ProxyConfig; logger: Logger }) => {
@@ -43,15 +41,6 @@ export const createApp = ({ config, logger }: { config: ProxyConfig; logger: Log
   });
 
   app.use(secureHeaders({ strictTransportSecurity: HSTS }));
-  app.use(
-    cors({
-      origin: config.allowedOrigins,
-      allowMethods: ['GET', 'POST'],
-      allowHeaders: ['Authorization', 'Content-Type'],
-      exposeHeaders: [...FORWARDED_HEADERS],
-      maxAge: CORS_MAX_AGE_SECONDS,
-    })
-  );
   app.use(async (c, next) => {
     c.set('clientKey', resolveClientKey(c.env?.incoming));
     await next();

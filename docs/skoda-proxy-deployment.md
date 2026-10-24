@@ -2,17 +2,19 @@
 
 How to run the Škoda proxy on a Linux host. The design is described in [skoda-proxy-spec.md](skoda-proxy-spec.md).
 
-**Docker is not required.** The primary setup is Node.js + systemd behind a reverse proxy. Apache, nginx and Caddy are all covered below. Docker is an optional alternative.
+**Docker is not required.** The primary setup is Node.js + systemd behind the web server that serves the app. Apache, nginx and Caddy are all covered below. Docker is an optional alternative.
 
 ```
-Browser ──HTTPS──▶ Apache / nginx / Caddy ──http://127.0.0.1:8080──▶ skoda-proxy (Node, systemd) ──HTTPS──▶ MyŠkoda API
+Browser ──HTTPS──▶ Apache / nginx / Caddy ──┬── /api/skoda/* ──http://127.0.0.1:8080/*──▶ skoda-proxy (Node, systemd) ──HTTPS──▶ MyŠkoda API
+                   (serves the app)         └── everything else ──▶ the app's static files
 ```
+
+The app always calls the proxy at `/api/skoda` on its own origin, e.g. `https://ev.example.com/api/skoda`. Nothing is configured in the app: on every load it checks `/api/skoda/healthz` and only shows the Škoda connection when the proxy answers. Deploy the app without the proxy and the Škoda connection is simply hidden.
 
 ## 1. Prerequisites
 
 - **Node.js 24 LTS**, from your distro or NodeSource. Check with `node --version`.
-- **A reverse proxy** with TLS: Apache 2.4.30+, nginx, or Caddy.
-- **A DNS name** for the proxy, e.g. `skoda-proxy.example.com`. Alternatively, serve it under a subpath of an existing site (see §4.3).
+- **The web server that serves the app**, with TLS: Apache 2.4.30+, nginx, or Caddy. The proxy is mounted on the same site, so it needs no DNS name or certificate of its own.
 - **systemd 250+**, which is needed for `LoadCredential=`. Debian 12, Ubuntu 22.04+ and RHEL 9 all qualify.
 
 ## 2. Install the proxy
@@ -56,8 +58,6 @@ Keep a backup of this file somewhere safe. If it is lost, every user has to re-l
 HOST=127.0.0.1
 PORT=8080
 TOKEN_ISSUER=skoda-proxy
-# Origin(s) where the EV Charging Planner app is served (scheme + host + port, no path)
-ALLOWED_ORIGINS=https://ev.example.com
 # Reverse proxy on the same host → trust loopback for X-Forwarded-For
 TRUSTED_PROXIES=loopback
 # Optional: seconds to cache vehicle responses (0 disables), and pino log level
@@ -133,147 +133,94 @@ journalctl -u skoda-proxy -f             # pino JSON logs; secrets are redacted
 Debian / Ubuntu:
 
 ```bash
-sudo a2enmod proxy proxy_http ssl headers http2 md
+sudo a2enmod proxy proxy_http headers
 sudo systemctl restart apache2
 ```
 
 RHEL / Rocky / Alma:
 
 ```bash
-sudo dnf install httpd mod_ssl mod_md
+sudo dnf install httpd
 # SELinux: allow Apache to connect to the local proxy port
 sudo setsebool -P httpd_can_network_connect 1
 ```
 
-### 4.2 Dedicated subdomain (recommended)
+### 4.2 Mount the proxy at `/api/skoda/`
 
-`/etc/apache2/sites-available/skoda-proxy.conf` on Debian/Ubuntu, or `/etc/httpd/conf.d/skoda-proxy.conf` on RHEL:
-
-```apache
-# --- TLS certificate via mod_md (Apache's built-in ACME / Let's Encrypt client) ---
-MDomain skoda-proxy.example.com
-MDCertificateAgreement accepted
-MDContactEmail admin@example.com
-
-<VirtualHost *:80>
-    ServerName skoda-proxy.example.com
-    # mod_md answers ACME challenges itself; everything else goes to HTTPS
-    RedirectMatch permanent ^/(?!\.well-known/acme-challenge/)(.*)$ https://skoda-proxy.example.com/$1
-</VirtualHost>
-
-<VirtualHost *:443>
-    ServerName skoda-proxy.example.com
-    Protocols h2 http/1.1
-
-    SSLEngine on
-    # TLS settings: follow the Mozilla SSL Configuration Generator, "intermediate" profile
-    # https://ssl-config.mozilla.org/#server=apache
-    SSLProtocol -all +TLSv1.2 +TLSv1.3
-    SSLHonorCipherOrder off
-    SSLSessionTickets off
-
-    # Reverse proxy only. NEVER enable forward proxying.
-    ProxyRequests Off
-    ProxyPreserveHost On
-    ProxyPass        / http://127.0.0.1:8080/ connectiontimeout=5 timeout=15
-    ProxyPassReverse / http://127.0.0.1:8080/
-    # mod_proxy_http adds X-Forwarded-For / -Host / -Server automatically.
-    RequestHeader set X-Forwarded-Proto "https"
-
-    # Requests are tiny; reject anything large before it reaches Node
-    LimitRequestBody 4096
-
-    # Do NOT add CORS (Access-Control-*) or HSTS headers here:
-    # the proxy app sets them, and duplicate headers break browsers.
-
-    ErrorLog  ${APACHE_LOG_DIR}/skoda-proxy-error.log
-    # Default "combined" format does not log the Authorization header - keep it that way.
-    CustomLog ${APACHE_LOG_DIR}/skoda-proxy-access.log combined
-</VirtualHost>
-```
-
-On RHEL, replace `${APACHE_LOG_DIR}` with `logs`.
-
-Enable the site and reload:
-
-```bash
-sudo a2ensite skoda-proxy          # Debian/Ubuntu only
-sudo apachectl configtest
-sudo systemctl reload apache2      # or httpd
-# mod_md fetches the certificate in the background and logs:
-#   "The Managed Domain skoda-proxy.example.com has been setup and changes will be activated on next (graceful) server restart."
-sudo systemctl reload apache2      # activates the new certificate
-```
-
-If you prefer **certbot** over mod_md, remove the three `MD*` lines and run `sudo certbot --apache -d skoda-proxy.example.com`.
-
-### 4.3 Subpath on an existing site
-
-Use this when the proxy should live at `https://example.com/skoda-proxy/`, for example on the same vhost that serves the app. Add the following inside the existing `<VirtualHost *:443>`:
+Add the following inside the app's existing `<VirtualHost *:443>`:
 
 ```apache
+# Reverse proxy only. NEVER enable forward proxying.
 ProxyRequests Off
 
-<Location "/skoda-proxy/">
+<Location "/api/skoda/">
+    # The trailing slashes strip the /api/skoda prefix: /api/skoda/healthz → /healthz
     ProxyPass        "http://127.0.0.1:8080/" connectiontimeout=5 timeout=15
     ProxyPassReverse "http://127.0.0.1:8080/"
+    # mod_proxy_http adds X-Forwarded-For / -Host / -Server automatically.
     RequestHeader set X-Forwarded-Proto "https"
+    # Requests are tiny; reject anything large before it reaches Node
     LimitRequestBody 4096
 </Location>
 ```
 
-Then:
-- **In the app**, build it with `VITE_SKODA_PROXY_URL=https://example.com/skoda-proxy` (see §8).
-- **Health check:** `https://example.com/skoda-proxy/healthz`.
-- **CORS:** if the app is served from the same origin (`https://example.com`), the browser makes same-origin requests and CORS doesn't apply. Still set `ALLOWED_ORIGINS=https://example.com`.
+**The app's fallback route must not catch `/api/`.** A single-page app usually sends every unknown path to `index.html`. `FallbackResource /index.html` leaves proxied paths alone, but a mod_rewrite fallback needs an exception:
+
+```apache
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ /index.html [L]
+```
+
+Do not add CORS (`Access-Control-*`) headers for the proxy: the app and the proxy share an origin, so the browser never needs them. The default `combined` log format does not log the `Authorization` header; keep it that way.
+
+Reload Apache:
+
+```bash
+sudo apachectl configtest
+sudo systemctl reload apache2      # or httpd
+```
 
 ## 5. Reverse proxy: nginx (alternative)
 
+Add this to the app's existing `server` block:
+
 ```nginx
-server {
-    listen 80;
-    server_name skoda-proxy.example.com;
-    location /.well-known/acme-challenge/ { root /var/www/certbot; }
-    location / { return 301 https://$host$request_uri; }
-}
-
-server {
-    listen 443 ssl;
-    http2 on;
-    server_name skoda-proxy.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/skoda-proxy.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/skoda-proxy.example.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;   # see https://ssl-config.mozilla.org/#server=nginx
-
-    client_max_body_size 4k;
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout    15s;
-        # No CORS/HSTS headers here - the proxy app sets them.
-    }
+location /api/skoda/ {
+    # The trailing slash on proxy_pass strips the /api/skoda prefix: /api/skoda/healthz → /healthz
+    proxy_pass http://127.0.0.1:8080/;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout    15s;
+    client_max_body_size  4k;
 }
 ```
 
-Get the certificate with `sudo certbot --nginx -d skoda-proxy.example.com`.
+nginx picks the longest matching prefix, so the app's usual `location / { try_files $uri /index.html; }` does not catch `/api/skoda/`. Don't put a fallback `try_files` at server level, where it would apply to every path.
 
 ## 6. Reverse proxy: Caddy (alternative)
 
 ```caddyfile
-skoda-proxy.example.com {
-    request_body {
-        max_size 4KB
+ev.example.com {
+    # handle_path strips the /api/skoda prefix: /api/skoda/healthz → /healthz
+    handle_path /api/skoda/* {
+        request_body {
+            max_size 4KB
+        }
+        reverse_proxy 127.0.0.1:8080
     }
-    reverse_proxy 127.0.0.1:8080
+    handle {
+        root * /var/www/ev
+        try_files {path} /index.html
+        file_server
+    }
 }
 ```
 
-Caddy obtains and renews the certificate automatically and sets `X-Forwarded-For` / `X-Forwarded-Proto` itself.
+Keep the app's `try_files` inside its own `handle` block. At site level Caddy runs `try_files` before `handle_path`, and it would rewrite `/api/skoda/*` to `index.html`. Caddy sets `X-Forwarded-For` / `X-Forwarded-Proto` itself.
 
 ## 7. Docker (optional)
 
@@ -294,7 +241,6 @@ services:
       HOST: 0.0.0.0
       PORT: 8080
       TOKEN_ISSUER: skoda-proxy
-      ALLOWED_ORIGINS: https://ev.example.com
       # The host reverse proxy reaches the container through the network gateway, and only that address is trusted
       TRUSTED_PROXIES: 172.30.0.1
       TOKEN_SECRETS_FILE: /run/secrets/token-secrets
@@ -323,34 +269,23 @@ Compose bind-mounts file secrets with the host file's ownership and mode, so the
 sudo install -o 65532 -g 65532 -m 400 /etc/skoda-proxy/token-secrets /etc/skoda-proxy/docker-token-secrets
 ```
 
-## 8. The app: build settings and Content-Security-Policy
 
-The app connects to the proxy straight from the browser. The proxy URL is set when the app is built. Users can turn the Škoda connection on and off, but can't change the URL:
+## 8. The app: Content-Security-Policy
 
-```bash
-# .env.production: without it, the Škoda connection is hidden in the app
-VITE_SKODA_PROXY_URL=https://skoda-proxy.example.com
-```
+The app needs no build settings for the proxy. The same build works with or without one.
 
-The repo's `ci.yml` and `release.yml` workflows read it from the GitHub Actions **variable** `SKODA_PROXY_URL` (Settings → Secrets and variables → Actions → Variables). It is a variable, not a secret, because the URL is public anyway: it is in the built app and its CSP. Without it, the released app has no Škoda connection. The proxy's own settings and token secrets stay on the proxy host and never go into GitHub.
-
-`npm run build` adds a Content-Security-Policy `<meta>` tag to `dist/index.html`. It allows scripts only from the app's own origin and limits `connect-src` to the price API and the proxy:
-
-| Build | `connect-src` |
-|---|---|
-| `VITE_SKODA_PROXY_URL` set | `'self' https://stromligning.dk https://skoda-proxy.example.com` |
-| Not set | `'self' https://stromligning.dk`. The Škoda connection is hidden. |
+`npm run build` adds a Content-Security-Policy `<meta>` tag to `dist/index.html`. It allows scripts only from the app's own origin and limits `connect-src` to `'self' https://stromligning.dk`. `'self'` covers the proxy at `/api/skoda`.
 
 A `<meta>` CSP cannot set `frame-ancestors`, so also send the policy as a header from the web server that serves the app. Use the same value as the meta tag (copy it from `dist/index.html`) and add `frame-ancestors 'none'`:
 
 ```apache
 # Apache: in the app's <VirtualHost> (mod_headers)
-Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://stromligning.dk https://skoda-proxy.example.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://stromligning.dk; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 ```
 
 ```nginx
 # nginx: in the app's server block
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://stromligning.dk https://skoda-proxy.example.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://stromligning.dk; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 ```
 
 When both the header and the meta tag are present, the browser enforces both, so they must allow the same sources. `style-src 'unsafe-inline'` is needed because Fluent UI inserts its styles at runtime. Scripts stay restricted to the app's own files.
@@ -358,28 +293,22 @@ When both the header and the meta tag are present, the browser enforces both, so
 ## 9. Verify the deployment
 
 ```bash
-# Health
-curl -s https://skoda-proxy.example.com/healthz
+# Health → expect {"status":"ok"}. An HTML page means the app's fallback route catches /api/ (see §4.2–§6).
+curl -s https://ev.example.com/api/skoda/healthz
 
-# CORS preflight from the app origin → expect 204 with Access-Control-Allow-Origin: https://ev.example.com
-curl -si -X OPTIONS https://skoda-proxy.example.com/v1/vehicles/TMBXXXXXXXXXXXXXX \
-  -H 'Origin: https://ev.example.com' \
-  -H 'Access-Control-Request-Method: GET' \
-  -H 'Access-Control-Request-Headers: authorization'
-
-# Unknown origin → expect no Access-Control-Allow-Origin header
-curl -si -X OPTIONS https://skoda-proxy.example.com/v1/vehicles/TMBXXXXXXXXXXXXXX \
+# Another origin → expect no Access-Control-Allow-Origin header
+curl -si -X OPTIONS https://ev.example.com/api/skoda/v1/vehicles/TMBXXXXXXXXXXXXXX \
   -H 'Origin: https://evil.example' -H 'Access-Control-Request-Method: GET'
 
 # No token → expect 401
-curl -si https://skoda-proxy.example.com/v1/vehicles/TMBXXXXXXXXXXXXXX
+curl -si https://ev.example.com/api/skoda/v1/vehicles/TMBXXXXXXXXXXXXXX
 
 # Forward-proxy abuse check → must NOT return example.org content
-curl -si -x https://skoda-proxy.example.com:443 http://example.org/
+curl -si -x https://ev.example.com:443 http://example.org/
 ```
 
 Then, in the app:
-1. Open **Settings → App → Škoda Connection** and enable the proxy. Check that the URL shown is the one you deployed.
+1. Reload it, open **Settings → App → Škoda Connection** and enable the proxy. The URL shown is `https://ev.example.com/api/skoda`.
 2. Run **Test connection**.
 3. Link each car, or add it with **Add Škoda car** in Settings → Cars.
 
@@ -408,8 +337,8 @@ Rebuild, copy `proxy/dist` over `/opt/skoda-proxy/dist`, then run `sudo systemct
 | Symptom | Likely cause |
 |---|---|
 | Apache returns `502`/`503` | The service isn't running (`systemctl status skoda-proxy`). On RHEL, SELinux may be blocking it: set `httpd_can_network_connect`. |
-| Browser: "CORS header missing" | The app origin isn't in `ALLOWED_ORIGINS`. Scheme, host and port must match exactly, with no trailing slash. |
-| Browser: "multiple values in Access-Control-Allow-Origin" | CORS headers were also added in Apache/nginx. Remove them. |
+| Škoda Connection missing from Settings | `/api/skoda/healthz` doesn't answer with `{"status":"ok"}`. If it returns the app's HTML page, the fallback route catches `/api/` (see §4.2–§6). |
+| Browser: CSP blocks `/api/skoda` | The server's CSP header lacks `connect-src 'self'`. |
 | All users share one rate limit | `TRUSTED_PROXIES` isn't set, so every request appears to come from `127.0.0.1`. |
 | `401 key-revoked` for a car | The Škoda key expired or was deleted in MyŠkoda. Re-link the car in the app. |
 | Service fails at start with a config error | The proxy validates config at startup, and the journal shows which variable is invalid. |

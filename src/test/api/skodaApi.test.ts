@@ -4,44 +4,14 @@ import {
   checkSkodaProxyHealth,
   fetchSkodaVehicle,
   issueSkodaToken,
-  normalizeProxyUrl,
+  SKODA_PROXY_URL,
   SkodaProxyError,
 } from '@/api';
 import { MOCK_SKODA } from '@/test/mocks';
 import { server } from '@/test/mocks/server';
 
-const { PROXY_URL, VIN, API_KEY } = MOCK_SKODA;
-
-describe('normalizeProxyUrl', () => {
-  it.each([
-    ['https://proxy.example.com', 'https://proxy.example.com'],
-    ['https://proxy.example.com/', 'https://proxy.example.com'],
-    ['  https://example.com/skoda-proxy//  ', 'https://example.com/skoda-proxy'],
-    ['https://example.com:8443/a/b', 'https://example.com:8443/a/b'],
-  ])('accepts %s', (input, expected) => {
-    expect(normalizeProxyUrl(input, false)).toBe(expected);
-  });
-
-  it.each([
-    ['', 'empty'],
-    ['proxy.example.com', 'no scheme'],
-    ['http://proxy.example.com', 'plain http'],
-    ['ftp://proxy.example.com', 'other scheme'],
-    ['javascript:alert(1)', 'javascript URL'],
-    ['https://user:pass@proxy.example.com', 'credentials'],
-    ['https://proxy.example.com/?a=1', 'query'],
-    ['https://proxy.example.com/#x', 'hash'],
-  ])('rejects %s (%s)', input => {
-    expect(normalizeProxyUrl(input, false)).toBeNull();
-  });
-
-  it('allows http://localhost only when local http is allowed', () => {
-    expect(normalizeProxyUrl('http://localhost:8080', true)).toBe('http://localhost:8080');
-    expect(normalizeProxyUrl('http://127.0.0.1:8080/', true)).toBe('http://127.0.0.1:8080');
-    expect(normalizeProxyUrl('http://localhost:8080', false)).toBeNull();
-    expect(normalizeProxyUrl('http://192.168.1.10:8080', true)).toBeNull();
-  });
-});
+const PROXY_URL = SKODA_PROXY_URL;
+const { VIN, API_KEY } = MOCK_SKODA;
 
 describe('issueSkodaToken', () => {
   it('returns a token bound to the VIN', async () => {
@@ -157,6 +127,16 @@ describe('checkSkodaProxyHealth', () => {
 
   it('is false when the proxy cannot be reached', async () => {
     server.use(http.get('*/healthz', () => HttpResponse.error()));
+
+    expect(await checkSkodaProxyHealth(PROXY_URL)).toBe(false);
+  });
+
+  it('is false when the web server answers with the app page instead', async () => {
+    // No proxy deployed: the SPA fallback serves index.html for /api/skoda/healthz
+    server.use(http.get('*/healthz', () => new HttpResponse('<!doctype html><html></html>', {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+    })));
 
     expect(await checkSkodaProxyHealth(PROXY_URL)).toBe(false);
   });

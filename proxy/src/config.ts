@@ -12,7 +12,6 @@ export type TokenSecrets = {
 export type ProxyConfig = {
   host: string;
   port: number;
-  allowedOrigins: string[];
   issuer: string;
   trustedProxies: string[];
   cacheTtlSeconds: number;
@@ -26,19 +25,9 @@ const commaList = z
   .string()
   .transform((value) => value.split(',').map((item) => item.trim()).filter(Boolean));
 
-const OriginSchema = z.string().refine((value) => {
-  try {
-    const url = new URL(value);
-    return (url.protocol === 'https:' || url.protocol === 'http:') && url.origin === value;
-  } catch {
-    return false;
-  }
-}, 'Must be an origin like https://ev.example.com (no path or trailing slash)');
-
 const EnvSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
-  ALLOWED_ORIGINS: commaList.pipe(z.array(OriginSchema).min(1)),
   TOKEN_ISSUER: z.string().min(1).default('skoda-proxy'),
   TRUSTED_PROXIES: commaList.default([]).refine((proxies) => {
     try {
@@ -107,7 +96,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): ProxyConfig =>
   return {
     host: vars.HOST,
     port: vars.PORT,
-    allowedOrigins: vars.ALLOWED_ORIGINS,
     issuer: vars.TOKEN_ISSUER,
     trustedProxies: vars.TRUSTED_PROXIES,
     cacheTtlSeconds: vars.CACHE_TTL_SECONDS,

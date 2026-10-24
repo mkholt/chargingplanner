@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 
+import { SKODA_PROXY_URL } from '@/api';
 import {
   type Car,
   CarsProvider,
@@ -30,11 +31,11 @@ async function actError(action: () => Promise<unknown>): Promise<unknown> {
   return error;
 }
 
-/** Counts requests that reach the (mock) Škoda proxy */
+/** Counts requests that reach the (mock) Škoda proxy, except the availability check, which carries no user data */
 function countProxyRequests() {
   const counter = { count: 0 };
   const listener = ({ request }: { request: Request }) => {
-    if (request.url.startsWith(MOCK_SKODA.PROXY_URL)) counter.count++;
+    if (request.url.startsWith(SKODA_PROXY_URL) && request.url !== `${SKODA_PROXY_URL}/healthz`) counter.count++;
   };
   server.events.on('request:start', listener);
   return { counter, stop: () => server.events.removeListener('request:start', listener) };
@@ -136,7 +137,7 @@ describe('Škoda linking and the password vault', () => {
       });
 
       const car = result.current.carsContext.cars.find(c => c.id === added?.id);
-      expect(car?.skoda).toMatchObject({ vin: MOCK_SKODA.VIN, proxyUrl: MOCK_SKODA.PROXY_URL });
+      expect(car?.skoda).toMatchObject({ vin: MOCK_SKODA.VIN, proxyUrl: SKODA_PROXY_URL });
       expect(result.current.vault.getToken(car ?? null)).toBe(lookup.issued.token);
     });
 
@@ -177,7 +178,7 @@ describe('Škoda linking and the password vault', () => {
       expect(result.current.car.skoda).toEqual({
         vin: MOCK_SKODA.VIN,
         expiresAt: expect.any(String),
-        proxyUrl: MOCK_SKODA.PROXY_URL,
+        proxyUrl: SKODA_PROXY_URL,
       });
       expect(result.current.vault.getToken(result.current.car)).toBe(token);
       expect(storedText()).not.toContain(token);
@@ -327,7 +328,7 @@ describe('Škoda linking and the password vault', () => {
         const { result } = rendered;
         const set = (carId: string, token: string) => result.current.vault.storeLinks([{
           carId,
-          link: { vin: MOCK_SKODA.VIN, expiresAt: '2099-01-01T00:00:00.000Z', proxyUrl: MOCK_SKODA.PROXY_URL },
+          link: { vin: MOCK_SKODA.VIN, expiresAt: '2099-01-01T00:00:00.000Z', proxyUrl: SKODA_PROXY_URL },
           token,
         }]);
         /** The vault as stored */
@@ -396,7 +397,7 @@ describe('useSkodaVehicleQuery', () => {
     skoda: {
       vin: MOCK_SKODA.VIN,
       expiresAt: '2099-01-01T00:00:00.000Z',
-      proxyUrl: MOCK_SKODA.PROXY_URL,
+      proxyUrl: SKODA_PROXY_URL,
       token: `mock-token.${MOCK_SKODA.VIN}`,
     },
   };

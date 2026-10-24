@@ -49,9 +49,6 @@ jobs:
 
       - name: Build
         run: npm run build --ignore-scripts
-        env:
-          # Public: ends up in the bundle and the CSP. Leave unset to hide the Škoda connection.
-          VITE_SKODA_PROXY_URL: ${{ vars.SKODA_PROXY_URL }}
 
       - name: Upload dist
         uses: actions/upload-artifact@v7

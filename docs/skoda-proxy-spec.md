@@ -109,8 +109,8 @@ Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457]
 | Server secret rotation | `jose` key selection by `kid`. Config holds the current secret plus older ones that are still accepted. |
 | Request validation (VIN `^[A-HJ-NPR-Z0-9]{17}$`, body shape, `include` values) | `zod` + `@hono/zod-validator` |
 | Bearer header parsing | Hono `bearerAuth` middleware with `verifyToken`, which calls `jwtDecrypt` |
-| CORS (explicit `ALLOWED_ORIGINS`, never `*`) | `hono/cors` |
-| Security headers (HSTS without `includeSubDomains`, since the proxy may share a domain with other sites; `nosniff`, no-referrer, …) | `hono/secure-headers` |
+| No CORS: the app calls the proxy on its own origin, so no cross-origin request is ever allowed | Browser same-origin policy; the proxy sends no `Access-Control-*` headers |
+| Security headers (HSTS without `includeSubDomains`, since the proxy is served on the app's domain, which may have other sites on subdomains; `nosniff`, no-referrer, …) | `hono/secure-headers` |
 | Body size limit (2 KB) | `hono/body-limit` |
 | Upstream timeout (10 s), no redirects | `AbortSignal.timeout`, `redirect: 'error'` on fetch, inside the `openapi-fetch` client |
 | Rate limiting: `POST /v1/tokens` 5/min per client and 30/min globally; reads 60/min per client and 30/min per token | `hono-rate-limiter` |
@@ -132,7 +132,6 @@ Any other route returns `404`. Errors use `application/problem+json` ([RFC 9457]
 |---|---|---|
 | `HOST` | `127.0.0.1` | |
 | `PORT` | `8080` | |
-| `ALLOWED_ORIGINS` | `https://ev.example.com,http://localhost:5173` | |
 | `TOKEN_ISSUER` | `skoda-proxy` | |
 | `TRUSTED_PROXIES` | `loopback` | `proxy-addr` syntax. Leave unset if no reverse proxy is used. |
 | `TOKEN_SECRETS_FILE` | `$CREDENTIALS_DIRECTORY/token-secrets` | JSON `{ "current": "<kid>", "keys": { "<kid>": "<base64 32 bytes>" } }` |
@@ -187,7 +186,8 @@ docs/
 
 **Global settings (`SkodaSection`)**
 - New settings section, `src/components/settings/SkodaSection.tsx`, added to the barrel and `SettingsPane`.
-- The proxy URL is set when the app is built, from `VITE_SKODA_PROXY_URL`. It must be `https://`; `http://localhost` is allowed in dev. Users can't change it, so a link or a sync code can't point the app at another server. Without it, no Škoda UI is shown.
+- The proxy is always at `/api/skoda` on the app's own origin (`SKODA_PROXY_PATH`). Nothing is configured at build time, and users can't change it, so a link or a sync code can't point the app at another server. In dev, Vite forwards `/api/skoda` to the proxy on `localhost:8080`.
+- On every load `SkodaProxyContext` checks `/api/skoda/healthz`. The Škoda UI is only shown when it answers `{"status":"ok"}`; without a proxy the web server's fallback route answers with the app page instead. Once the user has turned the connection on, the UI stays available even if the check fails (e.g. offline). The answer is kept in the persisted query cache until the next check.
 - Toggle: *Use Škoda proxy*. Off by default. The proxy URL is shown read-only when it's on.
 - *Test connection* button, which calls `/healthz`.
 - The toggle is persisted in `SkodaProxyContext` via `useLocalStorage(LS_KEYS.SKODA_PROXY, { enabled: false })`.
@@ -206,7 +206,7 @@ docs/
 - *Unlink* removes `skoda` from the car. The status text should tell users to also delete the key in the MyŠkoda app to fully revoke access.
 
 **Data**
-- New API client `src/api/skodaApi.ts`. Responses are checked before use: an issued token must be for the requested VIN and have an expiry, and vehicle data must be for the requested VIN. Anything else is an `invalid-response` error. Its `baseUrl` is the configured proxy URL, which may include a path prefix such as `https://example.com/skoda-proxy` for subpath deployments. Trailing slashes are normalised.
+- New API client `src/api/skodaApi.ts`. Responses are checked before use: an issued token must be for the requested VIN and have an expiry, and vehicle data must be for the requested VIN. Anything else is an `invalid-response` error. Its `baseUrl` is the proxy URL, `https://<app origin>/api/skoda`.
 - New hook `useSkodaVehicleQuery(car)`:
   - Uses TanStack Query with a `staleTime` of 60 s.
   - Is disabled when the proxy is off or the car isn't linked.
@@ -216,8 +216,8 @@ docs/
 - **Sync links** (`#sync=…`) are read on load and when the hash changes in an open tab. The hash is removed from the address bar and history right away, also when it can't be imported.
 - **Sync/QR export:** the VIN, expiry and proxy URL are included. The token is excluded by default, and a plain token is never exported or imported. See *Sync with Škoda access* in §7.1 for the opt-in.
 - **Imported sync data is size-limited** before it is parsed: at most 20,000 characters encoded, 64 KB decompressed and 50 cars. If the data doesn't fit in a QR code, the app says so and offers the link or code instead.
-- **PWA:** no Workbox runtime cache for proxy URLs.
-- **CSP:** add a strict Content-Security-Policy to `index.html` and the host config: `default-src 'self'`, `connect-src` limited to stromligning.dk and the proxy origin, and no inline scripts. This reduces XSS token theft.
+- **PWA:** no Workbox runtime cache for proxy URLs, and the service worker's navigation fallback skips `/api/`.
+- **CSP:** add a strict Content-Security-Policy to `index.html` and the host config: `default-src 'self'`, `connect-src` limited to `'self'` (which covers the proxy) and stromligning.dk, and no inline scripts. This reduces XSS token theft.
 
 **When the proxy is off:** no Škoda UI is shown and no requests are made.
 
@@ -282,13 +282,14 @@ The step-by-step guide and config samples are in [skoda-proxy-deployment.md](sko
 | Component | Primary option | Alternatives |
 |---|---|---|
 | Runtime | Node 24 LTS + systemd unit with sandboxing directives | Docker (optional) |
-| Reverse proxy / TLS | Apache (`mod_proxy_http`, `mod_ssl`, `mod_md` or certbot) | nginx + certbot, Caddy |
-| Mounting | Its own subdomain (`https://skoda-proxy.example.com`) | A subpath on an existing site (`https://example.com/skoda-proxy/`) |
+| Reverse proxy / TLS | The app's web server: Apache (`mod_proxy_http`) | nginx, Caddy |
+| Mounting | `/api/skoda/` on the app's own site, with the prefix stripped before the proxy | None. The app only looks for the proxy there. |
 
 **Rules for every reverse proxy:**
 - Forward-proxy mode must be off. In Apache this means `ProxyRequests Off`.
 - Forward the `Authorization` header unchanged.
-- Don't add CORS or HSTS headers at the reverse proxy. The proxy app sets them, and duplicates break browsers.
+- The app's fallback route (`index.html` for unknown paths) must not catch `/api/`.
+- Don't add CORS headers for `/api/skoda/`.
 - Set `X-Forwarded-For` and set `TRUSTED_PROXIES` to match.
 
 ## 9. Testing
@@ -299,7 +300,7 @@ The step-by-step guide and config samples are in [skoda-proxy-deployment.md](sko
 - A VIN outside the token gives `403`, and Škoda is never called.
 - `include` cannot be widened.
 - Issuance fails if the key isn't valid for the VIN upstream, or has already expired.
-- CORS, rate limits (including IPv6 `/64` grouping and the global issuance cap), header stripping, and error mapping.
+- No CORS headers for other origins, rate limits (including IPv6 `/64` grouping and the global issuance cap), header stripping, and error mapping.
 - The cache is separate per Škoda key, and cache hits do not replay rate-limit headers.
 - Upstream redirects are never followed.
 - Captured `pino` output never contains the key, the token or a full VIN, even for malformed paths.
